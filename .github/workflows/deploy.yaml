@@ -1,0 +1,33 @@
+# .github/workflows/deploy.yaml
+name: K8s Deploy
+
+on: push
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    steps:
+    - name: Tailscale
+      uses: tailscale/github-action@v2
+      with:
+        oauth-client-id: ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
+        oauth-secret: ${{ secrets.TAILSCALE_OAUTH_SECRET }}
+        tags: tag:ci
+
+    - name: Set the Kubernetes context
+      uses: azure/k8s-set-context@v2
+      with:
+        method: service-account
+        k8s-url: https://192.168.10.222:6443
+        k8s-secret: ${{ secrets.KUBERNETES_SECRET }}
+
+    - name: Checkout source code
+      uses: actions/checkout@v3
+
+    - name: Deploy to the Kubernetes cluster
+      uses: azure/k8s-deploy@v1
+      with:
+        namespace: default
+        manifests: |
+          apps/example/nginx.yaml
