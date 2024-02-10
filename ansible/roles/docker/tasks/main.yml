@@ -1,0 +1,7 @@
+---
+- name: Update repositories cache and install packages
+  apt:
+    update_cache: yes
+    pkg:
+    - docker.io
+    - docker-compose

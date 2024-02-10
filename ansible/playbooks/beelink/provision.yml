@@ -1,0 +1,10 @@
+- name: Provision host
+  hosts: beelink
+  remote_user: root
+  gather_facts: no
+  tasks:
+    - import_role:
+        name: docker
+    - import_role:
+        name: pihole
+    
