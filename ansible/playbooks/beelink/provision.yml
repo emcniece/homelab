@@ -5,6 +5,10 @@
   tasks:
     - import_role:
         name: docker
+      tags: [os]
     - import_role:
         name: pihole
-    
+      tags: [pihole]
+  vars:
+    - runtime_user: emcniece
+

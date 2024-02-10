@@ -5,3 +5,10 @@
     pkg:
     - docker.io
     - docker-compose
+
+- name: Add the runtime user with  a primary group of 'docker'
+  user:
+    name: '{{ runtime_user }}'
+    comment: Ansible managed
+    group: docker
+    create_home: true

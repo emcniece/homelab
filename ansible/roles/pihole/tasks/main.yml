@@ -1,0 +1,33 @@
+---
+- name: Disable systemd-resolved to free up port 53
+  blockinfile:
+    path: /etc/systemd/resolved.conf
+    block: |
+      DNSStubListener=no
+      DNS=1.1.1.1
+      FallbackDNS=1.0.0.1
+
+- name: Stop service systemd-resolved if running, disable from startup
+  ansible.builtin.systemd_service:
+    name: systemd-resolved
+    state: stopped
+    enabled: false
+
+- name: Template docker-compose to ~/apps/
+  template:
+    src: ../files/docker-compose.yml.j2
+    dest: '/home/{{ runtime_user }}/apps/pihole/docker-compose.yml'
+    #owner: bin
+    #group: wheel
+    mode: '0644'
+
+- name: Create and start services
+  community.docker.docker_compose:
+    project_src: '/home/{{ runtime_user }}/apps/pihole'
+    state: present
+    pull: true
+  register: output
+
+- name: Show results
+  debug:
+    var: output
