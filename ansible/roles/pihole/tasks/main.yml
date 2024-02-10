@@ -17,8 +17,6 @@
   template:
     src: ../files/docker-compose.yml.j2
     dest: '/home/{{ runtime_user }}/apps/pihole/docker-compose.yml'
-    #owner: bin
-    #group: wheel
     mode: '0644'
 
 - name: Create and start services

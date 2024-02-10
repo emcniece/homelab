@@ -1,0 +1,16 @@
+---
+- name: Set timezone
+  command: timedatectl set-timezone America/Vancouver
+
+- name: Template docker-compose to ~/apps/
+  template:
+    src: ../files/docker-compose.yml.j2
+    dest: '/home/{{ runtime_user }}/apps/home-assistant/docker-compose.yml'
+    mode: '0644'
+
+- name: Create and start services
+  community.docker.docker_compose:
+    project_src: '/home/{{ runtime_user }}/apps/home-assistant'
+    state: present
+    pull: true
+  register: output

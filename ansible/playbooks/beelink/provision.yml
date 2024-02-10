@@ -2,13 +2,21 @@
   hosts: beelink
   remote_user: root
   gather_facts: no
+
+  vars:
+    - runtime_user: emcniece
+    - ha_version: stable
+
   tasks:
     - import_role:
         name: docker
       tags: [os]
+
     - import_role:
         name: pihole
       tags: [pihole]
-  vars:
-    - runtime_user: emcniece
+
+    - import_role:
+        name: home-assistant
+      tags: [ha]
 
