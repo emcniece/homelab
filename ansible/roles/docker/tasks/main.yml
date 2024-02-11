@@ -6,9 +6,11 @@
     - docker.io
     - docker-compose
 
-- name: Add the runtime user with  a primary group of 'docker'
+- name: Add the runtime user with a primary group of 'docker'
   user:
     name: '{{ runtime_user }}'
     comment: Ansible managed
-    group: docker
+    groups:
+      - docker
+      - sudo
     create_home: true

@@ -1,0 +1,17 @@
+- name: Provision host
+  hosts: hp
+  remote_user: root
+  gather_facts: no
+
+  vars:
+    - runtime_user: emc
+    - cloudflare_domain: pve1.lab.emc2.build
+
+  tasks:
+    - import_role:
+        name: docker
+      tags: [os]
+
+    - import_role:
+        name: cloudflare-ddns
+      tags: [cfddns]

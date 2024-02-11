@@ -6,11 +6,16 @@
   vars:
     - runtime_user: emcniece
     - ha_version: stable
+    - cloudflare_domain: home.emc2.build
 
   tasks:
     - import_role:
         name: docker
       tags: [os]
+
+    - import_role:
+        name: cloudflare-ddns
+      tags: [cfddns]
 
     - import_role:
         name: pihole
