@@ -1,0 +1,35 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: heimdall
+  namespace: default
+  labels:
+    app: heimdall
+spec:
+  replicas: 1
+  progressDeadlineSeconds: 600
+  revisionHistoryLimit: 2
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: heimdall
+  template:
+    metadata:
+      labels:
+        app: heimdall
+    spec:
+      # nodeSelector:
+      #   kubernetes.io/hostname: k3s-04
+      containers:
+      - name: heimdall
+        image: linuxserver/heimdall:latest
+        volumeMounts:
+        - name: pvc
+          mountPath: /config
+
+      volumes:
+      - name: pvc
+        persistentVolumeClaim:
+          claimName: pv-heimdall-claim

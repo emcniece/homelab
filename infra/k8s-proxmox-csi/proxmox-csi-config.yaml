@@ -1,0 +1,15 @@
+---
+# k8s/proxmox-csi/proxmox-csi-config.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: proxmox-csi-plugin
+  namespace: csi-proxmox
+stringData:
+  config.yaml: |
+    clusters:
+    - url: "https://192.168.10.3:8006/api2/json"
+      insecure: true
+      token_id: "kubernetes-csi@pve!csi"
+      token_secret: "<TOKEN>"
+      region: homelab

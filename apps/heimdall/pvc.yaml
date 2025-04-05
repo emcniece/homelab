@@ -1,0 +1,13 @@
+---
+# This must be created before the deployment since the storageClass is configured
+# with `volumeBindingMode: WaitForFirstConsumer`
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pv-heimdall-claim
+spec:
+  storageClassName: "proxmox-csi"
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 10Mi

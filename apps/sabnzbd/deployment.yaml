@@ -1,0 +1,76 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sabnzbd
+  namespace: media
+  labels:
+    app: sabnzbd
+spec:
+  replicas: 1
+  progressDeadlineSeconds: 600
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: sabnzbd
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: sabnzbd
+    spec:
+      containers:
+      - env:
+        - name: PGID
+          value: '0'
+        - name: PUID
+          value: '0'
+        - name: TZ
+          value: America/Vancouver
+        image: lscr.io/linuxserver/sabnzbd:latest
+        imagePullPolicy: IfNotPresent
+        name: sabnzbd
+
+        # Todo: try applying this
+        resources:
+          limits:
+            memory: 2Gi
+            cpu: 500m
+          requests:
+            memory: 1Gi
+            cpu: 250m
+          
+        ports:
+        - containerPort: 8080
+        resources: {}
+        volumeMounts:
+        - mountPath: /config
+          name: sabnzbd-vol0
+        - mountPath: /downloads
+          name: sabnzbd-vol1
+        - mountPath: /incomplete-downloads
+          name: sabnzbd-vol2
+        - mountPath: /watch
+          name: sabnzbd-vol3
+      hostname: sabnzbd
+      restartPolicy: Always
+      serviceAccountName: ''
+      volumes:
+      - hostPath:
+          path: /mnt/zpool1/apps/media-test/config/sabnzbd
+          type: Directory
+        name: sabnzbd-vol0
+      - hostPath:
+          path: /mnt/zpool1/apps/media-test/download/complete
+          type: Directory
+        name: sabnzbd-vol1
+      - hostPath:
+          path: /mnt/zpool1/apps/media-test/download/incomplete
+          type: Directory
+        name: sabnzbd-vol2
+      - hostPath:
+          path: /mnt/zpool1/apps/media-test/download/watch
+          type: Directory
+        name: sabnzbd-vol3
+status: {}
