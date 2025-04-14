@@ -1,0 +1,55 @@
+# Test the Ceph RBD volume creation on 1 or more nodes
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ceph-fs-test
+  labels:
+    name: ceph-fs-test
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ceph-fs-test
+  namespace: ceph-fs-test
+spec:
+  replicas: 3
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ceph-fs-test
+  template:
+    metadata:
+      labels:
+        app: ceph-fs-test
+    spec:
+      # nodeSelector:
+      #   kubernetes.io/hostname: k3s-04
+      containers:
+        - name: alpine
+          image: debian:bullseye
+          command: [ "sleep","1d" ]
+          volumeMounts:
+            - name: pvc
+              mountPath: /mnt
+      volumes:
+        - name: pvc
+          persistentVolumeClaim:
+            claimName: csi-cephfs-pvc
+
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: csi-cephfs-pvc
+  namespace: ceph-fs-test
+spec:
+  accessModes:
+    - ReadWriteMany                     # CephFS specific
+  resources:
+    requests:
+      storage: 2Gi
+  storageClassName: csi-cephfs-sc       # CephFS specific

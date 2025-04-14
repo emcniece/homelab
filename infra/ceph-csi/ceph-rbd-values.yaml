@@ -1,0 +1,21 @@
+csiConfig:
+  - clusterID: "1ba546be-dc2f-48d2-b3dd-b232d0877403"
+    monitors:
+      - 192.168.10.3:6789 # pve1
+      - 192.168.10.4:6789 # pve2
+      - 192.168.10.5:6789 # pve3
+
+topology:
+  domainLabels:
+    - topology.kubernetes.io/region
+    - topology.kubernetes.io/zone
+
+storageClass:
+  create: true
+  clusterID: "1ba546be-dc2f-48d2-b3dd-b232d0877403"
+  pool: cephpool1
+
+secret:
+  create: true
+  userID: k8s-csi-rbd
+  userKey: AQD6TvZnnJ3TNhAALhKuzpMZuDShUV3UldMp2A==

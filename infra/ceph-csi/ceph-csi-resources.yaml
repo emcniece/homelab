@@ -1,0 +1,43 @@
+---
+# Below are modifications made to https://github.com/ceph/ceph-csi/tree/73579f94c7dd20c26efad530f76715b4f18c7deb/examples/cephfs
+# They require adding the clusterID and fsName before applying.
+---
+apiVersion: snapshot.storage.k8s.io/v1
+kind: VolumeSnapshotClass
+metadata:
+  name: csi-cephfsplugin-snapclass
+driver: cephfs.csi.ceph.com
+parameters:
+  clusterID: "1ba546be-dc2f-48d2-b3dd-b232d0877403"
+  csi.storage.k8s.io/snapshotter-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/snapshotter-secret-namespace: default
+deletionPolicy: Delete
+---
+apiVersion: groupsnapshot.storage.k8s.io/v1beta1
+kind: VolumeGroupSnapshotClass
+metadata:
+  name: csi-cephfsplugin-groupsnapclass
+driver: cephfs.csi.ceph.com
+parameters:
+  clusterID: "1ba546be-dc2f-48d2-b3dd-b232d0877403"
+  fsName: cephfs
+  csi.storage.k8s.io/group-snapshotter-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/group-snapshotter-secret-namespace: default
+deletionPolicy: Delete
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: csi-cephfs-sc
+provisioner: cephfs.csi.ceph.com
+parameters:
+  clusterID: "1ba546be-dc2f-48d2-b3dd-b232d0877403"
+  fsName: cephfs
+  csi.storage.k8s.io/provisioner-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: default
+  csi.storage.k8s.io/controller-expand-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/controller-expand-secret-namespace: default
+  csi.storage.k8s.io/node-stage-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: default
+reclaimPolicy: Delete
+allowVolumeExpansion: true

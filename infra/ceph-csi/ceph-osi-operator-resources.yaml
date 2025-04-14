@@ -1,0 +1,42 @@
+# https://github.com/ceph/ceph-csi-operator/blob/main/docs/quick-start.md
+---
+# 3.1 Deploy the RBD Driver
+apiVersion: csi.ceph.io/v1alpha1
+kind: Driver
+metadata:
+  name: rbd.csi.ceph.com
+  namespace: ceph-csi-operator-system
+
+---
+# 3.2 Deploy the CephFS Driver
+apiVersion: csi.ceph.io/v1alpha1
+kind: Driver
+metadata:
+  name: cephfs.csi.ceph.com
+  namespace: ceph-csi-operator-system
+
+---
+# 5. Create CephConnection
+apiVersion: csi.ceph.io/v1alpha1
+kind: CephConnection
+metadata:
+  name: ceph-connection
+  namespace: ceph-csi-operator-system
+spec:
+  monitors:
+  - 192.168.10.3:6789 # pve1
+  - 192.168.10.4:6789 # pve2
+  - 192.168.10.5:6789 # pve3
+
+---
+# 6. Create ClientProfile
+apiVersion: csi.ceph.io/v1alpha1
+kind: ClientProfile
+metadata:
+  name: storage
+  namespace: ceph-csi-operator-system
+spec:
+  cephConnectionRef:
+    name: ceph-connection
+  cephFs:
+    subVolumeGroup: csi
