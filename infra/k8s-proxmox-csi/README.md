@@ -38,3 +38,11 @@ Install the local Kustomize files:
 # Insert TOKEN into proxmox-csi-config.yaml, then:
 k apply -k .
 ```
+
+## Notes
+
+### April 5 2025
+
+- Installed k8s-proxmox-csi
+    - PVs seem to get deleted when pods move
+    - Todo: load balance 192.168.10.3:8006/api2/json ?
