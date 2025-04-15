@@ -20,6 +20,14 @@ spec:
       labels:
         app: sabnzbd
     spec:
+      # This DNS config modifies /etc/resolv.conf. Needed so that news.newshosting.com can resolve outside of the cluster,
+      # and not get trapped in the wildcard that leads back to lab.emc2.build.
+      dnsConfig:
+        # nameservers: ["8.8.8.8"]
+        options:
+          - name: ndots
+            value: "2"
+
       containers:
       - env:
         - name: PGID
@@ -32,45 +40,54 @@ spec:
         imagePullPolicy: IfNotPresent
         name: sabnzbd
 
-        # Todo: try applying this
         resources:
           limits:
-            memory: 2Gi
+            memory: 4Gi
             cpu: 500m
           requests:
-            memory: 1Gi
+            memory: 2Gi
             cpu: 250m
           
         ports:
         - containerPort: 8080
         resources: {}
         volumeMounts:
-        - mountPath: /config
-          name: sabnzbd-vol0
-        - mountPath: /downloads
-          name: sabnzbd-vol1
-        - mountPath: /incomplete-downloads
-          name: sabnzbd-vol2
-        - mountPath: /watch
-          name: sabnzbd-vol3
+        - name: pvc-sabnzbd-config
+          mountPath: /config
+        - name: media-transcode
+          mountPath: /transcode
+        
+
+          #name: sabnzbd-vol0
+        # - mountPath: /downloads
+        #   name: sabnzbd-vol1
+        # - mountPath: /incomplete-downloads
+        #   name: sabnzbd-vol2
+        # - mountPath: /watch
+        #   name: sabnzbd-vol3
       hostname: sabnzbd
       restartPolicy: Always
       serviceAccountName: ''
       volumes:
-      - hostPath:
-          path: /mnt/zpool1/apps/media-test/config/sabnzbd
-          type: Directory
-        name: sabnzbd-vol0
-      - hostPath:
-          path: /mnt/zpool1/apps/media-test/download/complete
-          type: Directory
-        name: sabnzbd-vol1
-      - hostPath:
-          path: /mnt/zpool1/apps/media-test/download/incomplete
-          type: Directory
-        name: sabnzbd-vol2
-      - hostPath:
-          path: /mnt/zpool1/apps/media-test/download/watch
-          type: Directory
-        name: sabnzbd-vol3
-status: {}
+      - name: pvc-sabnzbd-config
+        persistentVolumeClaim:
+          claimName: pv-sabnzbd-config
+      - name: media-transcode
+        persistentVolumeClaim:
+          claimName: media-transcode
+      # - hostPath:
+      #     path: /mnt/zpool1/apps/media-test/config/sabnzbd
+      #     type: Directory
+      #   name: sabnzbd-vol0
+      # - hostPath:
+      #     path: /mnt/zpool1/apps/media-test/download/complete
+      #     type: Directory
+      #   name: sabnzbd-vol1
+      # - hostPath:
+      #     path: /mnt/zpool1/apps/media-test/download/incomplete
+      #     type: Directory
+      #   name: sabnzbd-vol2
+      # - hostPath:
+      #     path: /mnt/zpool1/apps/media-test/download/watch
+      #     type: Directory
+      #   name: sabnzbd-vol3

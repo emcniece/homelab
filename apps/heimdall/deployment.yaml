@@ -26,10 +26,15 @@ spec:
       - name: heimdall
         image: linuxserver/heimdall:latest
         volumeMounts:
-        - name: pvc
+        # - name: pvc
+        #   mountPath: /config
+        - name: cephfs-pvc
           mountPath: /config
 
       volumes:
-      - name: pvc
+      # - name: pvc
+      #   persistentVolumeClaim:
+      #     claimName: pv-heimdall-claim
+      - name: cephfs-pvc
         persistentVolumeClaim:
-          claimName: pv-heimdall-claim
+          claimName: pv-heimdall-cephfs
