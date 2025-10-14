@@ -70,9 +70,16 @@ kind: Ingress
 metadata:
   name: echoandflow-ca-routing
   namespace: default
-  annotations: {}
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.middlewares: default-https-redirect@kubernetescrd,default-forward-https-headers@kubernetescrd
+    traefik.ingress.kubernetes.io/router.tls.certresolver: le
 spec:
   ingressClassName: traefik
+  tls:
+  - hosts:
+    - echoandflow.ca
+    secretName: echoandflow-ca-letsencrypt-tls
   rules:
   - host: "echoandflow.ca"
     http:
@@ -90,9 +97,16 @@ kind: Ingress
 metadata:
   name: emc2-build-routing
   namespace: default
-  annotations: {}
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.middlewares: default-https-redirect@kubernetescrd,default-forward-https-headers@kubernetescrd
+    traefik.ingress.kubernetes.io/router.tls.certresolver: le
 spec:
   ingressClassName: traefik
+  tls:
+  - hosts:
+    - emc2.build
+    secretName: emc2-build-letsencrypt-tls
   rules:
   - host: "emc2.build"
     http:
@@ -110,9 +124,16 @@ kind: Ingress
 metadata:
   name: kamloopsdentalsociety-com-routing
   namespace: default
-  annotations: {}
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.middlewares: default-https-redirect@kubernetescrd,default-forward-https-headers@kubernetescrd
+    traefik.ingress.kubernetes.io/router.tls.certresolver: le
 spec:
   ingressClassName: traefik
+  tls:
+  - hosts:
+    - kamloopsdentalsociety.com
+    secretName: kamloopsdentalsociety-com-letsencrypt-tls
   rules:
   - host: "kamloopsdentalsociety.com"
     http:
@@ -130,9 +151,16 @@ kind: Ingress
 metadata:
   name: createsleeprepeat-ca-routing
   namespace: default
-  annotations: {}
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.middlewares: default-https-redirect@kubernetescrd,default-forward-https-headers@kubernetescrd
+    traefik.ingress.kubernetes.io/router.tls.certresolver: le
 spec:
   ingressClassName: traefik
+  tls:
+  - hosts:
+    - createsleeprepeat.ca
+    secretName: createsleeprepeat-ca-letsencrypt-tls
   rules:
   - host: "createsleeprepeat.ca"
     http:

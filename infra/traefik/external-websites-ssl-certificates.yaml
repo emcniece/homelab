@@ -1,0 +1,55 @@
+# SSL Certificates for external websites
+# These certificates are automatically created by cert-manager
+# Apply this file to recreate SSL certificates after cluster recreation
+
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: createsleeprepeat-ca-letsencrypt-tls
+  namespace: traefik-system
+spec:
+  secretName: createsleeprepeat-ca-letsencrypt-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - createsleeprepeat.ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: echoandflow-ca-letsencrypt-tls
+  namespace: traefik-system
+spec:
+  secretName: echoandflow-ca-letsencrypt-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - echoandflow.ca
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: emc2-build-letsencrypt-tls
+  namespace: traefik-system
+spec:
+  secretName: emc2-build-letsencrypt-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - emc2.build
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: kamloopsdentalsociety-com-letsencrypt-tls
+  namespace: traefik-system
+spec:
+  secretName: kamloopsdentalsociety-com-letsencrypt-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - kamloopsdentalsociety.com
