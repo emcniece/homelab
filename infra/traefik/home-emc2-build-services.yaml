@@ -1,0 +1,27 @@
+# ExternalName services for *.home.emc2.build domains
+# These services route traffic from homelab cluster to media cluster
+# Apply this file to recreate services after cluster recreation
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: home-emc2-build
+  namespace: default
+spec:
+  type: ExternalName
+  externalName: 192.168.1.100
+  ports:
+  - port: 80
+    targetPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: home-emc2-build-wildcard
+  namespace: default
+spec:
+  type: ExternalName
+  externalName: 192.168.1.100
+  ports:
+  - port: 80
+    targetPort: 80

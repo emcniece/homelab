@@ -44,6 +44,13 @@ This directory contains the Traefik ingress controller configuration for the hom
    - **Test**: `sonarr.lab.emc2.build` and `lab.emc2.build` both working
    - **New IP**: Traefik now running on `192.168.10.91`
 
+3. **Home Services Routing**: `*.home.emc2.build` domains now working ✅
+   - **SSL Certificates**: All domains have valid Let's Encrypt certificates
+   - **Authentication**: Organizr authentication middleware configured
+   - **Public Access**: `home.emc2.build` (Organizr) publicly accessible
+   - **Protected Services**: All other `*.home.emc2.build` services require authentication
+   - **Routing**: Homelab cluster → Media cluster → Services
+
 ### 🔧 Previous Troubleshooting Attempts
 
 - **Configuration File**: Failed with both v2.10 and v3.0
@@ -101,7 +108,12 @@ This directory contains the Traefik ingress controller configuration for the hom
 ├── home-external-routing.yaml          # Home domain routing (*.home.emc2.build)
 ├── external-website-routing.yaml       # External website routing
 ├── CLOUDFLARE_SETUP.md                 # Cloudflare DNS verification guide
-└── MIGRATION_PLAN.md                   # Media server migration plan
+├── MIGRATION_PLAN.md                   # Media server migration plan
+├── HOME_EMC2_BUILD_SETUP.md            # Home.emc2.build setup guide
+├── home-emc2-build-ssl-certificates.yaml # SSL certificates for *.home.emc2.build
+├── home-emc2-build-ingresses-with-tls.yaml # Ingress resources with TLS
+├── home-emc2-build-services.yaml       # ExternalName services
+└── copy-ssl-certificates-to-default.sh # Script to copy certificates
 ```
 
 **Note**: Traefik is now managed by Helm chart, so manual configuration files have been cleaned up.
@@ -136,6 +148,15 @@ helm install traefik traefik/traefik \
 
 **Home Services** (routed to media server 192.168.1.100):
 - `*.home.emc2.build` → Media server
+- `home.emc2.build` → Organizr (publicly accessible)
+- `plex.home.emc2.build` → Plex (Organizr auth required)
+- `sonarr.home.emc2.build` → Sonarr (Organizr auth required)
+- `radarr.home.emc2.build` → Radarr (Organizr auth required)
+- `lidarr.home.emc2.build` → Lidarr (Organizr auth required)
+- `deluge.home.emc2.build` → Deluge (Organizr auth required)
+- `sabnzbd.home.emc2.build` → Sabnzbd (Organizr auth required)
+- `plexpy.home.emc2.build` → PlexPy (Organizr auth required)
+- `emby.home.emc2.build` → Emby (Organizr auth required)
 
 **Lab Services** (routed to homelab cluster):
 - `*.lab.emc2.build` → Local Kubernetes services

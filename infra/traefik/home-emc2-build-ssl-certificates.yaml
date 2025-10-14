@@ -1,0 +1,120 @@
+# SSL Certificates for *.home.emc2.build domains
+# These certificates are automatically created by cert-manager
+# Apply this file to recreate SSL certificates after cluster recreation
+
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: home-emc2-build-letsencrypt-tls
+  namespace: traefik-system
+spec:
+  secretName: home-emc2-build-letsencrypt-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - home.emc2.build
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: plex-home-emc2-build-letsencrypt-tls
+  namespace: traefik-system
+spec:
+  secretName: plex-home-emc2-build-letsencrypt-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - plex.home.emc2.build
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: sonarr-home-emc2-build-letsencrypt-tls
+  namespace: traefik-system
+spec:
+  secretName: sonarr-home-emc2-build-letsencrypt-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - sonarr.home.emc2.build
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: radarr-home-emc2-build-letsencrypt-tls
+  namespace: traefik-system
+spec:
+  secretName: radarr-home-emc2-build-letsencrypt-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - radarr.home.emc2.build
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: lidarr-home-emc2-build-letsencrypt-tls
+  namespace: traefik-system
+spec:
+  secretName: lidarr-home-emc2-build-letsencrypt-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - lidarr.home.emc2.build
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: deluge-home-emc2-build-letsencrypt-tls
+  namespace: traefik-system
+spec:
+  secretName: deluge-home-emc2-build-letsencrypt-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - deluge.home.emc2.build
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: sabnzbd-home-emc2-build-letsencrypt-tls
+  namespace: traefik-system
+spec:
+  secretName: sabnzbd-home-emc2-build-letsencrypt-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - sabnzbd.home.emc2.build
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: plexpy-home-emc2-build-letsencrypt-tls
+  namespace: traefik-system
+spec:
+  secretName: plexpy-home-emc2-build-letsencrypt-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - plexpy.home.emc2.build
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: emby-home-emc2-build-letsencrypt-tls
+  namespace: traefik-system
+spec:
+  secretName: emby-home-emc2-build-letsencrypt-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - emby.home.emc2.build
