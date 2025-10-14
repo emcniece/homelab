@@ -1,0 +1,25 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sonarr-config
+  namespace: media
+spec:
+  accessModes: ["ReadWriteMany"]        # CephFS specific
+  resources:
+    requests:
+      storage: 20Mi
+  storageClassName: csi-cephfs-sc       # CephFS specific
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-library
+  namespace: media
+spec:
+  accessModes: ["ReadWriteMany"]        # CephFS specific
+  resources:
+    requests:
+      storage: 20Ti
+  storageClassName: csi-cephfs-sc       # CephFS specific

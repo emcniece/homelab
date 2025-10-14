@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations: {}
+  labels:
+    app: plex
+  name: plex
+  namespace: media
+spec:
+  selector:
+    matchLabels:
+      app: plex
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations: {}
+      labels:
+        app: plex
+    spec:
+      containers:
+      - name: plex
+        image: plexinc/pms-docker:latest
+        #image: plexinc/pms-docker:1.41.2.9200-c6bbc1b53
+        imagePullPolicy: IfNotPresent
+
+        env:
+        - name: ADVERTISE_IP
+          value: https://plex.lab.emc2.build/
+        - name: PGID
+          value: '1000'
+        - name: PUID
+          value: '1000'
+        - name: TZ
+          value: America/Vancouver
+        - name: version
+          value: latest
+        - name: PLEX_CLAIM_TOKEN
+          value: "claim-MXQkQJ7vtaUaJvefoWso"
+
+        ports:
+        - containerPort: 32400
+        - containerPort: 1900
+          protocol: UDP
+        - containerPort: 3005
+        - containerPort: 5353
+          protocol: UDP
+        - containerPort: 8324
+
+        resources: {}
+
+        volumeMounts:
+        - name: plex-config
+          mountPath: /config
+          
+        - name: media-library
+          mountPath: /media
+          
+        # - mountPath: /media/movies
+        #   name: plex-vol2
+        # - mountPath: /media/music
+        #   name: plex-vol3
+        # - mountPath: /media/anime
+        #   name: plex-vol4
+
+      hostNetwork: true
+      hostname: plex
+      restartPolicy: Always
+      serviceAccountName: ''
+
+      volumes:
+      - name: plex-config
+        persistentVolumeClaim:
+          claimName: plex-config
+      - name: media-library
+        persistentVolumeClaim:
+          claimName: media-library
+        
+      # - hostPath:
+      #     path: /mnt/zpool1/apps/media-test/download/complete/movies
+      #     type: Directory
+      #   name: plex-vol2
+      # - hostPath:
+      #     path: /mnt/zpool1/apps/media-test/data/music
+      #     type: Directory
+      #   name: plex-vol3
+      # - hostPath:
+      #     path: /mnt/zpool1/apps/media-test/download/complete/anime
+      #     type: Directory
+      #   name: plex-vol4

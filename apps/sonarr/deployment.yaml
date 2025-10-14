@@ -1,0 +1,61 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sonarr
+  namespace: media
+  labels:
+    app: sonarr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sonarr
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: sonarr
+    spec:
+      # This DNS config modifies /etc/resolv.conf. Needed so that news.newshosting.com can resolve outside of the cluster,
+      # and not get trapped in the wildcard that leads back to lab.emc2.build.
+      dnsConfig:
+        # nameservers: ["8.8.8.8"]
+        options:
+          - name: ndots
+            value: "2"
+
+      containers:
+      - name: sonarr
+        image: lscr.io/linuxserver/sonarr:latest
+        imagePullPolicy: IfNotPresent
+
+        env:
+        - name: TZ
+          value: America/Vancouver
+        - name: PGID
+          value: '0'
+        - name: PUID
+          value: '0'
+
+        ports:
+        - containerPort: 8989
+
+        volumeMounts:
+        - name: sonarr-config
+          mountPath: /config
+        - name: media-library
+          mountPath: /downloads
+
+      hostname: sonarr
+      restartPolicy: Always
+
+      volumes:
+      - name: sonarr-config
+        persistentVolumeClaim:
+          claimName: sonarr-config
+      - name: media-library
+        persistentVolumeClaim:
+          claimName: media-library
+

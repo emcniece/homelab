@@ -1,0 +1,59 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: handbrake
+  namespace: media
+  labels:
+    app: handbrake
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: handbrake
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: handbrake
+    spec:
+      containers:
+      - name: handbrake
+        image: jlesage/handbrake:latest
+        imagePullPolicy: IfNotPresent
+
+        env:
+        - name: TZ
+          value: America/Vancouver
+        - name: AUTOMATED_CONVERSION_PRESET
+          value: "General/Very Fast 2160p60 4K AV1 h265"
+        # - name: AUTOMATED_CONVERSION_KEEP_SOURCE
+        #   value: 0  # delete source video file
+
+        ports:
+        - containerPort: 5800
+
+        volumeMounts:
+        - name: handbrake-config
+          mountPath: /config
+        - name: media-transcode
+          mountPath: /watch
+        - name: media-library
+          mountPath: /output
+        
+
+      hostname: handbrake
+      restartPolicy: Always
+
+      volumes:
+      - name: handbrake-config
+        persistentVolumeClaim:
+          claimName: handbrake-config
+      - name: media-transcode
+        persistentVolumeClaim:
+          claimName: media-transcode
+      - name: media-library
+        persistentVolumeClaim:
+          claimName: media-library
+

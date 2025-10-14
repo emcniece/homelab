@@ -29,7 +29,8 @@ spec:
             value: "2"
 
       containers:
-      - env:
+      - name: sabnzbd
+        env:
         - name: PGID
           value: '0'
         - name: PUID
@@ -38,7 +39,7 @@ spec:
           value: America/Vancouver
         image: lscr.io/linuxserver/sabnzbd:latest
         imagePullPolicy: IfNotPresent
-        name: sabnzbd
+        
 
         resources:
           limits:

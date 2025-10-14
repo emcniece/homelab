@@ -1,0 +1,16 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: test-errors
+spec:
+  errors:
+    status:
+      - "400-499"
+      - "500"
+      - "501"
+      - "503"
+      - "505-599"
+    query: /{status}.html
+    service:
+      name: whoami
+      port: 80
