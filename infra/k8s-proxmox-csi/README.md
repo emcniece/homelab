@@ -27,6 +27,7 @@ Add K8s node labels:
 
 ```sh
 # From laptop:
+kubectl label nodes k3s-01 k3s-02 k3s-03 k3s-04 k3s-05 k3s-06 topology.kubernetes.io/region=homelab
 kubectl label node k3s-01 k3s-04 topology.kubernetes.io/zone=pve1
 kubectl label node k3s-02 k3s-05 topology.kubernetes.io/zone=pve2
 kubectl label node k3s-03 k3s-06 topology.kubernetes.io/zone=pve3
