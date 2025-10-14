@@ -1,0 +1,137 @@
+# External website routing for domains hosted on media server
+apiVersion: v1
+kind: Service
+metadata:
+  name: echoandflow-ca
+  namespace: default
+spec:
+  type: ExternalName
+  externalName: 192.168.1.100
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: emc2-build
+  namespace: default
+spec:
+  type: ExternalName
+  externalName: 192.168.1.100
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kamloopsdentalsociety-com
+  namespace: default
+spec:
+  type: ExternalName
+  externalName: 192.168.1.100
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: createsleeprepeat-ca
+  namespace: default
+spec:
+  type: ExternalName
+  externalName: 192.168.1.100
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+---
+# Ingress resources for external websites
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: echoandflow-ca-routing
+  namespace: default
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: "default-headers"
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: "echoandflow.ca"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: echoandflow-ca
+            port:
+              number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: emc2-build-routing
+  namespace: default
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: "default-headers"
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: "emc2.build"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: emc2-build
+            port:
+              number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kamloopsdentalsociety-com-routing
+  namespace: default
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: "default-headers"
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: "kamloopsdentalsociety.com"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kamloopsdentalsociety-com
+            port:
+              number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: createsleeprepeat-ca-routing
+  namespace: default
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: "default-headers"
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: "createsleeprepeat.ca"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: createsleeprepeat-ca
+            port:
+              number: 80

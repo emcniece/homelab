@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: traefik-external-routing
+  namespace: traefik-system
+data:
+  traefik.yaml: |
+    api:
+      dashboard: true
+      insecure: true
+    entryPoints:
+      web:
+        address: ":80"
+        http:
+          redirections:
+            entrypoint:
+              to: websecure
+              scheme: https
+      websecure:
+        address: ":443"
+      traefik:
+        address: ":8080"
+    providers:
+      kubernetes:
+        ingressClass: traefik
+        allowCrossNamespace: true
+        allowExternalNameServices: true
+        allowEmptyServices: true
+    # External routing rules
+    http:
+      routers:
+        # Route home.emc2.build domains to external services
+        home-router:
+          rule: "Host(`*.home.emc2.build`)"
+          service: home-cluster
+          tls: {}
+        # Route lab.emc2.build domains to local services
+        lab-router:
+          rule: "Host(`*.lab.emc2.build`)"
+          service: lab-cluster
+          tls: {}
+      services:
+        # External home cluster (media server)
+        home-cluster:
+          loadBalancer:
+            servers:
+            - url: "http://192.168.1.100"
+        # Local lab cluster services
+        lab-cluster:
+          loadBalancer:
+            servers:
+            - url: "http://localhost"
+    log:
+      level: INFO
+    accessLog: {}

@@ -1,0 +1,30 @@
+# Traefik Helm values for external routing
+service:
+  type: LoadBalancer
+  externalIPs:
+    - 192.168.10.91
+  ports:
+    web:
+      port: 80
+      targetPort: 80
+    websecure:
+      port: 443
+      targetPort: 443
+    traefik:
+      port: 8080
+      targetPort: 8080
+
+# Enable external routing
+additionalArguments:
+  - --api.dashboard=true
+  - --api.insecure=true
+  - --entrypoints.web.address=:80
+  - --entrypoints.websecure.address=:443
+  - --entrypoints.traefik.address=:8080
+  - --providers.kubernetes=true
+  - --providers.kubernetes.ingressclass=traefik
+  - --providers.kubernetes.allowcrossnamespace=true
+  - --providers.kubernetes.allowexternalnameservices=true
+  - --providers.kubernetes.allowemptyservices=true
+  - --log.level=INFO
+  - --accesslog=true
