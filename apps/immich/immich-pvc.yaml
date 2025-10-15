@@ -4,8 +4,9 @@ metadata:
   name: immich-library
   namespace: immich
 spec:
-  accessModes: ["ReadWriteMany"]
+  storageClassName: csi-cephfs-sc
+  accessModes:
+    - ReadWriteMany
   resources:
     requests:
-      storage: 100Gi
-  storageClassName: csi-cephfs-sc
+      storage: 10Gi

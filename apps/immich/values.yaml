@@ -1,0 +1,70 @@
+controllers:
+  main:
+    containers:
+      main:
+        image:
+          tag: v2.0.0
+
+
+immich:
+  metrics:
+    # Enabling this will create the service monitors needed to monitor immich with the prometheus operator
+    enabled: false
+  persistence:
+    # Main data store for all photos shared between different components.
+    library:
+      # Automatically creating the library volume is not supported by this chart
+      # You have to specify an existing PVC to use
+      existingClaim: immich-library
+  # configuration is immich-config.json converted to yaml
+  # ref: https://immich.app/docs/install/config-file/
+  #
+  configuration: {}
+    # trash:
+    #   enabled: false
+    #   days: 30
+    # storageTemplate:
+    #   enabled: true
+    #   template: "{{y}}/{{y}}-{{MM}}-{{dd}}/{{filename}}"
+
+
+# https://www.reddit.com/r/immich/comments/1k6mo49/regarding_valkeys_redisimage/
+# The devs want to get rid of Redis/Valkey. It's only used for the job queue.
+valkey:
+  enabled: false
+  # persistence:
+  #   data:
+  #     enabled: true
+  #     size: 1Gi
+  #     # Optional: Set this to persistentVolumeClaim to keep job queues persistent
+  #     type: emptyDir
+  #     accessMode: ReadWriteOnce
+  #     # storageClass: your-class
+
+server:
+  enabled: true
+  ingress:
+    main:
+      enabled: false
+      annotations:
+        # proxy-body-size is set to 0 to remove the body limit on file uploads
+        nginx.ingress.kubernetes.io/proxy-body-size: "0"
+      hosts:
+        - host: immich.lab.emc2.build
+          paths:
+            - path: "/"
+              service:
+                identifier: main
+      tls: []
+
+machine-learning:
+  enabled: true
+  persistence:
+    cache:
+      enabled: true
+      size: 10Gi
+      # Optional: Set this to persistentVolumeClaim to avoid downloading the ML models every start.
+      type: persistentVolumeClaim
+      accessMode: ReadWriteMany
+      # storageClass: your-class
+      storageClassName: csi-cephfs-sc
