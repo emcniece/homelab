@@ -1,0 +1,11 @@
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: first-pool
+  namespace: metallb-system
+spec:
+  addresses:
+    - 192.168.10.90-192.168.10.110
+  autoAssign: true
+  avoidBuggyIPs: true # Prevents MetalLB from assigning IP addresses ending in .0 or .255
+
