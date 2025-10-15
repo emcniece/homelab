@@ -1,0 +1,82 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: wordpress-data-transfer
+  namespace: default
+spec:
+  template:
+    spec:
+      containers:
+      - name: rsync-transfer
+        image: alpine:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          apk add --no-cache rsync openssh-client
+          
+          # Create directories for each site
+          mkdir -p /transfer/createsleeprepeat/wordpress
+          mkdir -p /transfer/createsleeprepeat/mysql
+          mkdir -p /transfer/echoandflow/wordpress
+          mkdir -p /transfer/echoandflow/mysql
+          mkdir -p /transfer/emc2-build/wordpress
+          mkdir -p /transfer/emc2-build/mysql
+          mkdir -p /transfer/kdds/wordpress
+          mkdir -p /transfer/kdds/mysql
+          
+          # Transfer data from media server
+          rsync -avz --progress root@192.168.1.100:/home/emcniece/wp-websites/createsleeprepeat/wordpress/ /transfer/createsleeprepeat/wordpress/
+          rsync -avz --progress root@192.168.1.100:/home/emcniece/wp-websites/createsleeprepeat/mysql/ /transfer/createsleeprepeat/mysql/
+          rsync -avz --progress root@192.168.1.100:/home/emcniece/wp-websites/echoandflow/wordpress/ /transfer/echoandflow/wordpress/
+          rsync -avz --progress root@192.168.1.100:/home/emcniece/wp-websites/echoandflow/mysql/ /transfer/echoandflow/mysql/
+          rsync -avz --progress root@192.168.1.100:/home/emcniece/wp-websites/emc2-build/wordpress/ /transfer/emc2-build/wordpress/
+          rsync -avz --progress root@192.168.1.100:/home/emcniece/wp-websites/emc2-build/mysql/ /transfer/emc2-build/mysql/
+          rsync -avz --progress root@192.168.1.100:/home/emcniece/wp-websites/kdds/wordpress/ /transfer/kdds/wordpress/
+          rsync -avz --progress root@192.168.1.100:/home/emcniece/wp-websites/kdds/mysql/ /transfer/kdds/mysql/
+          
+          echo "WordPress data transfer completed"
+        volumeMounts:
+        - name: createsleeprepeat-wp
+          mountPath: /transfer/createsleeprepeat/wordpress
+        - name: createsleeprepeat-mysql
+          mountPath: /transfer/createsleeprepeat/mysql
+        - name: echoandflow-wp
+          mountPath: /transfer/echoandflow/wordpress
+        - name: echoandflow-mysql
+          mountPath: /transfer/echoandflow/mysql
+        - name: emc2-build-wp
+          mountPath: /transfer/emc2-build/wordpress
+        - name: emc2-build-mysql
+          mountPath: /transfer/emc2-build/mysql
+        - name: kdds-wp
+          mountPath: /transfer/kdds/wordpress
+        - name: kdds-mysql
+          mountPath: /transfer/kdds/mysql
+      volumes:
+      - name: createsleeprepeat-wp
+        persistentVolumeClaim:
+          claimName: createsleeprepeat-wp
+      - name: createsleeprepeat-mysql
+        persistentVolumeClaim:
+          claimName: createsleeprepeat-mysql
+      - name: echoandflow-wp
+        persistentVolumeClaim:
+          claimName: echoandflow-wp
+      - name: echoandflow-mysql
+        persistentVolumeClaim:
+          claimName: echoandflow-mysql
+      - name: emc2-build-wp
+        persistentVolumeClaim:
+          claimName: emc2-build-wp
+      - name: emc2-build-mysql
+        persistentVolumeClaim:
+          claimName: emc2-build-mysql
+      - name: kdds-wp
+        persistentVolumeClaim:
+          claimName: kdds-wp
+      - name: kdds-mysql
+        persistentVolumeClaim:
+          claimName: kdds-mysql
+      restartPolicy: Never
+  backoffLimit: 3

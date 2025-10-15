@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: check-dump-file
+  namespace: createsleeprepeat
+spec:
+  template:
+    spec:
+      containers:
+      - name: check-dump
+        image: instrumentisto/rsync-ssh
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Checking for database dump file on media server..."
+          
+          # Set up SSH key
+          mkdir -p /root/.ssh
+          cp /ssh-key/emc_sshkey.pem /root/.ssh/id_rsa
+          chmod 600 /root/.ssh/id_rsa
+          
+          # Add media server to known hosts
+          ssh-keyscan -H 192.168.1.100 >> /root/.ssh/known_hosts
+          
+          # Check if database dump file exists
+          echo "Checking for wordpress-2025-10-15.sql..."
+          ssh -o StrictHostKeyChecking=no emcniece@192.168.1.100 "ls -la /home/emcniece/wp-websites/createsleeprepeat/ | grep wordpress-2025-10-15.sql"
+          
+          echo "Listing all files in createsleeprepeat directory..."
+          ssh -o StrictHostKeyChecking=no emcniece@192.168.1.100 "ls -la /home/emcniece/wp-websites/createsleeprepeat/"
+          
+          echo "Check completed!"
+        volumeMounts:
+        - name: ssh-key
+          mountPath: /ssh-key
+          readOnly: true
+      volumes:
+      - name: ssh-key
+        secret:
+          secretName: emc-ssh-key
+      restartPolicy: Never
+  backoffLimit: 1

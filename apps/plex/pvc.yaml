@@ -1,39 +1,11 @@
----
-# This must be created before the deployment since the storageClass is configured
-# with `volumeBindingMode: WaitForFirstConsumer`
-# apiVersion: v1
-# kind: PersistentVolumeClaim
-# metadata:
-#   name: pv-heimdall-claim
-# spec:
-#   storageClassName: "proxmox-csi"
-#   accessModes: ["ReadWriteOnce"]
-#   resources:
-#     requests:
-#       storage: 10Mi
-
----
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: plex-config
   namespace: media
 spec:
-  accessModes: ["ReadWriteMany"]        # CephFS specific
+  accessModes: ["ReadWriteOnce"]
   resources:
     requests:
       storage: 50Gi
-  storageClassName: csi-cephfs-sc       # CephFS specific
-
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: media-library
-  namespace: media
-spec:
-  accessModes: ["ReadWriteMany"]        # CephFS specific
-  resources:
-    requests:
-      storage: 20Ti
-  storageClassName: csi-cephfs-sc       # CephFS specific
+  storageClassName: csi-rbd-sc

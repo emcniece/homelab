@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: immich-ml
+  namespace: immich
+  labels:
+    app: immich-ml
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: immich-ml
+  template:
+    metadata:
+      labels:
+        app: immich-ml
+    spec:
+      containers:
+      - name: immich-ml
+        image: lscr.io/linuxserver/immich:latest
+        command: ["immich"]
+        args: ["start-microservices"]
+        ports:
+        - containerPort: 3001
+        env:
+        - name: DB_HOSTNAME
+          value: postgres
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_PASSWORD
+        - name: DB_DATABASE_NAME
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_DB
+        - name: REDIS_HOSTNAME
+          value: redis
+        - name: REDIS_PORT
+          value: "6379"
+        - name: UPLOAD_LOCATION
+          value: /usr/src/app/upload
+        - name: LIBRARY_LOCATION
+          value: /usr/src/app/library
+        - name: LOG_LEVEL
+          value: "simple"
+        - name: NODE_ENV
+          value: "production"
+        volumeMounts:
+        - name: immich-library
+          mountPath: /usr/src/app/library
+        - name: immich-upload
+          mountPath: /usr/src/app/upload
+        - name: immich-config
+          mountPath: /usr/src/app/config
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+      # This DNS config modifies /etc/resolv.conf. Needed so that external domains can resolve outside of the cluster,
+      # and not get trapped in the wildcard that leads back to lab.emc2.build.
+      dnsConfig:
+        # nameservers: ["8.8.8.8"]
+        options:
+          - name: ndots
+            value: "2"
+      volumes:
+      - name: immich-library
+        persistentVolumeClaim:
+          claimName: immich-library
+      - name: immich-upload
+        persistentVolumeClaim:
+          claimName: immich-upload
+      - name: immich-config
+        persistentVolumeClaim:
+          claimName: immich-config

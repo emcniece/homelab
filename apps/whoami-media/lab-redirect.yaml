@@ -1,3 +1,10 @@
+# DEPRECATED: This redirect rule is no longer needed after migration
+# The media applications now run directly on the homelab cluster
+# All *.lab.emc2.build domains are handled by individual app ingresses
+
+# To remove this redirect after migration verification:
+# kubectl delete -f ./whoami-media/lab-redirect.yaml
+
 ---
 # This one doesn't seem to register in the web UI... wrong resource?
 apiVersion: traefik.containo.us/v1alpha1

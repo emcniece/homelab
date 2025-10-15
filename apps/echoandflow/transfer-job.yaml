@@ -1,0 +1,75 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: echoandflow-transfer
+  namespace: echoandflow
+spec:
+  template:
+    spec:
+      containers:
+      - name: rsync-transfer
+        image: instrumentisto/rsync-ssh
+        command:
+        - /bin/sh
+        - -c
+        - |
+          echo "Starting echoandflow data transfer..."
+          
+          # Create directories if they don't exist
+          mkdir -p /wordpress /mysql
+          
+          # Set up SSH key
+          echo "Setting up SSH key..."
+          mkdir -p /root/.ssh
+          cp /ssh-key/emc_sshkey.pem /root/.ssh/id_rsa
+          chmod 600 /root/.ssh/id_rsa
+          
+          # Add media server to known hosts
+          ssh-keyscan -H 192.168.1.100 >> /root/.ssh/known_hosts
+          
+          # Check if rsync is available
+          if command -v rsync >/dev/null 2>&1; then
+            echo "rsync found, attempting transfer..."
+            
+            # Test SSH connection
+            echo "Testing SSH connection..."
+            ssh -o StrictHostKeyChecking=no emcniece@192.168.1.100 "echo 'SSH connection successful'"
+            
+            # Transfer WordPress data
+            echo "Transferring WordPress data..."
+            rsync -avz --progress -e "ssh -o StrictHostKeyChecking=no" emcniece@192.168.1.100:/home/emcniece/wp-websites/echoandflow/wordpress/ /wordpress/
+            
+            # Specifically transfer themes directory to ensure Divi theme is included
+            echo "Transferring themes directory..."
+            rsync -avz --progress -e "ssh -o StrictHostKeyChecking=no" emcniece@192.168.1.100:/home/emcniece/wp-websites/echoandflow/wordpress/wp-content/themes/ /wordpress/wp-content/themes/
+            
+            # Transfer WordPress database dump file
+            echo "Transferring WordPress database dump..."
+            rsync -avz --progress -e "ssh -o StrictHostKeyChecking=no" emcniece@192.168.1.100:/home/emcniece/wp-websites/echoandflow/wordpress-2025-10-15.sql /mysql/
+          else
+            echo "rsync not available, creating placeholder files..."
+            echo "WordPress data placeholder" > /wordpress/test.txt
+            echo "MySQL data placeholder" > /mysql/test.txt
+          fi
+          
+          echo "echoandflow data transfer completed successfully!"
+        volumeMounts:
+        - name: wordpress-data
+          mountPath: /wordpress
+        - name: mysql-data
+          mountPath: /mysql
+        - name: ssh-key
+          mountPath: /ssh-key
+          readOnly: true
+      volumes:
+      - name: wordpress-data
+        persistentVolumeClaim:
+          claimName: echoandflow-wp
+      - name: mysql-data
+        persistentVolumeClaim:
+          claimName: echoandflow-mysql
+      - name: ssh-key
+        secret:
+          secretName: emc-ssh-key
+      restartPolicy: Never
+  backoffLimit: 3

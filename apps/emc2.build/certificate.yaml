@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: emc2-build-tls
+  namespace: emc2-build
+spec:
+  dnsNames:
+  - emc2.build
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-prod
+  secretName: emc2-build-tls

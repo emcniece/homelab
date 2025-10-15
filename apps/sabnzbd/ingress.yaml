@@ -1,23 +1,20 @@
----
-apiVersion: traefik.io/v1alpha1
-kind: IngressRoute
+apiVersion: networking.k8s.io/v1
+kind: Ingress
 metadata:
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
   name: sabnzbd
   namespace: media
-  annotations: 
-    kubernetes.io/ingress.class: traefik-external
 spec:
-  entryPoints:
-    - websecure
-  routes:
-    - match: Host(`sabnzbd.lab.emc2.build`)
-      kind: Rule
-      services:
-        - name: sabnzbd
-          port: 80
-      middlewares:
-        - name: default-headers
-          namespace: default
-  #tls: 
-    # Apr 14 2025: No longer needed! Traefik serves this as the default cert
-    #secretName: lab-emc2-build-tls
+  ingressClassName: traefik
+  rules:
+  - host: sabnzbd.lab.emc2.build
+    http:
+      paths:
+      - backend:
+          service:
+            name: sabnzbd
+            port:
+              number: 8080
+        path: /
+        pathType: Prefix

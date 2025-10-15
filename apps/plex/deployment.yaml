@@ -1,7 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  annotations: {}
+  annotations:
+    traefik.enable: 'true'
+    traefik.frontend.rule: Host:plex.lab.emc2.build
+    traefik.port: '32400'
   labels:
     app: plex
   name: plex
@@ -14,17 +17,15 @@ spec:
     type: Recreate
   template:
     metadata:
-      annotations: {}
+      annotations:
+        traefik.enable: 'true'
+        traefik.frontend.rule: Host:plex.lab.emc2.build
+        traefik.port: '32400'
       labels:
         app: plex
     spec:
       containers:
-      - name: plex
-        image: plexinc/pms-docker:latest
-        #image: plexinc/pms-docker:1.41.2.9200-c6bbc1b53
-        imagePullPolicy: IfNotPresent
-
-        env:
+      - env:
         - name: ADVERTISE_IP
           value: https://plex.lab.emc2.build/
         - name: PGID
@@ -37,7 +38,9 @@ spec:
           value: latest
         - name: PLEX_CLAIM_TOKEN
           value: "claim-MXQkQJ7vtaUaJvefoWso"
-
+        image: plexinc/pms-docker:1.41.2.9200-c6bbc1b53
+        imagePullPolicy: IfNotPresent
+        name: plex
         ports:
         - containerPort: 32400
         - containerPort: 1900
@@ -46,28 +49,22 @@ spec:
         - containerPort: 5353
           protocol: UDP
         - containerPort: 8324
-
         resources: {}
-
         volumeMounts:
-        - name: plex-config
-          mountPath: /config
-          
-        - name: media-library
-          mountPath: /media
-          
-        # - mountPath: /media/movies
-        #   name: plex-vol2
-        # - mountPath: /media/music
-        #   name: plex-vol3
-        # - mountPath: /media/anime
-        #   name: plex-vol4
-
+        - mountPath: /config
+          name: plex-config
+        - mountPath: /media
+          name: media-library
       hostNetwork: true
       hostname: plex
       restartPolicy: Always
-      serviceAccountName: ''
-
+      # This DNS config modifies /etc/resolv.conf. Needed so that external domains can resolve outside of the cluster,
+      # and not get trapped in the wildcard that leads back to lab.emc2.build.
+      dnsConfig:
+        # nameservers: ["8.8.8.8"]
+        options:
+          - name: ndots
+            value: "2"
       volumes:
       - name: plex-config
         persistentVolumeClaim:
@@ -75,16 +72,3 @@ spec:
       - name: media-library
         persistentVolumeClaim:
           claimName: media-library
-        
-      # - hostPath:
-      #     path: /mnt/zpool1/apps/media-test/download/complete/movies
-      #     type: Directory
-      #   name: plex-vol2
-      # - hostPath:
-      #     path: /mnt/zpool1/apps/media-test/data/music
-      #     type: Directory
-      #   name: plex-vol3
-      # - hostPath:
-      #     path: /mnt/zpool1/apps/media-test/download/complete/anime
-      #     type: Directory
-      #   name: plex-vol4

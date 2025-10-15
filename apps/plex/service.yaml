@@ -1,13 +1,29 @@
----
 apiVersion: v1
 kind: Service
 metadata:
   name: plex
   namespace: media
 spec:
-  selector:
-    app: plex
   ports:
   - name: plex
-    targetPort: 32400
     port: 32400
+    protocol: TCP
+    targetPort: 32400
+  - name: plex-dlna
+    port: 1900
+    protocol: UDP
+    targetPort: 1900
+  - name: plex-dlna-tcp
+    port: 3005
+    protocol: TCP
+    targetPort: 3005
+  - name: plex-dlna-udp
+    port: 5353
+    protocol: UDP
+    targetPort: 5353
+  - name: plex-dlna-https
+    port: 8324
+    protocol: TCP
+    targetPort: 8324
+  selector:
+    app: plex

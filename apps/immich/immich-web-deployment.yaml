@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: immich-web
+  namespace: immich
+  labels:
+    app: immich-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: immich-web
+  template:
+    metadata:
+      labels:
+        app: immich-web
+    spec:
+      containers:
+      - name: immich-web
+        image: lscr.io/linuxserver/immich:latest
+        command: ["immich"]
+        args: ["start-web"]
+        ports:
+        - containerPort: 3000
+        env:
+        - name: PUBLIC_IMMICH_SERVER_URL
+          value: "http://immich-server:3001"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+      # This DNS config modifies /etc/resolv.conf. Needed so that external domains can resolve outside of the cluster,
+      # and not get trapped in the wildcard that leads back to lab.emc2.build.
+      dnsConfig:
+        # nameservers: ["8.8.8.8"]
+        options:
+          - name: ndots
+            value: "2"

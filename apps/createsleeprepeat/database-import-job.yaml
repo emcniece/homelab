@@ -1,0 +1,43 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: createsleeprepeat-db-import
+  namespace: createsleeprepeat
+spec:
+  template:
+    spec:
+      containers:
+      - name: mysql-import
+        image: mariadb:10.11
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "Starting database import..."
+          
+          # Wait for MySQL to be ready
+          echo "Waiting for MySQL to be ready..."
+          until mysql -h mysql-service -u root -pwordpress -e "SELECT 1" >/dev/null 2>&1; do
+            echo "Waiting for MySQL..."
+            sleep 5
+          done
+          
+              # Import the database dump
+              echo "Importing WordPress database dump..."
+              echo "Checking dump file content..."
+              head -20 /wordpress/wordpress-2025-10-15.sql
+              echo "Filtering out MariaDB-specific syntax..."
+              sed -e 's/PAGE_CHECKSUM=1 TRANSACTIONAL=0//g' -e 's/PAGE_CHECKSUM=1 TRANSACTIONAL=1//g' -e 's/ENGINE=Aria/ENGINE=MyISAM/g' /wordpress/wordpress-2025-10-15.sql > /tmp/filtered_dump.sql
+              echo "Importing filtered database dump..."
+              mysql -h mysql-service -u root -pwordpress wordpress < /tmp/filtered_dump.sql
+          
+          echo "Database import completed successfully!"
+        volumeMounts:
+        - name: wordpress-data
+          mountPath: /wordpress
+      volumes:
+      - name: wordpress-data
+        persistentVolumeClaim:
+          claimName: createsleeprepeat-wp
+      restartPolicy: Never
+  backoffLimit: 3

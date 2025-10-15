@@ -1,0 +1,110 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordpress
+  namespace: kdds
+  annotations:
+    traefik.enable: 'true'
+    traefik.frontend.rule: Host:kamloopsdentalsociety.ca
+    traefik.port: '80'
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: wordpress
+  template:
+    metadata:
+      labels:
+        app: wordpress
+    spec:
+      containers:
+        - name: wordpress
+          image: wordpress:5.8.3-php7.4-apache
+          ports:
+            - containerPort: 80
+              name: wordpress
+          volumeMounts:
+            - name: wordpress-data
+              mountPath: /var/www/html
+          env:
+            - name: WORDPRESS_DB_HOST
+              value: mysql-service
+            - name: WORDPRESS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: MYSQL_ROOT_PASSWORD
+            - name: WORDPRESS_DB_USER
+              value: root
+            - name: WORDPRESS_DB_NAME
+              value: wordpress
+            - name: WP_REDIS_HOST
+              value: localhost 
+            - name: WP_REDIS_PORT
+              value: "6379"
+        - name: redis
+          image: redis:3-alpine
+          imagePullPolicy: ""
+          name: redis
+          resources: {}
+          ports:
+            - containerPort: 6379
+              name: redis    
+      # This DNS config modifies /etc/resolv.conf. Needed so that external domains can resolve outside of the cluster,
+      # and not get trapped in the wildcard that leads back to lab.emc2.build.
+      dnsConfig:
+        nameservers: ["8.8.8.8", "1.1.1.1"]
+        options:
+          - name: ndots
+            value: "2"
+      volumes:
+        - name: wordpress-data
+          persistentVolumeClaim:
+            claimName: kdds-wp
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: wordpress-service
+  namespace: kdds
+spec:
+  type: NodePort
+  selector:
+    app: wordpress
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  creationTimestamp: null
+  name: kamloopsdentalsociety
+  namespace: kdds
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - kamloopsdentalsociety.com
+    secretName: kamloopsdentalsociety-tls
+  rules:
+  - host: kamloopsdentalsociety.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: wordpress-service
+            port:
+              number: 80
+        path: /
+        pathType: Prefix

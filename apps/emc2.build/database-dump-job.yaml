@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: emc2-build-db-dump
+  namespace: emc2-build
+spec:
+  template:
+    spec:
+      containers:
+      - name: mysql-dump
+        image: mysql:5.7
+        command:
+        - /bin/bash
+        - -c
+        - |
+          echo "Starting database dump..."
+          
+          # Wait for MySQL to be ready
+          echo "Waiting for MySQL to be ready..."
+          until mysql -h mysql-service -u root -pwordpress -e "SELECT 1" >/dev/null 2>&1; do
+            echo "Waiting for MySQL..."
+            sleep 5
+          done
+          
+          # Dump the database
+          echo "Dumping wordpress database..."
+          mysqldump -h mysql-service -u root -pwordpress wordpress > /mysql/wordpress_dump.sql
+          
+          echo "Database dump completed successfully!"
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /mysql
+      volumes:
+      - name: mysql-data
+        persistentVolumeClaim:
+          claimName: emc2-build-mysql
+      restartPolicy: Never
+  backoffLimit: 3
