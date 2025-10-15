@@ -4,8 +4,8 @@ metadata:
   name: plexpy-config
   namespace: media
 spec:
-  accessModes: ["ReadWriteOnce"]
+  accessModes: ["ReadWriteMany"]
   resources:
     requests:
       storage: 5Gi
-  storageClassName: csi-rbd-sc
+  storageClassName: csi-cephfs-sc

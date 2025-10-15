@@ -35,13 +35,13 @@ spec:
             echo "Testing SSH connection..."
             ssh -o StrictHostKeyChecking=no emcniece@192.168.1.100 "echo 'SSH connection successful'"
             
-            # Transfer WordPress data
+            # Transfer WordPress data with more robust settings
             echo "Transferring WordPress data..."
-            rsync -avz --progress -e "ssh -o StrictHostKeyChecking=no" emcniece@192.168.1.100:/home/emcniece/wp-websites/emc2-build/wordpress/ /wordpress/
+            rsync -av --partial --timeout=300 -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60" emcniece@192.168.1.100:/home/emcniece/wp-websites/emc2-build/wordpress/ /wordpress/
             
             # Transfer WordPress database dump file
             echo "Transferring WordPress database dump..."
-            rsync -avz --progress -e "ssh -o StrictHostKeyChecking=no" emcniece@192.168.1.100:/home/emcniece/wp-websites/emc2-build/wordpress-2025-10-15.sql /mysql/
+            rsync -av --partial --timeout=300 -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60" emcniece@192.168.1.100:/home/emcniece/wp-websites/emc2-build/wordpress/wordpress-2025-10-15.sql /mysql/
           else
             echo "rsync not available, creating placeholder files..."
             echo "WordPress data placeholder" > /wordpress/test.txt

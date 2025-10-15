@@ -57,26 +57,34 @@ spec:
       - name: createsleeprepeat-wp
         persistentVolumeClaim:
           claimName: createsleeprepeat-wp
+          namespace: createsleeprepeat
       - name: createsleeprepeat-mysql
         persistentVolumeClaim:
           claimName: createsleeprepeat-mysql
+          namespace: createsleeprepeat
       - name: echoandflow-wp
         persistentVolumeClaim:
           claimName: echoandflow-wp
+          namespace: echoandflow
       - name: echoandflow-mysql
         persistentVolumeClaim:
           claimName: echoandflow-mysql
+          namespace: echoandflow
       - name: emc2-build-wp
         persistentVolumeClaim:
           claimName: emc2-build-wp
+          namespace: emc2-build
       - name: emc2-build-mysql
         persistentVolumeClaim:
           claimName: emc2-build-mysql
+          namespace: emc2-build
       - name: kdds-wp
         persistentVolumeClaim:
           claimName: kdds-wp
+          namespace: kdds
       - name: kdds-mysql
         persistentVolumeClaim:
           claimName: kdds-mysql
+          namespace: kdds
       restartPolicy: Never
   backoffLimit: 3

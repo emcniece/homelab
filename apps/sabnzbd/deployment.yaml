@@ -14,7 +14,7 @@ spec:
     matchLabels:
       app: sabnzbd
   strategy:
-    type: Recreate
+    type: RollingUpdate
   template:
     metadata:
       annotations:

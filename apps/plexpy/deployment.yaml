@@ -14,7 +14,7 @@ spec:
     matchLabels:
       app: plexpy
   strategy:
-    type: Recreate
+    type: RollingUpdate
   template:
     metadata:
       annotations:

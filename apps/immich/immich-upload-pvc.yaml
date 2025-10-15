@@ -4,8 +4,8 @@ metadata:
   name: immich-upload
   namespace: immich
 spec:
-  accessModes: ["ReadWriteOnce"]
+  accessModes: ["ReadWriteMany"]
   resources:
     requests:
       storage: 50Gi
-  storageClassName: csi-rbd-sc
+  storageClassName: csi-cephfs-sc

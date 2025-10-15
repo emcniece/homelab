@@ -4,8 +4,8 @@ metadata:
   name: radarr-config
   namespace: media
 spec:
-  accessModes: ["ReadWriteOnce"]
+  accessModes: ["ReadWriteMany"]
   resources:
     requests:
       storage: 10Gi
-  storageClassName: csi-rbd-sc
+  storageClassName: csi-cephfs-sc
