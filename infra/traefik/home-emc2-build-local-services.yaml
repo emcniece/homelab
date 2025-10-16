@@ -1,0 +1,62 @@
+# Local services for *.home.emc2.build domains
+# These services route traffic to local media server applications in the media namespace
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: radarr-local
+  namespace: default
+spec:
+  type: ExternalName
+  externalName: radarr.media.svc.cluster.local
+  ports:
+  - port: 7878
+    targetPort: 7878
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sonarr-local
+  namespace: default
+spec:
+  type: ExternalName
+  externalName: sonarr.media.svc.cluster.local
+  ports:
+  - port: 8989
+    targetPort: 8989
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lidarr-local
+  namespace: default
+spec:
+  type: ExternalName
+  externalName: lidarr.media.svc.cluster.local
+  ports:
+  - port: 8686
+    targetPort: 8686
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: deluge-local
+  namespace: default
+spec:
+  type: ExternalName
+  externalName: deluge.media.svc.cluster.local
+  ports:
+  - port: 8112
+    targetPort: 8112
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sabnzbd-local
+  namespace: default
+spec:
+  type: ExternalName
+  externalName: sabnzbd.media.svc.cluster.local
+  ports:
+  - port: 8080
+    targetPort: 8080

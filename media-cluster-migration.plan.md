@@ -7,9 +7,10 @@ Migrate all WordPress sites from `./emc2-wp1-websites/` and media applications f
 
 ## Storage Strategy
 
-**WordPress Sites**: Use Ceph RBD (`csi-rbd-sc`) for both MySQL and WordPress content
+**WordPress Sites**: Use CephFS (`csi-cephfs-sc`) for both MySQL and WordPress content
 
-- Reason: Single-instance applications that don't need shared access
+- Reason: Allows for RollingUpdate deployment strategy and better multi-node support
+- Access Mode: ReadWriteMany for improved flexibility
 
 **Media Apps**:
 
@@ -53,8 +54,9 @@ Migrate 4 WordPress sites: `createsleeprepeat`, `echoandflow`, `emc2.build`, `ka
 
 1. **Create updated manifests in app-specific directories**
 
-- Convert PV/PVC from `local-path` with hostPath to Ceph RBD storage class
-- Update `storageClassName: csi-rbd-sc` in both mysql and wordpress PVCs
+- Convert PV/PVC from `local-path` with hostPath to CephFS storage class
+- Update `storageClassName: csi-cephfs-sc` in both mysql and wordpress PVCs
+- Update `accessModes` to `ReadWriteMany` for better multi-node support
 - Remove the PV definitions (Ceph CSI dynamically provisions)
 - Keep existing secrets, services, and StatefulSets
 
@@ -67,6 +69,7 @@ Migrate 4 WordPress sites: `createsleeprepeat`, `echoandflow`, `emc2.build`, `ka
 3. **Deploy to homelab cluster**
 
 - Apply namespace, secrets, PVCs, MySQL StatefulSet, WordPress Deployment
+- Use RollingUpdate deployment strategy (enabled by CephFS ReadWriteMany)
 - Verify pods are running and data is accessible
 
 4. **Update ingress**
@@ -149,12 +152,13 @@ Migrate 9 media apps: `plex`, `sonarr`, `radarr`, `lidarr`, `deluge`, `sabnzbd`,
 
 Each site directory contains:
 - `namespace.yaml`
-- `mysql-pvc.yaml` (Ceph RBD, no PV definition)
-- `wordpress-pvc.yaml` (Ceph RBD, no PV definition)
+- `mysql-pvc.yaml` (CephFS, no PV definition)
+- `wordpress-pvc.yaml` (CephFS, no PV definition)
 - `mysql-secret.yaml` (copied from emc2-wp1-websites)
 - `mysql-service.yaml`
 - `mysql-statefulset.yaml`
 - `wordpress-deployment.yaml` (includes service and ingress)
+- `transfer-job.yaml` (for data migration from media server)
 
 **Media apps:**
 
@@ -176,29 +180,30 @@ In `./homelab/apps/migration/`:
 
 ## Migration Checklist
 
-### Phase 1: WordPress Sites Migration
+### Phase 1: WordPress Sites Migration ✅ **COMPLETED**
 
 **WordPress Sites (4 total):**
-- [ ] **createsleeprepeat** (createsleeprepeat.ca)
-  - [ ] Deploy manifests to homelab cluster
-  - [ ] Transfer data from media server
-  - [ ] Verify site accessibility
-  - [ ] Test functionality
-- [ ] **echoandflow** (echoandflow.ca)
-  - [ ] Deploy manifests to homelab cluster
-  - [ ] Transfer data from media server
-  - [ ] Verify site accessibility
-  - [ ] Test functionality
-- [ ] **emc2.build** (emc2.build)
-  - [ ] Deploy manifests to homelab cluster
-  - [ ] Transfer data from media server
-  - [ ] Verify site accessibility
-  - [ ] Test functionality
-- [ ] **kamloopsdentalsociety** (kamloopsdentalsociety.ca)
-  - [ ] Deploy manifests to homelab cluster
-  - [ ] Transfer data from media server
-  - [ ] Verify site accessibility
-  - [ ] Test functionality
+- [x] **createsleeprepeat** (createsleeprepeat.ca)
+  - [x] Deploy manifests to homelab cluster
+  - [x] Transfer data from media server
+  - [x] Verify site accessibility
+  - [x] Test functionality
+- [x] **echoandflow** (echoandflow.ca)
+  - [x] Deploy manifests to homelab cluster
+  - [x] Transfer data from media server
+  - [x] Verify site accessibility
+  - [x] Test functionality
+- [x] **emc2.build** (emc2.build)
+  - [x] Deploy manifests to homelab cluster
+  - [x] Transfer data from media server
+  - [x] Verify site accessibility
+  - [x] Test functionality
+  - [x] **Fixed memory limit issue** (increased from 128MB to 512MB)
+- [x] **kamloopsdentalsociety** (kamloopsdentalsociety.ca)
+  - [x] Deploy manifests to homelab cluster
+  - [x] Transfer data from media server
+  - [x] Verify site accessibility
+  - [x] Test functionality
 
 ### Phase 2: Media Applications Migration
 
@@ -272,11 +277,12 @@ In `./homelab/apps/migration/`:
 
 ### To-dos
 
-- [x] Create WordPress manifests with Ceph RBD storage for all 4 sites (createsleeprepeat, echoandflow, emc2.build, kamloopsdentalsociety)
+- [x] Create WordPress manifests with CephFS storage for all 4 sites (createsleeprepeat, echoandflow, emc2.build, kamloopsdentalsociety)
 - [x] Create migration job manifests to transfer WordPress data from media server to homelab cluster
 - [x] Create shared CephFS PVCs for media library and downloads folder
 - [x] Create updated media app manifests (plex, sonarr, radarr, lidarr, deluge, sabnzbd, emby, plexpy, organizr) with Ceph storage
 - [x] Create migration job manifest to transfer multi-terabyte media library from media server
 - [x] Remove or update lab-redirect.yaml and WordPress redirect rules after migration verification
 - [x] Create deployment README with instructions for applying manifests and verifying migration
+- [x] **Fixed WordPress memory limit issue** (emc2.build site - increased from 128MB to 512MB)
 

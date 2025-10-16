@@ -43,7 +43,7 @@ spec:
           name: sonarr-config
         - mountPath: /downloads
           name: downloads
-        - mountPath: /tv
+        - mountPath: /media
           name: media-library
       hostname: sonarr
       restartPolicy: Always

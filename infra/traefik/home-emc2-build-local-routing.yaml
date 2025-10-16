@@ -1,0 +1,117 @@
+# Local routing for *.home.emc2.build domains
+# These ingresses route traffic to local media server applications in the media namespace
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: radarr-home-emc2-build-local-routing
+  namespace: default
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - radarr.home.emc2.build
+    secretName: radarr-home-emc2-build-letsencrypt-tls
+  rules:
+  - host: "radarr.home.emc2.build"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: radarr-local
+            port:
+              number: 7878
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sonarr-home-emc2-build-local-routing
+  namespace: default
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - sonarr.home.emc2.build
+    secretName: sonarr-home-emc2-build-letsencrypt-tls
+  rules:
+  - host: "sonarr.home.emc2.build"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: sonarr-local
+            port:
+              number: 8989
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: lidarr-home-emc2-build-local-routing
+  namespace: default
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - lidarr.home.emc2.build
+    secretName: lidarr-home-emc2-build-letsencrypt-tls
+  rules:
+  - host: "lidarr.home.emc2.build"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: lidarr-local
+            port:
+              number: 8686
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: deluge-home-emc2-build-local-routing
+  namespace: default
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - deluge.home.emc2.build
+    secretName: deluge-home-emc2-build-letsencrypt-tls
+  rules:
+  - host: "deluge.home.emc2.build"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: deluge-local
+            port:
+              number: 8112
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sabnzbd-home-emc2-build-local-routing
+  namespace: default
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - sabnzbd.home.emc2.build
+    secretName: sabnzbd-home-emc2-build-letsencrypt-tls
+  rules:
+  - host: "sabnzbd.home.emc2.build"
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: sabnzbd-local
+            port:
+              number: 8080

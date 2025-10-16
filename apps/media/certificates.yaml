@@ -1,0 +1,97 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: radarr-letsencrypt-tls
+  namespace: media
+spec:
+  secretName: radarr-letsencrypt-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - radarr.lab.emc2.build
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: plex-letsencrypt-tls
+  namespace: media
+spec:
+  secretName: plex-letsencrypt-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - plex.lab.emc2.build
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: sonarr-letsencrypt-tls
+  namespace: media
+spec:
+  secretName: sonarr-letsencrypt-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - sonarr.lab.emc2.build
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: lidarr-letsencrypt-tls
+  namespace: media
+spec:
+  secretName: lidarr-letsencrypt-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - lidarr.lab.emc2.build
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: deluge-letsencrypt-tls
+  namespace: media
+spec:
+  secretName: deluge-letsencrypt-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - deluge.lab.emc2.build
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: sabnzbd-letsencrypt-tls
+  namespace: media
+spec:
+  secretName: sabnzbd-letsencrypt-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - sabnzbd.lab.emc2.build
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: emby-letsencrypt-tls
+  namespace: media
+spec:
+  secretName: emby-letsencrypt-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - emby.lab.emc2.build

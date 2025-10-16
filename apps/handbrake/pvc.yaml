@@ -8,7 +8,7 @@ spec:
   accessModes: ["ReadWriteMany"]        # CephFS specific
   resources:
     requests:
-      storage: 20Mi
+      storage: 500Mi
   storageClassName: csi-cephfs-sc       # CephFS specific
 
 ---

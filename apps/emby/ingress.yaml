@@ -2,11 +2,17 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
   name: emby
   namespace: media
 spec:
   ingressClassName: traefik
+  tls:
+  - hosts:
+    - emby.lab.emc2.build
+    secretName: emby-letsencrypt-tls
   rules:
   - host: emby.lab.emc2.build
     http:

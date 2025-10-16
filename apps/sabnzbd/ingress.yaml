@@ -2,11 +2,17 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
   name: sabnzbd
   namespace: media
 spec:
   ingressClassName: traefik
+  tls:
+  - hosts:
+    - sabnzbd.lab.emc2.build
+    secretName: sabnzbd-letsencrypt-tls
   rules:
   - host: sabnzbd.lab.emc2.build
     http:

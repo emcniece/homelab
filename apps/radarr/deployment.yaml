@@ -43,7 +43,7 @@ spec:
           name: radarr-config
         - mountPath: /downloads
           name: downloads
-        - mountPath: /movies
+        - mountPath: /media
           name: media-library
       hostname: radarr
       restartPolicy: Always

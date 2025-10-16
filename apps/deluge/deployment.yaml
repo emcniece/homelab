@@ -42,7 +42,7 @@ spec:
         tty: true
         volumeMounts:
         - mountPath: /downloads
-          name: downloads
+          name: deluge-downloads
         - mountPath: /config
           name: deluge-config
       restartPolicy: Always
@@ -54,9 +54,9 @@ spec:
           - name: ndots
             value: "2"
       volumes:
-      - name: downloads
+      - name: deluge-downloads
         persistentVolumeClaim:
-          claimName: downloads
+          claimName: deluge-downloads
       - name: deluge-config
         persistentVolumeClaim:
           claimName: deluge-config
