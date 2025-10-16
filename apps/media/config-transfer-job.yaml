@@ -1,0 +1,129 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: media-config-transfer
+  namespace: media
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: transfer
+        image: instrumentisto/rsync-ssh
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          set -e
+          
+          # Create SSH key directory
+          mkdir -p /root/.ssh
+          
+          # Copy SSH key from secret
+          cp /ssh-key/emc_sshkey.pem /root/.ssh/id_rsa
+          chmod 600 /root/.ssh/id_rsa
+          
+          # Add the media server to known hosts (insecure but necessary for automation)
+          ssh-keyscan -H 192.168.1.100 >> /root/.ssh/known_hosts
+          
+          echo "Starting media application config transfer..."
+          
+          # Transfer Plex config
+          echo "Transferring Plex config..."
+          rsync -av --partial --timeout=300 -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60" emcniece@192.168.1.100:/mnt/zpool1/apps/media-test/config/plex/ /plex-config/
+          
+          # Transfer Emby config
+          echo "Transferring Emby config..."
+          rsync -av --partial --timeout=300 -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60" emcniece@192.168.1.100:/mnt/zpool1/apps/media-test/config/emby/ /emby-config/
+          
+          # Transfer Sonarr config
+          echo "Transferring Sonarr config..."
+          rsync -av --partial --timeout=300 -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60" emcniece@192.168.1.100:/mnt/zpool1/apps/media-test/config/sonarr/ /sonarr-config/
+          
+          # Transfer Radarr config
+          echo "Transferring Radarr config..."
+          rsync -av --partial --timeout=300 -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60" emcniece@192.168.1.100:/mnt/zpool1/apps/media-test/config/radarr/ /radarr-config/
+          
+          # Transfer Lidarr config
+          echo "Transferring Lidarr config..."
+          rsync -av --partial --timeout=300 -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60" emcniece@192.168.1.100:/mnt/zpool1/apps/media-test/config/lidarr/ /lidarr-config/
+          
+          # Transfer Deluge config
+          echo "Transferring Deluge config..."
+          rsync -av --partial --timeout=300 -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60" emcniece@192.168.1.100:/mnt/zpool1/apps/media-test/config/deluge/ /deluge-config/
+          
+          # Transfer Sabnzbd config
+          echo "Transferring Sabnzbd config..."
+          rsync -av --partial --timeout=300 -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60" emcniece@192.168.1.100:/mnt/zpool1/apps/media-test/config/sabnzbd/ /sabnzbd-config/
+          
+          # Transfer Handbrake config
+          echo "Transferring Handbrake config..."
+          rsync -av --partial --timeout=300 -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60" emcniece@192.168.1.100:/mnt/zpool1/apps/media-test/config/handbrake/ /handbrake-config/
+          
+          # Transfer Organizr config
+          echo "Transferring Organizr config..."
+          rsync -av --partial --timeout=300 -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60" emcniece@192.168.1.100:/mnt/zpool1/apps/media-test/config/organizr/ /organizr-config/
+          
+          # Transfer PlexPy config
+          echo "Transferring PlexPy config..."
+          rsync -av --partial --timeout=300 -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60" emcniece@192.168.1.100:/mnt/zpool1/apps/media-test/config/plexpy/ /plexpy-config/
+          
+          echo "Media application config transfer completed successfully!"
+        volumeMounts:
+        - mountPath: /ssh-key
+          name: ssh-key
+          readOnly: true
+        - mountPath: /plex-config
+          name: plex-config
+        - mountPath: /emby-config
+          name: emby-config
+        - mountPath: /sonarr-config
+          name: sonarr-config
+        - mountPath: /radarr-config
+          name: radarr-config
+        - mountPath: /lidarr-config
+          name: lidarr-config
+        - mountPath: /deluge-config
+          name: deluge-config
+        - mountPath: /sabnzbd-config
+          name: sabnzbd-config
+        - mountPath: /handbrake-config
+          name: handbrake-config
+        - mountPath: /organizr-config
+          name: organizr-config
+        - mountPath: /plexpy-config
+          name: plexpy-config
+      volumes:
+      - name: ssh-key
+        secret:
+          secretName: emc-ssh-key
+      - name: plex-config
+        persistentVolumeClaim:
+          claimName: plex-config
+      - name: emby-config
+        persistentVolumeClaim:
+          claimName: emby-config
+      - name: sonarr-config
+        persistentVolumeClaim:
+          claimName: sonarr-config
+      - name: radarr-config
+        persistentVolumeClaim:
+          claimName: radarr-config
+      - name: lidarr-config
+        persistentVolumeClaim:
+          claimName: lidarr-config
+      - name: deluge-config
+        persistentVolumeClaim:
+          claimName: deluge-config
+      - name: sabnzbd-config
+        persistentVolumeClaim:
+          claimName: sabnzbd-config
+      - name: handbrake-config
+        persistentVolumeClaim:
+          claimName: handbrake-config
+      - name: organizr-config
+        persistentVolumeClaim:
+          claimName: organizr-config
+      - name: plexpy-config
+        persistentVolumeClaim:
+          claimName: plexpy-config

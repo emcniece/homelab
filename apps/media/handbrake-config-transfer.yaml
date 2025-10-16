@@ -1,0 +1,61 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: handbrake-config-transfer
+  namespace: media
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: transfer
+        image: instrumentisto/rsync-ssh
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          set -e
+          
+          # Create SSH key directory
+          mkdir -p /root/.ssh
+          
+          # Copy SSH key from secret
+          cp /ssh-key/emc_sshkey.pem /root/.ssh/id_rsa
+          chmod 600 /root/.ssh/id_rsa
+          
+          # Add the media server to known hosts
+          ssh-keyscan -H 192.168.1.100 >> /root/.ssh/known_hosts
+          
+          echo "Starting Handbrake config transfer..."
+          
+          # Test SSH connection first
+          echo "Testing SSH connection..."
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60 emcniece@192.168.1.100 "ls -la /mnt/zpool1/apps/media-test/config/handbrake/"
+          
+          # Transfer Handbrake config using sudo tar
+          echo "Transferring Handbrake config..."
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60 emcniece@192.168.1.100 "sudo tar -czf - -C /mnt/zpool1/apps/media-test/config/handbrake ." | tar -xzf - -C /handbrake-config/ || echo "Transfer completed with some errors"
+          
+          # Fix ownership and permissions
+          echo "Fixing ownership and permissions..."
+          chown -R 1000:1000 /handbrake-config/
+          chmod -R 755 /handbrake-config/
+          
+          # Check what was actually transferred
+          echo "Checking transferred files..."
+          ls -la /handbrake-config/
+          
+          echo "Handbrake config transfer completed!"
+        volumeMounts:
+        - mountPath: /ssh-key
+          name: ssh-key
+          readOnly: true
+        - mountPath: /handbrake-config
+          name: handbrake-config
+      volumes:
+      - name: ssh-key
+        secret:
+          secretName: emc-ssh-key
+      - name: handbrake-config
+        persistentVolumeClaim:
+          claimName: handbrake-config

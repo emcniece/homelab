@@ -7,5 +7,5 @@ spec:
   accessModes: ["ReadWriteMany"]
   resources:
     requests:
-      storage: 500Mi
+      storage: 6Gi
   storageClassName: csi-cephfs-sc

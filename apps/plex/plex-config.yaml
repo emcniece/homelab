@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: plex-network-config
+  namespace: media
+data:
+  # Plex network configuration to help with remote access detection
+  PLEX_SERVER_NETWORK_ACCESS_URL: "https://plex.lab.emc2.build/"
+  PLEX_SERVER_PREFERRED_SECURE_CONNECTION: "1"
+  PLEX_SERVER_USE_INSECURE_CONNECTION: "0"
+  # Help Plex understand the external access configuration
+  PLEX_SERVER_EXTERNAL_URL: "https://plex.lab.emc2.build/"
+  PLEX_SERVER_INTERNAL_URL: "http://192.168.10.90:32400/"

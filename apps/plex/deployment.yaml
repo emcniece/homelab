@@ -27,7 +27,9 @@ spec:
       containers:
       - env:
         - name: ADVERTISE_IP
-          value: https://plex.lab.emc2.build/
+          value: "https://plex.lab.emc2.build/"
+        - name: PLEX_CLAIM
+          value: "claim-MXQkQJ7vtaUaJvefoWso"
         - name: PGID
           value: '1000'
         - name: PUID
@@ -36,9 +38,23 @@ spec:
           value: America/Vancouver
         - name: version
           value: latest
-        - name: PLEX_CLAIM_TOKEN
-          value: "claim-MXQkQJ7vtaUaJvefoWso"
-        image: plexinc/pms-docker:1.41.2.9200-c6bbc1b53
+        - name: PLEX_EXTERNAL_URL
+          value: "https://plex.lab.emc2.build/"
+        - name: PLEX_INTERNAL_URL
+          value: "http://192.168.10.90:32400/"
+        - name: PLEX_SERVER_APPLICATION_URL
+          value: "https://plex.lab.emc2.build/"
+        - name: PLEX_SERVER_PREFERRED_SECURE_CONNECTION
+          value: "1"
+        - name: PLEX_SERVER_USE_INSECURE_CONNECTION
+          value: "0"
+        - name: PLEX_SERVER_NETWORK_ACCESS_URL
+          value: "https://plex.lab.emc2.build/"
+        - name: PLEX_SERVER_EXTERNAL_URL
+          value: "https://plex.lab.emc2.build/"
+        - name: PLEX_SERVER_INTERNAL_URL
+          value: "http://192.168.10.90:32400/"
+        image: plexinc/pms-docker:1.42.2.10156-f737b826c
         imagePullPolicy: IfNotPresent
         name: plex
         ports:
@@ -55,7 +71,7 @@ spec:
           name: plex-config
         - mountPath: /media
           name: media-library
-      hostNetwork: true
+      #hostNetwork: true
       hostname: plex
       restartPolicy: Always
       # This DNS config modifies /etc/resolv.conf. Needed so that external domains can resolve outside of the cluster,

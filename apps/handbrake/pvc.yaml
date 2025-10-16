@@ -8,7 +8,7 @@ spec:
   accessModes: ["ReadWriteMany"]        # CephFS specific
   resources:
     requests:
-      storage: 500Mi
+      storage: 2Gi
   storageClassName: csi-cephfs-sc       # CephFS specific
 
 ---
@@ -18,11 +18,11 @@ metadata:
   name: media-transcode
   namespace: media
 spec:
-  accessModes: ["ReadWriteMany"]        # CephFS specific
+  accessModes: ["ReadWriteOnce"]
   resources:
     requests:
-      storage: 20Gi
-  storageClassName: csi-cephfs-sc       # CephFS specific
+      storage: 100Gi
+  storageClassName: local-path
 
 ---
 apiVersion: v1

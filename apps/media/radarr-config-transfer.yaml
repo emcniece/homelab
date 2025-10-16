@@ -1,0 +1,65 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: radarr-config-transfer
+  namespace: media
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: transfer
+        image: instrumentisto/rsync-ssh
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          set -e
+          
+          # Create SSH key directory
+          mkdir -p /root/.ssh
+          
+          # Copy SSH key from secret
+          cp /ssh-key/emc_sshkey.pem /root/.ssh/id_rsa
+          chmod 600 /root/.ssh/id_rsa
+          
+          # Add the media server to known hosts
+          ssh-keyscan -H 192.168.1.100 >> /root/.ssh/known_hosts
+          
+          echo "Starting Radarr config transfer..."
+          
+          # Test SSH connection first
+          echo "Testing SSH connection..."
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60 emcniece@192.168.1.100 "ls -la /mnt/zpool1/apps/media-test/config/radarr/"
+          
+          # Transfer Radarr config
+          echo "Transferring Radarr config..."
+          rsync -av --partial --timeout=300 --ignore-errors -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60" emcniece@192.168.1.100:/mnt/zpool1/apps/media-test/config/radarr/ /radarr-config/ || echo "Transfer completed with some errors"
+          
+          # Try alternative approach with sudo on remote side
+          echo "Trying alternative transfer method..."
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60 emcniece@192.168.1.100 "sudo tar -czf - -C /mnt/zpool1/apps/media-test/config/radarr ." | tar -xzf - -C /radarr-config/ || echo "Alternative transfer completed"
+          
+          # Fix ownership and permissions
+          echo "Fixing ownership and permissions..."
+          chown -R 1000:1000 /radarr-config/
+          chmod -R 755 /radarr-config/
+          
+          # Check what was actually transferred
+          echo "Checking transferred files..."
+          ls -la /radarr-config/
+          
+          echo "Radarr config transfer completed!"
+        volumeMounts:
+        - mountPath: /ssh-key
+          name: ssh-key
+          readOnly: true
+        - mountPath: /radarr-config
+          name: radarr-config
+      volumes:
+      - name: ssh-key
+        secret:
+          secretName: emc-ssh-key
+      - name: radarr-config
+        persistentVolumeClaim:
+          claimName: radarr-config

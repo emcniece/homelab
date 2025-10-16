@@ -3,7 +3,11 @@ kind: Service
 metadata:
   name: plex
   namespace: media
+  annotations:
+    metallb.universe.tf/allow-shared-ip: "plex-shared"
 spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
   ports:
   - name: plex
     port: 32400

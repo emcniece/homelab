@@ -1,0 +1,61 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sabnzbd-config-transfer
+  namespace: media
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: transfer
+        image: instrumentisto/rsync-ssh
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          set -e
+          
+          # Create SSH key directory
+          mkdir -p /root/.ssh
+          
+          # Copy SSH key from secret
+          cp /ssh-key/emc_sshkey.pem /root/.ssh/id_rsa
+          chmod 600 /root/.ssh/id_rsa
+          
+          # Add the media server to known hosts
+          ssh-keyscan -H 192.168.1.100 >> /root/.ssh/known_hosts
+          
+          echo "Starting Sabnzbd config transfer..."
+          
+          # Test SSH connection first
+          echo "Testing SSH connection..."
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60 emcniece@192.168.1.100 "ls -la /mnt/zpool1/apps/media-test/config/sabnzbd/"
+          
+          # Transfer Sabnzbd config using sudo tar
+          echo "Transferring Sabnzbd config..."
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60 emcniece@192.168.1.100 "sudo tar -czf - -C /mnt/zpool1/apps/media-test/config/sabnzbd ." | tar -xzf - -C /sabnzbd-config/ || echo "Transfer completed with some errors"
+          
+          # Fix ownership and permissions
+          echo "Fixing ownership and permissions..."
+          chown -R 1000:1000 /sabnzbd-config/
+          chmod -R 755 /sabnzbd-config/
+          
+          # Check what was actually transferred
+          echo "Checking transferred files..."
+          ls -la /sabnzbd-config/
+          
+          echo "Sabnzbd config transfer completed!"
+        volumeMounts:
+        - mountPath: /ssh-key
+          name: ssh-key
+          readOnly: true
+        - mountPath: /sabnzbd-config
+          name: sabnzbd-config
+      volumes:
+      - name: ssh-key
+        secret:
+          secretName: emc-ssh-key
+      - name: sabnzbd-config
+        persistentVolumeClaim:
+          claimName: sabnzbd-config
