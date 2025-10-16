@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: http-to-https-redirect-media@kubernetescrd
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  name: tdarr
+  namespace: media
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - tdarr.lab.emc2.build
+    secretName: tdarr-letsencrypt-tls
+  rules:
+  - host: tdarr.lab.emc2.build
+    http:
+      paths:
+      - backend:
+          service:
+            name: tdarr
+            port:
+              number: 8265
+        path: /
+        pathType: Prefix
+

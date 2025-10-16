@@ -1,0 +1,200 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    traefik.enable: 'true'
+    traefik.frontend.rule: Host:tdarr.lab.emc2.build
+    traefik.port: '8265'
+  labels:
+    app: tdarr
+  name: tdarr
+  namespace: media
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tdarr
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        traefik.enable: 'true'
+        traefik.frontend.rule: Host:tdarr.lab.emc2.build
+        traefik.port: '8265'
+      labels:
+        app: tdarr
+    spec:
+      containers:
+      - name: tdarr
+        image: ghcr.io/haveagitgat/tdarr:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: TZ
+          value: America/Vancouver
+        - name: PUID
+          value: '1000'
+        - name: PGID
+          value: '1000'
+        - name: UMASK_SET
+          value: '002'
+        - name: serverIP
+          value: 0.0.0.0
+        - name: serverPort
+          value: '8266'
+        - name: webUIPort
+          value: '8265'
+        - name: internalNode
+          value: 'false'
+        - name: inContainer
+          value: 'true'
+        - name: ffmpegVersion
+          value: '7'
+        - name: nodeName
+          value: TdarrServer
+        - name: auth
+          value: 'false'
+        - name: openBrowser
+          value: 'false'
+        - name: maxLogSizeMB
+          value: '10'
+        - name: cronPluginUpdate
+          value: ''
+        ports:
+        - containerPort: 8265
+          name: webui
+        - containerPort: 8266
+          name: server
+        resources: {}
+        volumeMounts:
+        - mountPath: /app/server
+          name: tdarr-server
+        - mountPath: /app/configs
+          name: tdarr-config
+        - mountPath: /app/logs
+          name: tdarr-logs
+        - mountPath: /media
+          name: media-library
+        - mountPath: /temp
+          name: transcode-cache
+      hostname: tdarr
+      restartPolicy: Always
+      # This DNS config modifies /etc/resolv.conf. Needed so that external domains can resolve outside of the cluster,
+      # and not get trapped in the wildcard that leads back to lab.emc2.build.
+      dnsConfig:
+        # nameservers: ["8.8.8.8"]
+        options:
+          - name: ndots
+            value: "2"
+      volumes:
+      - name: tdarr-server
+        persistentVolumeClaim:
+          claimName: tdarr-server
+      - name: tdarr-config
+        persistentVolumeClaim:
+          claimName: tdarr-config
+      - name: tdarr-logs
+        persistentVolumeClaim:
+          claimName: tdarr-logs
+      - name: media-library
+        persistentVolumeClaim:
+          claimName: media-library
+      - name: transcode-cache
+        persistentVolumeClaim:
+          claimName: transcode-cache
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: tdarr-node
+  name: tdarr-node
+  namespace: media
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: tdarr-node
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: tdarr-node
+    spec:
+      containers:
+      - name: tdarr-node
+        image: ghcr.io/haveagitgat/tdarr_node:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: TZ
+          value: America/Vancouver
+        - name: PUID
+          value: '1000'
+        - name: PGID
+          value: '1000'
+        - name: UMASK_SET
+          value: '002'
+        - name: nodeName
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: serverIP
+          value: tdarr.media.svc.cluster.local
+        - name: serverPort
+          value: '8266'
+        - name: inContainer
+          value: 'true'
+        - name: ffmpegVersion
+          value: '7'
+        - name: nodeType
+          value: worker
+        - name: priority
+          value: '-1'
+        - name: cronPluginUpdate
+          value: ''
+        - name: apiKey
+          value: ''
+        - name: maxLogSizeMB
+          value: '10'
+        - name: pollInterval
+          value: '2000'
+        - name: startPaused
+          value: 'false'
+        - name: transcodegpuWorkers
+          value: '1'
+        - name: transcodecpuWorkers
+          value: '2'
+        - name: healthcheckgpuWorkers
+          value: '1'
+        - name: healthcheckcpuWorkers
+          value: '1'
+        resources: {}
+        volumeMounts:
+        - mountPath: /app/configs
+          name: tdarr-config
+        - mountPath: /app/logs
+          name: tdarr-logs
+        - mountPath: /media
+          name: media-library
+        - mountPath: /temp
+          name: transcode-cache
+      restartPolicy: Always
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "2"
+      volumes:
+      - name: tdarr-config
+        persistentVolumeClaim:
+          claimName: tdarr-config
+      - name: tdarr-logs
+        persistentVolumeClaim:
+          claimName: tdarr-logs
+      - name: media-library
+        persistentVolumeClaim:
+          claimName: media-library
+      - name: transcode-cache
+        persistentVolumeClaim:
+          claimName: transcode-cache
+
