@@ -1,36 +1,79 @@
 # Homelab Media Architecture
 
-This diagram shows how volumes are shared between media apps and how data flows through the system.
+This document shows how data flows through the media apps and how storage volumes are shared between them.
 
-## Volume Sharing & Data Flow Diagram
+## Data Flow Diagram
+
+This diagram shows how content moves through the system from user request to final playback.
 
 ```mermaid
-flowchart TB
-    subgraph User["👤 User"]
-        UserBrowser["Web Browser"]
-    end
+flowchart LR
+    User["👤 User"] -->|Browse & Request Content| Media["Media Apps<br/>Lidarr/Radarr/Sonarr"]
+    Media -->|Search| Indexer["NZBGeek<br/>Indexer"]
+    Media -->|Send Download Request| Downloaders["Downloaders<br/>SABnzbd/Deluge"]
+    
+    Downloaders -->|Download| External["External Sources<br/>Usenet/Torrents"]
+    Downloaders -->|Save to| Incomplete["Local Fast Storage<br/>downloads-incomplete"]
+    Incomplete -->|Move When Complete| Complete["Shared Storage<br/>downloads-complete"]
+    
+    Complete -->|Watch & Process| Tdarr["Tdarr<br/>Transcoding"]
+    Tdarr -->|Move Processed| Library["Shared Storage<br/>media-library"]
+    
+    Library -->|Scan & Index| Players["Media Players<br/>Plex/Emby"]
+    Players -->|Stream to| User
 
-    subgraph External["🌐 External Services"]
-        NZBGeek["NZBGeek Indexer"]
-        UsenetServer["Usenet Server"]
-        TorrentTrackers["Torrent Trackers"]
-    end
+    %% Styling
+    classDef userClass fill:#e1f5ff,stroke:#01579b,stroke-width:2px
+    classDef appClass fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef downloadClass fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    classDef storageClass fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    classDef externalClass fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    
+    class User userClass
+    class Media,Players,Tdarr appClass
+    class Downloaders downloadClass
+    class Incomplete,Complete,Library storageClass
+    class Indexer,External externalClass
+```
 
-    subgraph Media["Media Management Apps"]
-        direction TB
-        Lidarr["🎵 Lidarr<br/>(Music)"]
-        Radarr["🎬 Radarr<br/>(Movies)"]
-        Sonarr["📺 Sonarr<br/>(TV Shows)"]
-    end
+## Volume Sharing Diagram
 
+This diagram shows which storage volumes are mounted by each application.
+
+```mermaid
+flowchart LR
     subgraph Downloaders["Download Clients"]
         direction TB
-        SABnzbd["SABnzbd<br/>(Usenet)"]
-        Deluge["Deluge<br/>(Torrents)"]
+        SABnzbd["📥 SABnzbd"]
+        Deluge["📥 Deluge"]
+    end
+
+    subgraph LocalStorage["Local-Path Storage<br/>(Fast SSD)"]
+        direction TB
+        SABIncomplete["sabnzbd-downloads-incomplete<br/>100Gi RWO"]
+        DelugeIncomplete["deluge-downloads-incomplete<br/>100Gi RWO"]
+    end
+
+    subgraph SharedDownloads["downloads-complete<br/>(CephFS RWX)"]
+        direction TB
+        DCVolume["Shared download<br/>completion area"]
     end
 
     subgraph Processing["Processing"]
-        Tdarr["🔄 Tdarr<br/>(Transcoding)"]
+        direction TB
+        Tdarr["🔄 Tdarr"]
+    end
+
+    subgraph MediaLib["media-library<br/>(CephFS RWX)"]
+        direction TB
+        MLVolume["Final processed<br/>media storage"]
+    end
+
+    subgraph MediaManagement["Media Management"]
+        direction TB
+        Lidarr["🎵 Lidarr"]
+        Radarr["🎬 Radarr"]
+        Sonarr["📺 Sonarr"]
     end
 
     subgraph Players["Media Players"]
@@ -39,77 +82,36 @@ flowchart TB
         Emby["📺 Emby"]
     end
 
-    subgraph Volumes["📦 Storage Volumes"]
-        direction TB
-        
-        subgraph LocalPath["Local-Path (Fast SSD)"]
-            DelugeIncomplete["deluge-downloads-incomplete<br/>100Gi RWO"]
-            SABIncomplete["sabnzbd-downloads-incomplete<br/>100Gi RWO"]
-        end
-        
-        subgraph CephFS["CephFS (Network Storage)"]
-            DownloadsComplete["downloads-complete<br/>Shared RWX"]
-            MediaLibrary["media-library<br/>Shared RWX"]
-        end
-    end
+    %% Downloader connections
+    SABnzbd -.-> SABIncomplete
+    Deluge -.-> DelugeIncomplete
+    SABnzbd -.-> SharedDownloads
+    Deluge -.-> SharedDownloads
 
-    %% User interactions
-    UserBrowser -->|"Browse & Select Content"| Media
-    UserBrowser -->|"Watch Media"| Players
+    %% Processing connections
+    SharedDownloads -.-> Processing
+    Processing -.-> MediaLib
 
-    %% Media management app workflows
-    Media -->|"Search for Content"| NZBGeek
-    Media -->|"Send Usenet Download"| SABnzbd
-    Media -->|"Send Torrent Download"| Deluge
+    %% Media management connections
+    MediaLib -.-> MediaManagement
 
-    %% Downloader workflows
-    SABnzbd -->|"Fetch NZB Files"| UsenetServer
-    Deluge -->|"Fetch Torrent Files"| TorrentTrackers
-    
-    %% Volume mounts - Downloaders
-    SABnzbd -.->|"Mount RWO"| SABIncomplete
-    Deluge -.->|"Mount RWO"| DelugeIncomplete
-    SABnzbd -.->|"Mount RWX"| DownloadsComplete
-    Deluge -.->|"Mount RWX"| DownloadsComplete
-    
-    %% Download process
-    SABIncomplete -->|"Download Complete<br/>Move Files"| DownloadsComplete
-    DelugeIncomplete -->|"Download Complete<br/>Move Files"| DownloadsComplete
-    
-    %% Processing workflow
-    DownloadsComplete -->|"Watch for New Files"| Tdarr
-    Tdarr -->|"Transcode & Move"| MediaLibrary
-    
-    %% Media management mounts
-    Media -.->|"Mount RWX"| DownloadsComplete
-    Media -.->|"Mount RWX"| MediaLibrary
-    
-    %% Processing mounts
-    Tdarr -.->|"Mount RWX"| DownloadsComplete
-    Tdarr -.->|"Mount RWX"| MediaLibrary
-    
-    %% Player mounts
-    Players -.->|"Mount RWX"| MediaLibrary
-    MediaLibrary -->|"Detect New Media<br/>Refresh Library"| Players
+    %% Player connections
+    MediaLib -.-> Players
 
     %% Styling
-    classDef userClass fill:#e1f5ff,stroke:#01579b,stroke-width:2px
-    classDef externalClass fill:#fff3e0,stroke:#e65100,stroke-width:2px
-    classDef mediaClass fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
-    classDef downloadClass fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
-    classDef processClass fill:#fff9c4,stroke:#f57f17,stroke-width:2px
-    classDef playerClass fill:#fce4ec,stroke:#880e4f,stroke-width:2px
-    classDef localClass fill:#ffebee,stroke:#c62828,stroke-width:2px
-    classDef cephClass fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
-    
-    class User,UserBrowser userClass
-    class NZBGeek,UsenetServer,TorrentTrackers externalClass
-    class Lidarr,Radarr,Sonarr mediaClass
-    class SABnzbd,Deluge downloadClass
-    class Tdarr processClass
-    class Plex,Emby playerClass
-    class DelugeIncomplete,SABIncomplete localClass
-    class DownloadsComplete,MediaLibrary cephClass
+    classDef downloadAppClass fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px
+    classDef localVolumeClass fill:#ffebee,stroke:#c62828,stroke-width:2px
+    classDef sharedVolumeClass fill:#e3f2fd,stroke:#1565c0,stroke-width:2px
+    classDef mediaAppClass fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef processAppClass fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    classDef playerAppClass fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+
+    class SABnzbd,Deluge downloadAppClass
+    class SABIncomplete,DelugeIncomplete localVolumeClass
+    class SharedDownloads,MediaLib sharedVolumeClass
+    class Lidarr,Radarr,Sonarr mediaAppClass
+    class Tdarr processAppClass
+    class Plex,Emby playerAppClass
 ```
 
 ## Volume Mount Summary
@@ -118,9 +120,9 @@ flowchart TB
 
 | App | Config | Downloads Incomplete | Downloads Complete | Media Library |
 |-----|--------|---------------------|-------------------|---------------|
-| **Lidarr** | ✅ lidarr-config (CephFS) | ❌ | ✅ RWX | ✅ RWX |
-| **Radarr** | ✅ radarr-config (CephFS) | ❌ | ✅ RWX | ✅ RWX |
-| **Sonarr** | ✅ sonarr-config (CephFS) | ❌ | ✅ RWX | ✅ RWX |
+| **Lidarr** | ✅ lidarr-config (CephFS) | ❌ | ❌ | ✅ RWX |
+| **Radarr** | ✅ radarr-config (CephFS) | ❌ | ❌ | ✅ RWX |
+| **Sonarr** | ✅ sonarr-config (CephFS) | ❌ | ❌ | ✅ RWX |
 | **SABnzbd** | ✅ sabnzbd-config (CephFS) | ✅ sabnzbd-downloads-incomplete (Local-Path, RWO) | ✅ RWX | ❌ |
 | **Deluge** | ✅ deluge-config (CephFS) | ✅ deluge-downloads-incomplete (Local-Path, RWO) | ✅ RWX | ❌ |
 | **Tdarr** | ✅ tdarr-config (CephFS) | ❌ | ✅ RWX | ✅ RWX |

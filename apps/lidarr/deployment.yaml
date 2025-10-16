@@ -41,8 +41,6 @@ spec:
         volumeMounts:
         - mountPath: /config
           name: lidarr-config
-        - mountPath: /downloads
-          name: downloads-complete
         - mountPath: /media
           name: media-library
       hostname: lidarr
@@ -58,9 +56,6 @@ spec:
       - name: lidarr-config
         persistentVolumeClaim:
           claimName: lidarr-config
-      - name: downloads-complete
-        persistentVolumeClaim:
-          claimName: downloads-complete
       - name: media-library
         persistentVolumeClaim:
           claimName: media-library

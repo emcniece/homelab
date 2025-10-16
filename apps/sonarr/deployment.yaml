@@ -41,8 +41,6 @@ spec:
         volumeMounts:
         - mountPath: /config
           name: sonarr-config
-        - mountPath: /downloads
-          name: downloads-complete
         - mountPath: /media
           name: media-library
       hostname: sonarr
@@ -58,9 +56,6 @@ spec:
       - name: sonarr-config
         persistentVolumeClaim:
           claimName: sonarr-config
-      - name: downloads-complete
-        persistentVolumeClaim:
-          claimName: downloads-complete
       - name: media-library
         persistentVolumeClaim:
           claimName: media-library

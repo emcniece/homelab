@@ -41,8 +41,6 @@ spec:
         volumeMounts:
         - mountPath: /config
           name: radarr-config
-        - mountPath: /downloads
-          name: downloads-complete
         - mountPath: /media
           name: media-library
       hostname: radarr
@@ -58,9 +56,6 @@ spec:
       - name: radarr-config
         persistentVolumeClaim:
           claimName: radarr-config
-      - name: downloads-complete
-        persistentVolumeClaim:
-          claimName: downloads-complete
       - name: media-library
         persistentVolumeClaim:
           claimName: media-library
