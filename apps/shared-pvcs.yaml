@@ -1,28 +1,14 @@
----
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: handbrake-config
+  name: downloads-complete
   namespace: media
 spec:
-  accessModes: ["ReadWriteMany"]        # CephFS specific
-  resources:
-    requests:
-      storage: 2Gi
-  storageClassName: csi-cephfs-sc       # CephFS specific
-
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: media-transcode
-  namespace: media
-spec:
-  accessModes: ["ReadWriteOnce"]
+  accessModes: ["ReadWriteMany"]
   resources:
     requests:
       storage: 100Gi
-  storageClassName: local-path
+  storageClassName: csi-cephfs-sc
 
 ---
 apiVersion: v1

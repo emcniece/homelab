@@ -41,8 +41,10 @@ spec:
         stdin: true
         tty: true
         volumeMounts:
-        - mountPath: /downloads
-          name: deluge-downloads
+        - mountPath: /downloads/incomplete
+          name: deluge-downloads-incomplete
+        - mountPath: /downloads/complete
+          name: downloads-complete
         - mountPath: /config
           name: deluge-config
       restartPolicy: Always
@@ -54,9 +56,12 @@ spec:
           - name: ndots
             value: "2"
       volumes:
-      - name: deluge-downloads
+      - name: deluge-downloads-incomplete
         persistentVolumeClaim:
-          claimName: deluge-downloads
+          claimName: deluge-downloads-incomplete
+      - name: downloads-complete
+        persistentVolumeClaim:
+          claimName: downloads-complete
       - name: deluge-config
         persistentVolumeClaim:
           claimName: deluge-config

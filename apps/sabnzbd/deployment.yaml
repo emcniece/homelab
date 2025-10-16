@@ -41,8 +41,10 @@ spec:
         volumeMounts:
         - mountPath: /config
           name: sabnzbd-config
-        - mountPath: /downloads
-          name: sabnzbd-downloads
+        - mountPath: /downloads/incomplete
+          name: sabnzbd-downloads-incomplete
+        - mountPath: /downloads/complete
+          name: downloads-complete
       hostname: sabnzbd
       restartPolicy: Always
       # This DNS config modifies /etc/resolv.conf. Needed so that news.newshosting.com can resolve outside of the cluster,
@@ -56,6 +58,9 @@ spec:
       - name: sabnzbd-config
         persistentVolumeClaim:
           claimName: sabnzbd-config
-      - name: sabnzbd-downloads
+      - name: sabnzbd-downloads-incomplete
         persistentVolumeClaim:
-          claimName: sabnzbd-downloads
+          claimName: sabnzbd-downloads-incomplete
+      - name: downloads-complete
+        persistentVolumeClaim:
+          claimName: downloads-complete

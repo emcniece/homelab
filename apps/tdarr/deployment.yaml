@@ -75,6 +75,8 @@ spec:
           name: tdarr-logs
         - mountPath: /media
           name: media-library
+        - mountPath: /downloads
+          name: downloads-complete
         - mountPath: /temp
           name: transcode-cache
       hostname: tdarr
@@ -99,6 +101,9 @@ spec:
       - name: media-library
         persistentVolumeClaim:
           claimName: media-library
+      - name: downloads-complete
+        persistentVolumeClaim:
+          claimName: downloads-complete
       - name: transcode-cache
         persistentVolumeClaim:
           claimName: transcode-cache
@@ -177,6 +182,8 @@ spec:
           name: tdarr-logs
         - mountPath: /media
           name: media-library
+        - mountPath: /downloads
+          name: downloads-complete
         - mountPath: /temp
           name: transcode-cache
       restartPolicy: Always
@@ -194,6 +201,9 @@ spec:
       - name: media-library
         persistentVolumeClaim:
           claimName: media-library
+      - name: downloads-complete
+        persistentVolumeClaim:
+          claimName: downloads-complete
       - name: transcode-cache
         persistentVolumeClaim:
           claimName: transcode-cache
