@@ -2,11 +2,18 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: http-to-https-redirect-media@kubernetescrd
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
   name: organizr
   namespace: media
 spec:
   ingressClassName: traefik
+  tls:
+  - hosts:
+    - organizr.lab.emc2.build
+    secretName: organizr-letsencrypt-tls
   rules:
   - host: organizr.lab.emc2.build
     http:

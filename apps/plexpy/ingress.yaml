@@ -2,11 +2,18 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: http-to-https-redirect-media@kubernetescrd
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
   name: plexpy
   namespace: media
 spec:
   ingressClassName: traefik
+  tls:
+  - hosts:
+    - plexpy.lab.emc2.build
+    secretName: plexpy-letsencrypt-tls
   rules:
   - host: plexpy.lab.emc2.build
     http:

@@ -4,6 +4,7 @@ metadata:
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: http-to-https-redirect-media@kubernetescrd
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
   name: sabnzbd
   namespace: media
