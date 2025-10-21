@@ -1,0 +1,107 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: staging-transfer
+  namespace: media
+spec:
+  template:
+    spec:
+      containers:
+      - name: rsync-transfer
+        image: instrumentisto/rsync-ssh
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          echo "=== Staging Transfer Started ==="
+          
+          # Set up SSH key
+          echo "Setting up SSH key..."
+          mkdir -p /root/.ssh
+          cp /ssh-key/emc_sshkey.pem /root/.ssh/id_rsa
+          chmod 600 /root/.ssh/id_rsa
+          
+          # Add media server to known hosts
+          ssh-keyscan -H 192.168.1.100 >> /root/.ssh/known_hosts
+          
+          # Test SSH connection
+          echo "Testing SSH connection..."
+          ssh -o StrictHostKeyChecking=no emcniece@192.168.1.100 "echo 'SSH connection successful'"
+          
+          echo "Creating directory structure..."
+          mkdir -p /staging/tv
+          mkdir -p /staging/movies
+          mkdir -p /staging/unsorted
+          mkdir -p /media/music
+          
+          echo ""
+          echo "=== Step 1: Transfer organized TV shows to staging ==="
+          rsync -av --partial --timeout=300 \
+            -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60" \
+            emcniece@192.168.1.100:/mnt/zpool1/apps/media-test/download/complete/tv/ \
+            /staging/tv/
+          
+          echo ""
+          echo "=== Step 2: Transfer organized movies to staging ==="
+          rsync -av --partial --timeout=300 \
+            -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60" \
+            emcniece@192.168.1.100:/mnt/zpool1/apps/media-test/download/complete/movies/ \
+            /staging/movies/
+          
+          echo ""
+          echo "=== Step 3: Transfer mixed files to staging/unsorted ==="
+          # Copy only video files from root of complete directory
+          rsync -av --partial --timeout=300 \
+            -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60" \
+            --include='*.mkv' --include='*.mp4' --include='*.avi' \
+            --include='*.m4v' --include='*.mov' --include='*.wmv' \
+            --exclude='*' \
+            emcniece@192.168.1.100:/mnt/zpool1/apps/media-test/download/complete/ \
+            /staging/unsorted/
+          
+          echo ""
+          echo "=== Step 4: Transfer music directly to media-library (no transcoding) ==="
+          rsync -av --partial --timeout=300 \
+            -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60" \
+            emcniece@192.168.1.100:/mnt/zpool1/apps/media-test/data/music/ \
+            /media/music/
+          
+          echo ""
+          echo "=== Transfer Summary ==="
+          echo "Staging TV shows:"
+          du -sh /staging/tv
+          echo "Staging Movies:"
+          du -sh /staging/movies
+          echo "Staging Unsorted (needs FileBot):"
+          du -sh /staging/unsorted
+          echo "Final Music (no transcoding):"
+          du -sh /media/music
+          echo ""
+          echo "Total staging usage:"
+          du -sh /staging
+          
+          echo ""
+          echo "=== Transfer Complete ==="
+          echo "Next steps:"
+          echo "1. Run FileBot to sort /staging/unsorted"
+          echo "2. Configure Tdarr to transcode staging → media-library"
+        volumeMounts:
+        - name: media-staging
+          mountPath: /staging
+        - name: media-library
+          mountPath: /media
+        - name: ssh-key
+          mountPath: /ssh-key
+          readOnly: true
+      volumes:
+      - name: media-staging
+        persistentVolumeClaim:
+          claimName: media-staging
+      - name: media-library
+        persistentVolumeClaim:
+          claimName: media-library
+      - name: ssh-key
+        secret:
+          secretName: emc-ssh-key
+      restartPolicy: Never
+  backoffLimit: 3
+

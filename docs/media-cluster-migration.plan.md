@@ -14,10 +14,15 @@ Migrate all WordPress sites from `./emc2-wp1-websites/` and media applications f
 
 **Media Apps**:
 
-- **App configs**: Ceph RBD (`csi-rbd-sc`) for individual app configurations
-- **Shared media library**: Ceph CephFS (`csi-cephfs-sc`) with `ReadWriteMany` access mode for the multi-terabyte video library shared between Plex, Sonarr, Radarr, and Deluge
+- **App configs**: CephFS (`csi-cephfs-sc`) for individual app configurations
+- **Download storage**: 
+  - Local-Path (`local-path`) for fast active downloads (incomplete files)
+  - CephFS (`csi-cephfs-sc`) for completed downloads shared between downloaders and Tdarr
+- **Shared media library**: CephFS (`csi-cephfs-sc`) with `ReadWriteMany` access mode for the multi-terabyte video library shared between media management apps and players
 
 Both storage types persist after deployment deletion.
+
+**Architecture**: See [./docs/media-architecture-diagram.md](./docs/media-architecture-diagram.md) for complete data flow and volume sharing diagrams.
 
 ## Directory Structure
 
@@ -41,8 +46,9 @@ All Kubernetes manifests will be organized in **app-specific directories** under
 - `./homelab/apps/organizr-v2/`
 
 **Shared resources**:
-- `./homelab/apps/media/` - namespace and shared PVCs (media-library, downloads)
+- `./homelab/apps/shared-pvcs.yaml` - shared PVCs (media-library, downloads-complete)
 - `./homelab/apps/migration/` - temporary migration job manifests
+- `./homelab/docs/` - architecture diagrams and documentation
 
 ## Migration Steps
 
@@ -88,16 +94,17 @@ Migrate 9 media apps: `plex`, `sonarr`, `radarr`, `lidarr`, `deluge`, `sabnzbd`,
 - Downloads: `/mnt/zpool1/apps/media-test/download/complete/`
 - Media: `/mnt/zpool1/apps/media-test/data/{tv,movies,music,anime}/`
 
-1. **Create shared storage manifests in `./homelab/apps/media/`**
+1. **Create shared storage manifests in `./homelab/apps/shared-pvcs.yaml`**
 
 - Create one `media-library` PVC using CephFS (`csi-cephfs-sc`, `ReadWriteMany`, ~20Ti) for shared video content
-- Create one `downloads` PVC using CephFS for shared download folder
-- Create individual app-config PVCs using RBD (`csi-rbd-sc`, `ReadWriteOnce`, ~10-50Gi each)
+- Create one `downloads-complete` PVC using CephFS (`csi-cephfs-sc`, `ReadWriteMany`, ~100Gi) for completed downloads
+- Create individual app-config PVCs using CephFS (`csi-cephfs-sc`, `ReadWriteMany`, ~2-6Gi each)
+- Create individual `[app]-downloads-incomplete` PVCs using Local-Path (`local-path`, `ReadWriteOnce`, ~100Gi) for fast local downloads (SABnzbd, Deluge only)
 
 2. **Transfer multi-terabyte media library**
 
 - Best option for several TB: Direct rsync from media server to a migration pod
-- Create migration job pod with `media-library` and `downloads` CephFS volumes mounted
+- Create migration job pod with `media-library` and `downloads-complete` CephFS volumes mounted
 - Run: `rsync -avz --info=progress2 media-server:/mnt/zpool1/apps/media-test/download/complete/ /downloads/`
 - Run: `rsync -avz --info=progress2 media-server:/mnt/zpool1/apps/media-test/data/ /media/`
 - This will take hours/days depending on network speed
@@ -162,12 +169,11 @@ Each site directory contains:
 
 **Media apps:**
 
-Shared resources in `./homelab/apps/media/`:
-- `namespace.yaml`
-- `shared-pvcs.yaml` (media-library and downloads CephFS volumes)
+Shared resources:
+- `./homelab/apps/shared-pvcs.yaml` (media-library and downloads-complete CephFS volumes)
 
 Each app directory contains:
-- `pvc.yaml` (individual RBD config volume)
+- `pvc.yaml` (individual CephFS config volume, plus local-path downloads-incomplete for SABnzbd/Deluge)
 - `deployment.yaml` (updated volumes, ingress hosts to *.lab.emc2.build)
 - `service.yaml`
 - `ingress.yaml`
@@ -207,47 +213,70 @@ In `./homelab/apps/migration/`:
 
 ### Phase 2: Media Applications Migration
 
+**Architecture & Documentation:**
+- [x] **Create media architecture diagram** (./docs/media-architecture-diagram.md)
+  - [x] Document data flow from user request to media playback
+  - [x] Document volume sharing between applications
+  - [x] Document storage strategy (Local-Path vs CephFS)
+  - [x] Create visual Mermaid diagrams
+- [x] **Audit and correct volume mounts**
+  - [x] Fix Lidarr - remove downloads-complete mount (only needs media-library)
+  - [x] Fix Radarr - remove downloads-complete mount (only needs media-library)
+  - [x] Fix Sonarr - remove downloads-complete mount (only needs media-library)
+  - [x] Verify SABnzbd - correct (has downloads-complete, not media-library)
+  - [x] Verify Deluge - correct (has downloads-complete, not media-library)
+  - [x] Verify Tdarr - correct (has both downloads-complete and media-library)
+  - [x] Verify Plex - correct (has media-library only)
+  - [x] Verify Emby - correct (has media-library only)
+
 **Media Applications (9 total):**
-- [ ] **plex** (plex.lab.emc2.build)
-  - [ ] Deploy manifests to homelab cluster
-  - [ ] Transfer config from media server
+- [x] **plex** (plex.lab.emc2.build)
+  - [x] Deploy manifests to homelab cluster
+  - [x] Volume mounts verified (config, media-library)
+  - [x] Transfer config from media server
   - [ ] Verify streaming functionality
   - [ ] Test media library access
-- [ ] **sonarr** (sonarr.lab.emc2.build)
-  - [ ] Deploy manifests to homelab cluster
-  - [ ] Transfer config from media server
+- [x] **sonarr** (sonarr.lab.emc2.build)
+  - [x] Deploy manifests to homelab cluster
+  - [x] Volume mounts corrected (config, media-library only)
+  - [x] Transfer config from media server
   - [ ] Verify TV show management
   - [ ] Test download integration
-- [ ] **radarr** (radarr.lab.emc2.build)
-  - [ ] Deploy manifests to homelab cluster
-  - [ ] Transfer config from media server
+- [x] **radarr** (radarr.lab.emc2.build)
+  - [x] Deploy manifests to homelab cluster
+  - [x] Volume mounts corrected (config, media-library only)
+  - [x] Transfer config from media server
   - [ ] Verify movie management
   - [ ] Test download integration
-- [ ] **lidarr** (lidarr.lab.emc2.build)
-  - [ ] Deploy manifests to homelab cluster
-  - [ ] Transfer config from media server
+- [x] **lidarr** (lidarr.lab.emc2.build)
+  - [x] Deploy manifests to homelab cluster
+  - [x] Volume mounts corrected (config, media-library only)
+  - [x] Transfer config from media server
   - [ ] Verify music management
   - [ ] Test download integration
-- [ ] **deluge** (deluge.lab.emc2.build)
-  - [ ] Deploy manifests to homelab cluster
-  - [ ] Transfer config from media server
+- [x] **deluge** (deluge.lab.emc2.build)
+  - [x] Deploy manifests to homelab cluster
+  - [x] Volume mounts verified (config, downloads-incomplete, downloads-complete)
+  - [x] Transfer config from media server
   - [ ] Verify torrent downloads
   - [ ] Test integration with *arr apps
-- [ ] **sabnzbd** (sabnzbd.lab.emc2.build)
-  - [ ] Deploy manifests to homelab cluster
-  - [ ] Transfer config from media server
+- [x] **sabnzbd** (sabnzbd.lab.emc2.build)
+  - [x] Deploy manifests to homelab cluster
+  - [x] Volume mounts verified (config, downloads-incomplete, downloads-complete)
+  - [x] Transfer config from media server
   - [ ] Verify Usenet downloads
   - [ ] Test integration with *arr apps
-- [ ] **emby** (emby.lab.emc2.build)
-  - [ ] Deploy manifests to homelab cluster
-  - [ ] Transfer config from media server
+- [x] **emby** (emby.lab.emc2.build)
+  - [x] Deploy manifests to homelab cluster
+  - [x] Volume mounts verified (config, media-library)
+  - [x] Transfer config from media server
   - [ ] Verify media streaming
   - [ ] Test media library access
-- [ ] **plexpy** (plexpy.lab.emc2.build)
-  - [ ] Deploy manifests to homelab cluster
-  - [ ] Transfer config from media server
-  - [ ] Verify Plex monitoring
-  - [ ] Test analytics functionality
+- [x] **tdarr** (tdarr.lab.emc2.build)
+  - [x] Deploy manifests to homelab cluster
+  - [x] Volume mounts verified (config, downloads-complete, media-library, transcode-cache)
+  - [ ] Verify transcoding functionality
+  - [ ] Test media processing pipeline
 - [ ] **organizr-v2** (organizr.lab.emc2.build)
   - [ ] Deploy manifests to homelab cluster
   - [ ] Transfer config from media server
@@ -257,13 +286,15 @@ In `./homelab/apps/migration/`:
 ### Phase 3: Infrastructure & Cleanup
 
 **Shared Resources:**
+- [x] **Shared PVCs Created**
+  - [x] Deploy shared CephFS PVCs (media-library, downloads-complete)
+  - [x] Verify PVC binding and accessibility
 - [ ] **Media Library Transfer**
-  - [ ] Deploy shared CephFS PVCs
-  - [ ] Transfer multi-terabyte media library
+  - [ ] Transfer multi-terabyte media library from media server
   - [ ] Verify all apps can access shared storage
   - [ ] Test file permissions and access
 - [ ] **Downloads Transfer**
-  - [ ] Transfer downloads folder
+  - [ ] Transfer downloads folder from media server
   - [ ] Verify download client access
   - [ ] Test download completion handling
 
@@ -285,4 +316,13 @@ In `./homelab/apps/migration/`:
 - [x] Remove or update lab-redirect.yaml and WordPress redirect rules after migration verification
 - [x] Create deployment README with instructions for applying manifests and verifying migration
 - [x] **Fixed WordPress memory limit issue** (emc2.build site - increased from 128MB to 512MB)
+- [x] **Create media architecture diagram** (./docs/media-architecture-diagram.md)
+  - Data flow diagram showing content journey from user to playback
+  - Volume sharing diagram showing storage mount relationships
+  - Documentation of storage strategy and volume types
+- [x] **Audit and correct media app volume mounts**
+  - Fixed Lidarr, Radarr, Sonarr to remove incorrect downloads-complete mounts
+  - Verified downloaders (SABnzbd, Deluge) have correct mounts
+  - Verified Tdarr bridges downloads-complete to media-library correctly
+  - Verified players (Plex, Emby) only access media-library
 

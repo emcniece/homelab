@@ -1,0 +1,59 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: supplemental-transfer
+  namespace: media
+spec:
+  template:
+    spec:
+      containers:
+      - name: rsync-transfer
+        image: instrumentisto/rsync-ssh
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          # Set up SSH key
+          mkdir -p /root/.ssh
+          cp /ssh-key/emc_sshkey.pem /root/.ssh/id_rsa
+          chmod 600 /root/.ssh/id_rsa
+          ssh-keyscan -H 192.168.1.100 >> /root/.ssh/known_hosts
+          
+          echo "=== Supplemental Transfer Started ==="
+          echo "Transferring remaining directories to staging/unsorted..."
+          
+          # Transfer all subdirectories EXCEPT tv/, movies/, incomplete/, nzb-backups/, _FAILED_*, and anime/
+          rsync -av --partial --timeout=300 \
+            -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=60" \
+            --exclude='tv/' \
+            --exclude='movies/' \
+            --exclude='incomplete/' \
+            --exclude='nzb-backups/' \
+            --exclude='_FAILED_*' \
+            --exclude='anime/' \
+            emcniece@192.168.1.100:/mnt/zpool1/apps/media-test/download/complete/ \
+            /staging/unsorted/
+          
+          echo ""
+          echo "=== Supplemental Transfer Summary ==="
+          echo "Unsorted content (needs FileBot sorting):"
+          du -sh /staging/unsorted
+          
+          echo ""
+          echo "=== Transfer Complete ==="
+          echo "Next: Run FileBot to organize /staging/unsorted into tv/ and movies/"
+        volumeMounts:
+        - name: media-staging
+          mountPath: /staging
+        - name: ssh-key
+          mountPath: /ssh-key
+          readOnly: true
+      volumes:
+      - name: media-staging
+        persistentVolumeClaim:
+          claimName: media-staging
+      - name: ssh-key
+        secret:
+          secretName: emc-ssh-key
+      restartPolicy: Never
+  backoffLimit: 3
+

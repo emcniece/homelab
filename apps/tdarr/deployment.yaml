@@ -79,15 +79,17 @@ spec:
           name: downloads-complete
         - mountPath: /temp
           name: transcode-cache
+        - mountPath: /staging
+          name: media-staging
       hostname: tdarr
       restartPolicy: Always
       # This DNS config modifies /etc/resolv.conf. Needed so that external domains can resolve outside of the cluster,
       # and not get trapped in the wildcard that leads back to lab.emc2.build.
+      # ndots:1 means names with 1+ dots (like github.com) are tried as absolute first, bypassing search domains
       dnsConfig:
-        # nameservers: ["8.8.8.8"]
         options:
           - name: ndots
-            value: "2"
+            value: "1"
       volumes:
       - name: tdarr-server
         persistentVolumeClaim:
@@ -107,6 +109,9 @@ spec:
       - name: transcode-cache
         persistentVolumeClaim:
           claimName: transcode-cache
+      - name: media-staging
+        persistentVolumeClaim:
+          claimName: media-staging
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -186,11 +191,23 @@ spec:
           name: downloads-complete
         - mountPath: /temp
           name: transcode-cache
+        - mountPath: /staging
+          name: media-staging
       restartPolicy: Always
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - k3s-04
+      # ndots:1 means names with 1+ dots (like github.com) are tried as absolute first, bypassing search domains
       dnsConfig:
         options:
           - name: ndots
-            value: "2"
+            value: "1"
       volumes:
       - name: tdarr-config
         persistentVolumeClaim:
@@ -207,4 +224,7 @@ spec:
       - name: transcode-cache
         persistentVolumeClaim:
           claimName: transcode-cache
+      - name: media-staging
+        persistentVolumeClaim:
+          claimName: media-staging
 

@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: check-remaining-files
+  namespace: media
+spec:
+  template:
+    spec:
+      containers:
+      - name: check-files
+        image: instrumentisto/rsync-ssh
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          # Set up SSH key
+          mkdir -p /root/.ssh
+          cp /ssh-key/emc_sshkey.pem /root/.ssh/id_rsa
+          chmod 600 /root/.ssh/id_rsa
+          ssh-keyscan -H 192.168.1.100 >> /root/.ssh/known_hosts
+          
+          echo "=== Checking files in /download/complete/ root ==="
+          ssh emcniece@192.168.1.100 "find /mnt/zpool1/apps/media-test/download/complete/ -maxdepth 1 -type f | head -50"
+          
+          echo ""
+          echo "=== Checking subdirectories in /download/complete/ ==="
+          ssh emcniece@192.168.1.100 "ls -lah /mnt/zpool1/apps/media-test/download/complete/"
+          
+          echo ""
+          echo "=== Checking total size of /download/complete/ ==="
+          ssh emcniece@192.168.1.100 "du -sh /mnt/zpool1/apps/media-test/download/complete/"
+          
+          echo ""
+          echo "=== Checking size of transferred directories ==="
+          ssh emcniece@192.168.1.100 "du -sh /mnt/zpool1/apps/media-test/download/complete/tv/"
+          ssh emcniece@192.168.1.100 "du -sh /mnt/zpool1/apps/media-test/download/complete/movies/"
+        volumeMounts:
+        - name: ssh-key
+          mountPath: /ssh-key
+          readOnly: true
+      volumes:
+      - name: ssh-key
+        secret:
+          secretName: emc-ssh-key
+      restartPolicy: Never
+  backoffLimit: 1
+

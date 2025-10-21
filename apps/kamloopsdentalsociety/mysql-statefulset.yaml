@@ -27,6 +27,8 @@ spec:
         env:
           - name: MYSQL_DATABASE
             value: wordpress
+          - name: MYSQL_ALLOW_EMPTY_PASSWORD
+            value: "yes"
         ports:
         - containerPort: 3306
         volumeMounts:
