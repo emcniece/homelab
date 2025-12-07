@@ -27,7 +27,7 @@ spec:
     spec:
       containers:
       - name: tdarr
-        image: ghcr.io/haveagitgat/tdarr:latest
+        image: ghcr.io/haveagitgat/tdarr:2.58.02
         imagePullPolicy: IfNotPresent
         env:
         - name: TZ
@@ -121,7 +121,7 @@ metadata:
   name: tdarr-node
   namespace: media
 spec:
-  replicas: 2
+  replicas: 3
   selector:
     matchLabels:
       app: tdarr-node
@@ -134,7 +134,7 @@ spec:
     spec:
       containers:
       - name: tdarr-node
-        image: ghcr.io/haveagitgat/tdarr_node:latest
+        image: ghcr.io/haveagitgat/tdarr_node:2.58.02
         imagePullPolicy: IfNotPresent
         env:
         - name: TZ
@@ -195,14 +195,17 @@ spec:
           name: media-staging
       restartPolicy: Always
       affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: kubernetes.io/hostname
-                operator: NotIn
-                values:
-                - k3s-04
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100 # This gives maximum preference to spreading pods across nodes
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - tdarr-node
+              topologyKey: kubernetes.io/hostname # ensure pods are placed on different nodes
       # ndots:1 means names with 1+ dots (like github.com) are tried as absolute first, bypassing search domains
       dnsConfig:
         options:

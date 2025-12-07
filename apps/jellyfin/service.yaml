@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: jellyfin
+  namespace: media
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: "192.168.10.92"
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  ports:
+  - name: jellyfin
+    port: 8096
+    protocol: TCP
+    targetPort: 8096
+  - name: jellyfin-client-discovery
+    port: 7359
+    protocol: UDP
+    targetPort: 7359
+  - name: jellyfin-service-discovery
+    port: 1900
+    protocol: TCP
+    targetPort: 1900
+  selector:
+    app: jellyfin

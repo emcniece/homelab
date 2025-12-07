@@ -29,6 +29,8 @@ spec:
           volumeMounts:
             - name: wordpress-data
               mountPath: /var/www/html
+            - name: mysql-data
+              mountPath: /mysql
           env:
             - name: WORDPRESS_DB_HOST
               value: mysql-service
@@ -38,7 +40,7 @@ spec:
                   name: mysql-secret
                   key: MYSQL_ROOT_PASSWORD
             - name: WORDPRESS_DB_USER
-              value: root
+              value: wordpress
             - name: WORDPRESS_DB_NAME
               value: wordpress
             - name: WP_REDIS_HOST
@@ -64,6 +66,9 @@ spec:
         - name: wordpress-data
           persistentVolumeClaim:
             claimName: createsleeprepeat-wp
+        - name: mysql-data
+          persistentVolumeClaim:
+            claimName: createsleeprepeat-mysql
 ---
 kind: Service
 apiVersion: v1

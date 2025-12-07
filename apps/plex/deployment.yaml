@@ -27,9 +27,9 @@ spec:
       containers:
       - env:
         - name: ADVERTISE_IP
-          value: "https://plex.lab.emc2.build/"
+          value: "http://192.168.10.90:32400/,https://plex.lab.emc2.build/"
         - name: PLEX_CLAIM
-          value: "claim-MXQkQJ7vtaUaJvefoWso"
+          value: "claim-hoRxbRAaXFsmUztPFrBa"
         - name: PGID
           value: '1000'
         - name: PUID
@@ -38,23 +38,23 @@ spec:
           value: America/Vancouver
         - name: version
           value: latest
-        - name: PLEX_EXTERNAL_URL
-          value: "https://plex.lab.emc2.build/"
-        - name: PLEX_INTERNAL_URL
-          value: "http://192.168.10.90:32400/"
-        - name: PLEX_SERVER_APPLICATION_URL
-          value: "https://plex.lab.emc2.build/"
-        - name: PLEX_SERVER_PREFERRED_SECURE_CONNECTION
-          value: "1"
-        - name: PLEX_SERVER_USE_INSECURE_CONNECTION
-          value: "0"
-        - name: PLEX_SERVER_NETWORK_ACCESS_URL
-          value: "https://plex.lab.emc2.build/"
-        - name: PLEX_SERVER_EXTERNAL_URL
-          value: "https://plex.lab.emc2.build/"
-        - name: PLEX_SERVER_INTERNAL_URL
-          value: "http://192.168.10.90:32400/"
-        image: plexinc/pms-docker:1.42.2.10156-f737b826c
+        # - name: PLEX_EXTERNAL_URL
+        #   value: "https://plex.lab.emc2.build/"
+        # - name: PLEX_INTERNAL_URL
+        #   value: "http://192.168.10.90:32400/"
+        # - name: PLEX_SERVER_APPLICATION_URL
+        #   value: "https://plex.lab.emc2.build/"
+        # - name: PLEX_SERVER_PREFERRED_SECURE_CONNECTION
+        #   value: "1"
+        # - name: PLEX_SERVER_USE_INSECURE_CONNECTION
+        #   value: "0"
+        # - name: PLEX_SERVER_NETWORK_ACCESS_URL
+        #   value: "https://plex.lab.emc2.build/"
+        # - name: PLEX_SERVER_EXTERNAL_URL
+        #   value: "https://plex.lab.emc2.build/"
+        # - name: PLEX_SERVER_INTERNAL_URL
+        #   value: "http://192.168.10.90:32400/"
+        image: lscr.io/linuxserver/plex:latest
         imagePullPolicy: IfNotPresent
         name: plex
         ports:
@@ -69,8 +69,18 @@ spec:
         volumeMounts:
         - mountPath: /config
           name: plex-config
-        - mountPath: /media
+        - mountPath: /tv
           name: media-library
+          subPath: tv
+        - mountPath: /movies
+          name: media-library
+          subPath: movies
+        - mountPath: /music
+          name: media-library
+          subPath: music
+        # - mountPath: /downloads
+        #   name: media-library
+        #   subPath: downloads
       #hostNetwork: true
       hostname: plex
       restartPolicy: Always
@@ -80,7 +90,7 @@ spec:
         # nameservers: ["8.8.8.8"]
         options:
           - name: ndots
-            value: "2"
+            value: "1"
       volumes:
       - name: plex-config
         persistentVolumeClaim:

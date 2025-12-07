@@ -18,15 +18,20 @@ spec:
     spec:
       containers:
       - name: database
-        image: mysql:5.7
+        image: mariadb:10.11
         args:
           - "--ignore-db-dir=lost+found"
+          - "--skip-ssl"
         envFrom:
           - secretRef:
               name: mysql-secret
         env:
           - name: MYSQL_DATABASE
             value: wordpress
+          - name: MYSQL_USER
+            value: wordpress
+          - name: MYSQL_ALLOW_EMPTY_PASSWORD
+            value: "yes"
         ports:
         - containerPort: 3306
         volumeMounts:

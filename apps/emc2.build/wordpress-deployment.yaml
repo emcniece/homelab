@@ -29,6 +29,8 @@ spec:
           volumeMounts:
             - name: wordpress-data
               mountPath: /var/www/html
+            - name: mysql-data
+              mountPath: /mysql
           env:
             - name: WORDPRESS_DB_HOST
               value: mysql-service
@@ -64,6 +66,9 @@ spec:
         - name: wordpress-data
           persistentVolumeClaim:
             claimName: emc2-build-wp
+        - name: mysql-data
+          persistentVolumeClaim:
+            claimName: emc2-build-mysql
 ---
 kind: Service
 apiVersion: v1

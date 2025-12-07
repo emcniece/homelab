@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: default-http-to-https-redirect@kubernetescrd
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  name: jellyfin
+  namespace: media
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - jellyfin.lab.emc2.build
+    secretName: jellyfin-letsencrypt-tls
+  rules:
+  - host: jellyfin.lab.emc2.build
+    http:
+      paths:
+      - backend:
+          service:
+            name: jellyfin
+            port:
+              number: 8096
+        path: /
+        pathType: Prefix

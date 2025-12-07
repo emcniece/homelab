@@ -29,6 +29,8 @@ spec:
           volumeMounts:
             - name: wordpress-data
               mountPath: /var/www/html
+            - name: mysql-data
+              mountPath: /mysql
           env:
             - name: WORDPRESS_DB_HOST
               value: mysql-service
@@ -64,6 +66,9 @@ spec:
         - name: wordpress-data
           persistentVolumeClaim:
             claimName: echoandflow-wp
+        - name: mysql-data
+          persistentVolumeClaim:
+            claimName: echoandflow-mysql
 ---
 kind: Service
 apiVersion: v1
@@ -87,7 +92,6 @@ metadata:
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
-    traefik.ingress.kubernetes.io/router.middlewares: default-http-to-https-redirect@kubernetescrd
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
   creationTimestamp: null
   name: echoandflow

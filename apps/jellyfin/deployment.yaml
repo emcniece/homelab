@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    traefik.enable: 'true'
+    traefik.frontend.rule: Host:jellyfin.lab.emc2.build
+    traefik.port: '8096'
+  labels:
+    app: jellyfin
+  name: jellyfin
+  namespace: media
+spec:
+  selector:
+    matchLabels:
+      app: jellyfin
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        traefik.enable: 'true'
+        traefik.frontend.rule: Host:jellyfin.lab.emc2.build
+        traefik.port: '8096'
+      labels:
+        app: jellyfin
+    spec:
+      containers:
+      - env:
+        - name: PGID
+          value: '1000'
+        - name: PUID
+          value: '1000'
+        - name: TZ
+          value: America/Vancouver
+        image: lscr.io/linuxserver/jellyfin:latest
+        imagePullPolicy: IfNotPresent
+        name: jellyfin
+        ports:
+        - containerPort: 8096 # Web UI HTTP
+        #- containerPort: 8920 # Web UI HTTPS
+        - containerPort: 7359 # optional: Client discovery
+          protocol: UDP
+        - containerPort: 1900 # optional: Service Discovery, DLNA
+          protocol: UDP
+        resources: {}
+        volumeMounts:
+        - mountPath: /config
+          name: jellyfin-config
+        - mountPath: /data/tvshows
+          name: media-library
+          subPath: tv
+        - mountPath: /data/movies
+          name: media-library
+          subPath: movies
+        - mountPath: /data/music
+          name: media-library
+          subPath: music
+      #hostNetwork: true
+      hostname: jellyfin
+      restartPolicy: Always
+      # This DNS config modifies /etc/resolv.conf. Needed so that external domains can resolve outside of the cluster,
+      # and not get trapped in the wildcard that leads back to lab.emc2.build.
+      dnsConfig:
+        # nameservers: ["8.8.8.8"]
+        options:
+          - name: ndots
+            value: "1"
+      volumes:
+      - name: jellyfin-config
+        persistentVolumeClaim:
+          claimName: jellyfin-config
+      - name: media-library
+        persistentVolumeClaim:
+          claimName: media-library
