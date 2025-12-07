@@ -41,7 +41,7 @@ spec:
         volumeMounts:
         - mountPath: /config
           name: lidarr-config
-        - mountPath: /media
+        - mountPath: /downloads
           name: media-library
       hostname: lidarr
       restartPolicy: Always

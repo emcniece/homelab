@@ -41,7 +41,7 @@ spec:
         volumeMounts:
         - mountPath: /config
           name: radarr-config
-        - mountPath: /media
+        - mountPath: /downloads
           name: media-library
       hostname: radarr
       restartPolicy: Always

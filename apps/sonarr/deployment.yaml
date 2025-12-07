@@ -41,7 +41,7 @@ spec:
         volumeMounts:
         - mountPath: /config
           name: sonarr-config
-        - mountPath: /media
+        - mountPath: /downloads
           name: media-library
       hostname: sonarr
       restartPolicy: Always
