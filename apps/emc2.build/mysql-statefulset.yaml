@@ -37,6 +37,11 @@ spec:
         volumeMounts:
         - name: mysql-data
           mountPath: /var/lib/mysql
+      tolerations:
+      - key: "maintenance"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 30
       volumes:
           - name: mysql-data
             persistentVolumeClaim:
