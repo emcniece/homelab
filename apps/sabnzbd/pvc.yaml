@@ -9,15 +9,3 @@ spec:
     requests:
       storage: 4Gi
   storageClassName: csi-cephfs-sc
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: sabnzbd-downloads-incomplete
-  namespace: media
-spec:
-  accessModes: ["ReadWriteOnce"]
-  resources:
-    requests:
-      storage: 100Gi
-  storageClassName: local-path

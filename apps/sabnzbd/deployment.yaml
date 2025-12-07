@@ -47,6 +47,11 @@ spec:
         fsGroup: 1000
       hostname: sabnzbd
       restartPolicy: Always
+      tolerations:
+      - key: "maintenance"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 60
       # This DNS config modifies /etc/resolv.conf. Needed so that news.newshosting.com can resolve outside of the cluster,
       # and not get trapped in the wildcard that leads back to lab.emc2.build.
       dnsConfig:
@@ -58,14 +63,6 @@ spec:
       - name: sabnzbd-config
         persistentVolumeClaim:
           claimName: sabnzbd-config
-
-      - name: sabnzbd-downloads-incomplete
-        persistentVolumeClaim:
-          claimName: sabnzbd-downloads-incomplete
-      - name: downloads-complete
-        persistentVolumeClaim:
-          claimName: downloads-complete
-
       - name: media-library
         persistentVolumeClaim:
           claimName: media-library

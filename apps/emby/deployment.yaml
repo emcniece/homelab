@@ -45,6 +45,11 @@ spec:
           name: media-library
       hostname: emby
       restartPolicy: Always
+      tolerations:
+      - key: "maintenance"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 30
       # This DNS config modifies /etc/resolv.conf. Needed so that external domains can resolve outside of the cluster,
       # and not get trapped in the wildcard that leads back to lab.emc2.build.
       dnsConfig:
