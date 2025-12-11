@@ -3,11 +3,8 @@ kind: Service
 metadata:
   name: jellyfin
   namespace: media
-  annotations:
-    metallb.universe.tf/loadBalancerIPs: "192.168.10.92"
 spec:
-  type: LoadBalancer
-  externalTrafficPolicy: Local
+  type: ClusterIP
   ports:
   - name: jellyfin
     port: 8096
@@ -19,7 +16,7 @@ spec:
     targetPort: 7359
   - name: jellyfin-service-discovery
     port: 1900
-    protocol: TCP
+    protocol: UDP
     targetPort: 1900
   selector:
     app: jellyfin
