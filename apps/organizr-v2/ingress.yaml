@@ -12,10 +12,10 @@ spec:
   ingressClassName: traefik
   tls:
   - hosts:
-    - organizr.lab.emc2.build
+    - lab.emc2.build
     secretName: organizr-letsencrypt-tls
   rules:
-  - host: organizr.lab.emc2.build
+  - host: lab.emc2.build
     http:
       paths:
       - backend:

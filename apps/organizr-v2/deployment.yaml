@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   annotations:
     traefik.enable: 'true'
-    traefik.frontend.rule: Host:organizr.lab.emc2.build
+    traefik.frontend.rule: Host:lab.emc2.build
     traefik.port: '80'
   labels:
     app: organizr
@@ -19,7 +19,7 @@ spec:
     metadata:
       annotations:
         traefik.enable: 'true'
-        traefik.frontend.rule: Host:organizr.lab.emc2.build
+        traefik.frontend.rule: Host:lab.emc2.build
         traefik.port: '80'
       labels:
         app: organizr
