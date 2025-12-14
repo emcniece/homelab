@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    traefik.enable: 'true'
+    traefik.frontend.rule: Host:prowlarr.lab.emc2.build
+    traefik.port: '9696'
+  labels:
+    app: prowlarr
+  name: prowlarr
+  namespace: media
+spec:
+  selector:
+    matchLabels:
+      app: prowlarr
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        traefik.enable: 'true'
+        traefik.frontend.rule: Host:prowlarr.lab.emc2.build
+        traefik.port: '9696'
+      labels:
+        app: prowlarr
+    spec:
+      containers:
+      - env:
+        - name: PGID
+          value: '1000'
+        - name: PUID
+          value: '1000'
+        - name: TZ
+          value: America/Vancouver
+        image: lscr.io/linuxserver/prowlarr:latest
+        imagePullPolicy: IfNotPresent
+        name: prowlarr
+        ports:
+        - containerPort: 9696
+        resources: {}
+        volumeMounts:
+        - mountPath: /config
+          name: prowlarr-config
+        - mountPath: /downloads
+          name: media-library
+      hostname: prowlarr
+      restartPolicy: Always
+      tolerations:
+      - key: "maintenance"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 60
+      # This DNS config modifies /etc/resolv.conf. Needed so that external domains can resolve outside of the cluster,
+      # and not get trapped in the wildcard that leads back to lab.emc2.build.
+      dnsConfig:
+        # nameservers: ["8.8.8.8"]
+        options:
+          - name: ndots
+            value: "1"
+      volumes:
+      - name: prowlarr-config
+        persistentVolumeClaim:
+          claimName: prowlarr-config
+      - name: media-library
+        persistentVolumeClaim:
+          claimName: media-library
