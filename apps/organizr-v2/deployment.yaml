@@ -32,7 +32,7 @@ spec:
           value: '1000'
         - name: TZ
           value: America/Vancouver
-        image: lscr.io/linuxserver/organizr:latest
+        image: organizr/organizr:latest
         imagePullPolicy: IfNotPresent
         name: organizr
         ports:

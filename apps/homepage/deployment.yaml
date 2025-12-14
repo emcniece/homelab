@@ -58,8 +58,12 @@ spec:
             - mountPath: /app/config/widgets.yaml
               name: homepage-config
               subPath: widgets.yaml
+            - mountPath: /app/config/proxmox.yaml
+              name: homepage-config
+              subPath: proxmox.yaml
             - mountPath: /app/config/logs
               name: logs
+            
       tolerations:
       - key: "maintenance"
         operator: "Exists"

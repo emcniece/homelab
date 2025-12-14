@@ -5,22 +5,22 @@ metadata:
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
-  name: heimdall
+  name: homer
   namespace: default
 spec:
   ingressClassName: traefik
   tls:
   - hosts:
-    - heimdall.lab.emc2.build
-    secretName: heimdall-letsencrypt-tls
+    - homer.lab.emc2.build
+    secretName: homer-letsencrypt-tls
   rules:
-  - host: heimdall.lab.emc2.build
+  - host: homer.lab.emc2.build
     http:
       paths:
       - backend:
           service:
-            name: heimdall
+            name: homer
             port:
-              number: 80
+              number: 8080
         path: /
         pathType: Prefix

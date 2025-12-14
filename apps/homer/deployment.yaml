@@ -2,10 +2,10 @@
 kind: Deployment
 apiVersion: apps/v1
 metadata:
-  name: heimdall
+  name: homer
   namespace: default
   labels:
-    app: heimdall
+    app: homer
 spec:
   replicas: 1
   progressDeadlineSeconds: 600
@@ -14,27 +14,25 @@ spec:
     type: Recreate
   selector:
     matchLabels:
-      app: heimdall
+      app: homer
   template:
     metadata:
       labels:
-        app: heimdall
+        app: homer
     spec:
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: "OnRootMismatch"
       containers:
-      - name: heimdall
-        image: lscr.io/linuxserver/heimdall:latest
+      - name: homer
+        image: b4bz/homer:latest
         volumeMounts:
-        - name: heimdall-config
-          mountPath: /config
+        - name: homer-config
+          mountPath: /www/assets
 
         ports:
-        - containerPort: 80
-        - containerPort: 443
+        - containerPort: 8080
         env:
-        - name: PUID
-          value: '1000'
-        - name: PGID
-          value: '1000'
         - name: TZ
           value: America/Vancouver
 
@@ -52,6 +50,6 @@ spec:
             value: "2"
 
       volumes:
-      - name: heimdall-config
+      - name: homer-config
         persistentVolumeClaim:
-          claimName: heimdall-config
+          claimName: homer-config

@@ -6,35 +6,138 @@ metadata:
   labels:
     app.kubernetes.io/name: homepage
 data:
-  kubernetes.yaml: |
-    mode: cluster
-  settings.yaml: ""
-  #settings.yaml: |
-  #  providers:
-  #    longhorn:
-  #      url: https://longhorn.my.network
   custom.css: ""
   custom.js: ""
-  bookmarks.yaml: |
-    - Developer:
-        - Github:
-            - abbr: GH
-              href: https://github.com/
+  kubernetes.yaml: |
+    mode: cluster
+  settings.yaml: |
+    title: "lab.emc2.build"
+    background: https://images.unsplash.com/photo-1502790671504-542ad42d5189?auto=format&fit=crop&w=2560&q=80
+    layout:
+      Media:
+        header: true
+        style: row
+        columns: 4
+      Utilities:
+        header: true
+        style: row
+        columns: 3
+      Infrastructure:
+        header: true
+        style: row
+        columns: 3
+
+  bookmarks.yaml: ""
+  # bookmarks.yaml: |
+  #   - Developer:
+  #       - Github:
+  #           - abbr: GH
+  #             href: https://github.com/
+
   services.yaml: |
-    - My First Groupp:
-        - My First Service:
-            href: http://localhost/
-            description: Homepage is awesome
+    - Media:
+        - Jellyfin:
+            href: https://jellyfin.lab.emc2.build
+            description: Media Player
+            icon: jellyfin.png
+            widget:
+                type: jellyfin
+                url: https://jellyfin.lab.emc2.build
+                key: 6e9392236c784f73bd9793d090ab4b14
+                enableBlocks: true # optional, defaults to false
+                enableNowPlaying: true # optional, defaults to true
+                enableUser: true # optional, defaults to false
+                enableMediaControl: false # optional, defaults to true
+                showEpisodeNumber: true # optional, defaults to false
+                expandOneStreamToTwoRows: false # optional, defaults to true
+        - Sonarr:
+            href: https://sonarr.lab.emc2.build
+            description: TV Shows
+            icon: sonarr.png
+            widget:
+                type: sonarr
+                url: https://sonarr.lab.emc2.build
+                key: bd2022395dec4bb8959b2fa6463551bd
+                #enableQueue: true # optional, defaults to false
+        - Radarr:
+            href: https://radarr.lab.emc2.build
+            description: Movies
+            icon: radarr.png
+            widget:
+                type: radarr
+                url: https://radarr.lab.emc2.build
+                key: caf0cd73bd714bf3ae534a145d305b7c
+                #enableQueue: true # optional, defaults to false
+        - Lidarr:
+            href: https://lidarr.lab.emc2.build
+            description: Music
+            icon: lidarr.png
+            widget:
+                type: lidarr
+                url: https://lidarr.lab.emc2.build
+                key: a73024a601354516b1818484ef87bf8a
 
-    - My Second Group:
-        - My Second Service:
-            href: http://localhost/
-            description: Homepage is the best
+    - Utilities:
+        - SABnzbd:
+            href: https://sabnzbd.lab.emc2.build
+            icon: sabnzbd.png
+            description: Usenet Downloads
+            widget:
+                type: sabnzbd
+                url: https://sabnzbd.lab.emc2.build
+                key: 957eafb20e884895acfe4f40b5221f4f
+        - Deluge:
+            href: https://deluge.lab.emc2.build
+            icon: deluge.png
+            description: Torrent Downloads
+            widget:
+                type: deluge
+                url: https://deluge.lab.emc2.build
+                password: laro4325
+        - Tdarr:
+            href: https://tdarr.lab.emc2.build
+            icon: tdarr.png
+            description: Transcoding
+            widget:
+                type: tdarr
+                url: https://tdarr.lab.emc2.build
+                #key: 957eafb20e884895acfe4f40b5221f4f
 
-    - My Third Group:
-        - My Third Service:
-            href: http://localhost/
-            description: Homepage is 😎
+    - Infrastructure:
+        - Proxmox:
+            href: https://pve1.lab.emc2.build:8006
+            description: PVE1
+            icon: proxmox.png
+            widget:
+                type: proxmox
+                url: https://pve1.lab.emc2.build:8006
+                username: "root@pam!dashboard-apps"
+                password: "4f967b29-4a5d-4682-9483-b80f11a52731"      # TODO: Store in secret. https://gethomepage.dev/installation/docker/#using-environment-secrets
+                node: pve1
+        - Grafana:
+            href: https://grafana.lab.emc2.build
+            icon: grafana.png
+            description: Monitoring and Metrics
+            widget:
+                type: grafana
+                url: https://grafana.lab.emc2.build
+                version: 1
+                alerts: alertmanager
+                username: admin
+                password: fyUV4YH77G8cMsa2ry3y
+        - Unifi:
+            href: https://192.168.1.1
+            icon: unifi.png
+            description: Network
+            widget:
+                type: unifi
+                url: https://192.168.1.1
+                username: dashboard-apps
+                password: U6fR76uDexJvbvWQigJC
+
+
+
+
   widgets.yaml: |
     - kubernetes:
         cluster:
@@ -42,13 +145,14 @@ data:
           cpu: true
           memory: true
           showLabel: true
-          label: "cluster"
+          label: "K8s Cluster"
         nodes:
-          show: true
+          show: false
           cpu: true
           memory: true
           showLabel: true
     - resources:
+        label: "System"
         backend: resources
         expanded: true
         cpu: true
@@ -57,5 +161,13 @@ data:
     - search:
         provider: duckduckgo
         target: _blank
+
   docker.yaml: ""
+
+  # https://gethomepage.dev/configs/proxmox/
+  proxmox.yaml: |
+    pve:
+      url: https://pve1.lab.emc2.build:8006
+      token: "root@pam!dashboard-apps"
+      secret: "4f967b29-4a5d-4682-9483-b80f11a52731"
   
