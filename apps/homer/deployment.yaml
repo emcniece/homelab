@@ -29,6 +29,9 @@ spec:
         volumeMounts:
         - name: homer-config
           mountPath: /www/assets
+        - name: homer-config-file
+          mountPath: /www/assets/config.yml
+          subPath: config.yml
 
         ports:
         - containerPort: 8080
@@ -53,3 +56,6 @@ spec:
       - name: homer-config
         persistentVolumeClaim:
           claimName: homer-config
+      - name: homer-config-file
+        configMap:
+          name: homer-config
