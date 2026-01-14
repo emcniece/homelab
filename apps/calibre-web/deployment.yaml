@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    traefik.enable: 'true'
+    traefik.frontend.rule: Host:calibre-web.lab.emc2.build
+    traefik.port: '8083'
+  labels:
+    app: calibre-web
+  name: calibre-web
+  namespace: media
+spec:
+  selector:
+    matchLabels:
+      app: calibre-web
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        traefik.enable: 'true'
+        traefik.frontend.rule: Host:calibre-web.lab.emc2.build
+        traefik.port: '8083'
+      labels:
+        app: calibre-web
+    spec:
+      containers:
+      - env:
+        - name: PGID
+          value: '1000'
+        - name: PUID
+          value: '1000'
+        - name: TZ
+          value: America/Vancouver
+        # To include the Calibre ebook-convert binary (x64 only), add the environment variable:
+        # - name: DOCKER_MODS
+        #   value: "linuxserver/mods:universal-calibre"
+
+        #image: lscr.io/linuxserver/calibre-web:amd64-0.6.25-ls359 # 15 days ago, exec init error
+        #image: lscr.io/linuxserver/calibre-web:amd64-0.6.25-ls353 # Oct 25 2025, functional
+        image: crocodilestick/calibre-web-automated:latest
+        imagePullPolicy: IfNotPresent
+        name: calibre-web
+        ports:
+        - containerPort: 8083
+        resources: {}
+        volumeMounts:
+        - mountPath: /config
+          name: calibre-web-config
+        - mountPath: /cwa-book-ingest
+          name: media-library
+          subPath: books
+        - mountPath: /calibre-library
+          name: calibre-web-library
+      hostname: calibre-web
+      restartPolicy: Always
+      tolerations:
+      - key: "maintenance"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 60
+      # This DNS config modifies /etc/resolv.conf. Needed so that external domains can resolve outside of the cluster,
+      # and not get trapped in the wildcard that leads back to lab.emc2.build.
+      dnsConfig:
+        # nameservers: ["8.8.8.8"]
+        options:
+          - name: ndots
+            value: "1"
+      volumes:
+      - name: calibre-web-config
+        persistentVolumeClaim:
+          claimName: calibre-web-config
+      - name: calibre-web-library
+        persistentVolumeClaim:
+          claimName: calibre-web-library
+      - name: media-library
+        persistentVolumeClaim:
+          claimName: media-library

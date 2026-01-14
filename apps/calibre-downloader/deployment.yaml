@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    traefik.enable: 'true'
+    traefik.frontend.rule: Host:calibre-downloader.lab.emc2.build
+    traefik.port: '8989'
+  labels:
+    app: calibre-downloader
+  name: calibre-downloader
+  namespace: media
+spec:
+  selector:
+    matchLabels:
+      app: calibre-downloader
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        traefik.enable: 'true'
+        traefik.frontend.rule: Host:calibre-downloader.lab.emc2.build
+        traefik.port: '8084'
+      labels:
+        app: calibre-downloader
+    spec:
+      containers:
+      - env:
+        - name: GID
+          value: '1000'
+        - name: UID
+          value: '1000'
+        - name: TZ
+          value: America/Vancouver
+        - name: BOOK_LANGUAGE
+          value: en
+        - name: USE_BOOK_TITLE
+          value: 'true'
+        - name: CALIBRE_WEB_URL
+          value: https://calibre-web.lab.emc2.build
+        image: ghcr.io/calibrain/calibre-web-automated-book-downloader:latest
+        imagePullPolicy: IfNotPresent
+        name: calibre-downloader
+        ports:
+        - containerPort: 8084
+        resources: {}
+        volumeMounts:
+        - mountPath: /auth/app.db
+          name: calibre-downloader-config
+        - mountPath: /cwa-book-ingest
+          name: media-library
+          subPath: books
+      hostname: calibre-downloader
+      restartPolicy: Always
+      tolerations:
+      - key: "maintenance"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 60
+      # This DNS config modifies /etc/resolv.conf. Needed so that external domains can resolve outside of the cluster,
+      # and not get trapped in the wildcard that leads back to lab.emc2.build.
+      dnsConfig:
+        # nameservers: ["8.8.8.8"]
+        options:
+          - name: ndots
+            value: "1"
+      volumes:
+      - name: calibre-downloader-config
+        persistentVolumeClaim:
+          claimName: calibre-downloader-config
+      - name: media-library
+        persistentVolumeClaim:
+          claimName: media-library

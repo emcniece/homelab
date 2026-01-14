@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    #traefik.ingress.kubernetes.io/router.middlewares: http-to-https-redirect-media@kubernetescrd
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  name: calibre-downloader
+  namespace: media
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - calibre-downloader.lab.emc2.build
+    secretName: calibre-downloader-letsencrypt-tls
+  rules:
+  - host: calibre-downloader.lab.emc2.build
+    http:
+      paths:
+      - backend:
+          service:
+            name: calibre-downloader
+            port:
+              number: 8084
+        path: /
+        pathType: Prefix
