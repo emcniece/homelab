@@ -43,6 +43,8 @@ spec:
           name: sabnzbd-config
         - mountPath: /downloads
           name: media-library
+        - mountPath: /temp-storage
+          name: temp-storage
       securityContext:
         fsGroup: 1000
       hostname: sabnzbd
@@ -58,7 +60,7 @@ spec:
         # nameservers: ["8.8.8.8"]
         options:
           - name: ndots
-            value: "2"
+            value: "1"
       volumes:
       - name: sabnzbd-config
         persistentVolumeClaim:
@@ -66,3 +68,7 @@ spec:
       - name: media-library
         persistentVolumeClaim:
           claimName: media-library
+      - name: temp-storage
+        emptyDir:
+          medium: Memory
+          sizeLimit: 40Gi
