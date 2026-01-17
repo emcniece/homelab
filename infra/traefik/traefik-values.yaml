@@ -23,10 +23,11 @@ ports:
       default: true
     exposedPort: 80
     protocol: TCP
-    respondingTimeouts:
-      readTimeout: 3600s
-      writeTimeout: 3600s
-      idleTimeout: 3600s
+    transport:
+      respondingTimeouts:
+        readTimeout: 3600s
+        writeTimeout: 3600s
+        idleTimeout: 3600s
   websecure:
     port: 8443
     expose:
@@ -35,10 +36,11 @@ ports:
     protocol: TCP
     tls:
       enabled: true
-    respondingTimeouts:
-      readTimeout: 3600s
-      writeTimeout: 3600s
-      idleTimeout: 3600s
+    transport:
+      respondingTimeouts:
+        readTimeout: 3600s
+        writeTimeout: 3600s
+        idleTimeout: 3600s
 
 ingressRoute:
   dashboard:
