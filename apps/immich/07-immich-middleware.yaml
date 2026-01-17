@@ -1,0 +1,11 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: immich-server-media
+  namespace: immich
+spec:
+  # Remove buffering - stream uploads directly to backend
+  # Buffering can cause timeouts and memory issues with large files
+  headers:
+    customRequestHeaders:
+      X-Forwarded-Proto: "https"

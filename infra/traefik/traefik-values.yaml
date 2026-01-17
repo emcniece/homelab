@@ -1,30 +1,65 @@
-# Traefik Helm values for external routing
-service:
-  type: LoadBalancer
-  externalIPs:
-    - 192.168.10.91
-  ports:
-    web:
-      port: 80
-      targetPort: 80
-    websecure:
-      port: 443
-      targetPort: 443
-    traefik:
-      port: 8080
-      targetPort: 8080
-
-# Enable external routing
 additionalArguments:
-  - --api.dashboard=true
-  - --api.insecure=true
-  - --entrypoints.web.address=:80
-  - --entrypoints.websecure.address=:443
-  - --entrypoints.traefik.address=:8080
-  - --providers.kubernetes=true
-  - --providers.kubernetes.ingressclass=traefik
-  - --providers.kubernetes.allowcrossnamespace=true
-  - --providers.kubernetes.allowexternalnameservices=true
-  - --providers.kubernetes.allowemptyservices=true
-  - --log.level=INFO
-  - --accesslog=true
+- --api.dashboard=true
+- --api.insecure=true
+- --providers.kubernetesingress.allowexternalnameservices=true
+- --providers.kubernetesingress.allowemptyservices=true
+- --providers.kubernetescrd.allowEmptyServices=true
+- --log.level=INFO
+- --accesslog=true
+- --serversTransport.forwardingTimeouts.dialTimeout=3600s
+- --serversTransport.forwardingTimeouts.responseHeaderTimeout=3600s
+- --serversTransport.forwardingTimeouts.idleConnTimeout=3600s
+
+ports:
+  traefik:
+    port: 8080
+    expose:
+      default: true
+    exposedPort: 8080
+    protocol: TCP
+  web:
+    port: 8000
+    expose:
+      default: true
+    exposedPort: 80
+    protocol: TCP
+    respondingTimeouts:
+      readTimeout: 3600s
+      writeTimeout: 3600s
+      idleTimeout: 3600s
+  websecure:
+    port: 8443
+    expose:
+      default: true
+    exposedPort: 443
+    protocol: TCP
+    tls:
+      enabled: true
+    respondingTimeouts:
+      readTimeout: 3600s
+      writeTimeout: 3600s
+      idleTimeout: 3600s
+
+ingressRoute:
+  dashboard:
+    enabled: false
+
+persistence:
+  enabled: false
+
+providers:
+  kubernetesCRD:
+    allowEmptyServices: true
+    enabled: true
+  kubernetesIngress:
+    allowEmptyServices: true
+    allowExternalNameServices: true
+    enabled: true
+    ingressClass: traefik
+    publishedService:
+      enabled: true
+
+service:
+  externalIPs:
+  - 192.168.10.91
+  type: LoadBalancer

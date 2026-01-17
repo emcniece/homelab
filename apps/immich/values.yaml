@@ -3,7 +3,36 @@ controllers:
     containers:
       main:
         image:
-          tag: v2.0.0
+          tag: v2.4.1
+        env:
+          DB_HOSTNAME:
+            valueFrom:
+              secretKeyRef:
+                name: postgres-secret
+                key: POSTGRES_HOST
+          DB_USERNAME:
+            valueFrom:
+              secretKeyRef:
+                name: postgres-secret
+                key: POSTGRES_USER
+          DB_PASSWORD:
+            valueFrom:
+              secretKeyRef:
+                name: postgres-secret
+                key: POSTGRES_PASSWORD
+          DB_DATABASE_NAME:
+            valueFrom:
+              secretKeyRef:
+                name: postgres-secret
+                key: POSTGRES_DB
+    pod:
+      # This DNS config modifies /etc/resolv.conf. Needed so that external domains can resolve outside of the cluster,
+      # and not get trapped in the wildcard that leads back to lab.emc2.build.
+      dnsConfig:
+        # nameservers: ["8.8.8.8"]
+        options:
+          - name: ndots
+            value: "1"
 
 
 immich:
@@ -31,7 +60,7 @@ immich:
 # https://www.reddit.com/r/immich/comments/1k6mo49/regarding_valkeys_redisimage/
 # The devs want to get rid of Redis/Valkey. It's only used for the job queue.
 valkey:
-  enabled: false
+  enabled: true
   # persistence:
   #   data:
   #     enabled: true
@@ -43,22 +72,53 @@ valkey:
 
 server:
   enabled: true
+  pod:
+    # This DNS config modifies /etc/resolv.conf. Needed so that external domains can resolve outside of the cluster,
+    # and not get trapped in the wildcard that leads back to lab.emc2.build.
+    dnsConfig:
+      # nameservers: ["8.8.8.8"]
+      options:
+        - name: ndots
+          value: "1"
   ingress:
     main:
-      enabled: false
+      enabled: true
+      ingressClassName: traefik
       annotations:
         # proxy-body-size is set to 0 to remove the body limit on file uploads
-        nginx.ingress.kubernetes.io/proxy-body-size: "0"
+        traefik.ingress.kubernetes.io/router.middlewares: immich-immich-server-media@kubernetescrd
+        traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+        traefik.ingress.kubernetes.io/router.tls: "true"
+        cert-manager.io/cluster-issuer: "letsencrypt-prod"
+        # Use custom transport with extended timeouts
+        traefik.ingress.kubernetes.io/service.serverstransport: immich-transport@kubernetescrd
       hosts:
         - host: immich.lab.emc2.build
           paths:
             - path: "/"
               service:
                 identifier: main
-      tls: []
+        - host: immich.emc2.build
+          paths:
+            - path: "/"
+              service:
+                identifier: main
+      tls:
+        - hosts:
+            - immich.lab.emc2.build
+            - immich.emc2.build
+          secretName: immich-letsencrypt-tls
 
 machine-learning:
   enabled: true
+  pod:
+    # This DNS config modifies /etc/resolv.conf. Needed so that external domains can resolve outside of the cluster,
+    # and not get trapped in the wildcard that leads back to lab.emc2.build.
+    dnsConfig:
+      # nameservers: ["8.8.8.8"]
+      options:
+        - name: ndots
+          value: "1"
   persistence:
     cache:
       enabled: true
@@ -66,5 +126,4 @@ machine-learning:
       # Optional: Set this to persistentVolumeClaim to avoid downloading the ML models every start.
       type: persistentVolumeClaim
       accessMode: ReadWriteMany
-      # storageClass: your-class
-      storageClassName: csi-cephfs-sc
+      storageClass: csi-cephfs-sc
