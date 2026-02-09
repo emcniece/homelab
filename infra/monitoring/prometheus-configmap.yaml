@@ -147,3 +147,43 @@ data:
             regex: traefik
           - source_labels: [__meta_kubernetes_endpoint_address_target_name]
             target_label: instance
+
+      # Ceph MGR Prometheus Exporter
+      # Scrapes all three Proxmox hosts - only active MGR returns metrics
+      - job_name: 'ceph'
+        honor_labels: true
+        scrape_interval: 30s
+        scrape_timeout: 10s
+        metrics_path: /metrics
+        scheme: http
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names:
+                - monitoring
+        relabel_configs:
+          # Only scrape endpoints with service name 'ceph-mgr'
+          - source_labels: [__meta_kubernetes_service_name]
+            action: keep
+            regex: ceph-mgr
+          # Label with the IP address for identification
+          - source_labels: [__meta_kubernetes_endpoint_address_target_name]
+            target_label: instance
+          # Add Proxmox hostname based on IP
+          - source_labels: [__address__]
+            regex: '192.168.10.3:.*'
+            target_label: proxmox_host
+            replacement: pve1
+          - source_labels: [__address__]
+            regex: '192.168.10.4:.*'
+            target_label: proxmox_host
+            replacement: pve2
+          - source_labels: [__address__]
+            regex: '192.168.10.5:.*'
+            target_label: proxmox_host
+            replacement: pve3
+          # Add cluster label
+          - target_label: cluster
+            replacement: homelab-ceph
+          - target_label: job
+            replacement: ceph-mgr

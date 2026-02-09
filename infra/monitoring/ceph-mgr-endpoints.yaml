@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: ceph-mgr
+  namespace: monitoring
+  labels:
+    app: ceph-mgr
+    app.kubernetes.io/name: ceph-mgr
+    app.kubernetes.io/component: metrics
+    app.kubernetes.io/part-of: monitoring
+subsets:
+  # All three Proxmox hosts that can run Ceph MGR
+  # Prometheus will scrape all, but only the active MGR returns metrics
+  - addresses:
+      - ip: 192.168.10.3  # pve1
+        targetRef:
+          kind: Node
+          name: k3s-04
+      - ip: 192.168.10.4  # pve2 (currently active)
+        targetRef:
+          kind: Node
+          name: k3s-05
+      - ip: 192.168.10.5  # pve3
+        targetRef:
+          kind: Node
+          name: k3s-06
+    ports:
+      - name: metrics
+        port: 9283
+        protocol: TCP

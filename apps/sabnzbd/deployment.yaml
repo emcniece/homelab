@@ -70,5 +70,5 @@ spec:
           claimName: media-library
       - name: temp-storage
         emptyDir:
-          medium: Memory
-          sizeLimit: 40Gi
+          #medium: Memory
+          sizeLimit: 120Gi

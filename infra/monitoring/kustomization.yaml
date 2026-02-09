@@ -12,15 +12,21 @@ resources:
   - prometheus-service.yaml
   - prometheus-ingress.yaml
   - grafana-configmap.yaml
+  - grafana-alert-rules.yaml
+  - grafana-dashboard-provisioning.yaml
   - grafana-pvc.yaml
+  - grafana-backup-pvc.yaml
   - grafana-deployment.yaml
   - grafana-service.yaml
   - grafana-ingress.yaml
+  - grafana-backup-cronjob.yaml
   - node-exporter-daemonset.yaml
   - node-exporter-service.yaml
   - kube-state-metrics-serviceaccount.yaml
   - kube-state-metrics-deployment.yaml
   - kube-state-metrics-service.yaml
+  - ceph-mgr-service.yaml
+  - ceph-mgr-endpoints.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: monitoring
