@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: subarr
+  namespace: media
+spec:
+  ports:
+  - name: subarr
+    port: 5000
+    protocol: TCP
+    targetPort: 5000
+  selector:
+    app: subarr

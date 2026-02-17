@@ -95,3 +95,17 @@ spec:
     kind: ClusterIssuer
   dnsNames:
   - emby.lab.emc2.build
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: subarr-letsencrypt-tls
+  namespace: media
+spec:
+  secretName: subarr-letsencrypt-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - subarr.lab.emc2.build
