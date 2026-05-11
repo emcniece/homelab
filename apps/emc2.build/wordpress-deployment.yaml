@@ -31,6 +31,9 @@ spec:
               mountPath: /var/www/html
             - name: mysql-data
               mountPath: /mysql
+            - name: php-overrides
+              mountPath: /usr/local/etc/php/conf.d/zz-emc2-overrides.ini
+              subPath: zz-emc2-overrides.ini
           env:
             - name: WORDPRESS_DB_HOST
               value: mysql-service
@@ -74,6 +77,9 @@ spec:
         - name: mysql-data
           persistentVolumeClaim:
             claimName: emc2-build-mysql
+        - name: php-overrides
+          configMap:
+            name: wordpress-php-overrides
 ---
 kind: Service
 apiVersion: v1

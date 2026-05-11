@@ -1,0 +1,19 @@
+---
+# PHP runtime overrides for the WordPress container. Mounted into
+# /usr/local/etc/php/conf.d/ so the official wordpress image picks it up
+# automatically. The default 128M memory_limit is too low for BackWPUp to
+# enumerate ~40k+ files in wp-content; raising to 512M lets the file-list
+# pass complete instead of OOM-restarting and tripping the inactivity
+# watchdog.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wordpress-php-overrides
+  namespace: emc2-build
+data:
+  zz-emc2-overrides.ini: |
+    memory_limit = 512M
+    max_execution_time = 0
+    max_input_time = 600
+    upload_max_filesize = 64M
+    post_max_size = 64M
