@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: moneymaker
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - pvc.yaml
+  - opend-deployment.yaml
+  - deployment.yaml
+  - service.yaml
+  - cronjob-premarket-scan.yaml
+  # Secrets are created out-of-band — never commit them:
+  #   moneymaker-secrets  → see secret.yaml.example
+  #   opend-config        → see opend-secret.yaml.example
+
+images:
+  # Pin to a digest in production. `latest` is fine for homelab iteration.
+  - name: moneymaker
+    newTag: latest

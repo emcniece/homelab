@@ -1,0 +1,58 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: moneymaker-premarket-scan
+  namespace: moneymaker
+  labels:
+    app.kubernetes.io/name: moneymaker
+    app.kubernetes.io/component: scan
+spec:
+  # 08:30 ET on weekdays. k8s CronJob is timezone-aware (since v1.27).
+  schedule: "30 8 * * 1-5"
+  timeZone: "America/New_York"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 600
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+          imagePullSecrets:
+            - name: ghcr-pull
+          containers:
+            - name: scan
+              image: ghcr.io/emcniece/moneymaker:latest
+              imagePullPolicy: IfNotPresent
+              command: ["python", "main.py", "scan", "--top", "15"]
+              envFrom:
+                - configMapRef:
+                    name: moneymaker-config
+                - secretRef:
+                    name: moneymaker-secrets
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "256Mi"
+                limits:
+                  cpu: "500m"
+                  memory: "512Mi"
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+          tolerations:
+            - key: "maintenance"
+              operator: "Exists"
+              effect: "NoExecute"
+              tolerationSeconds: 60
+          dnsConfig:
+            nameservers: ["8.8.8.8", "1.1.1.1"]
+            options:
+              - name: ndots
+                value: "2"

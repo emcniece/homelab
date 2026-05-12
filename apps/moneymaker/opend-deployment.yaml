@@ -1,0 +1,102 @@
+# OpenD runs in-cluster. The XML config lives in the `opend-config` Secret
+# (created out-of-band; see opend-secret.yaml.example). The XML's <ip> MUST
+# be 0.0.0.0 so the engine pod can reach api_port 11111 over the cluster
+# network. The OpenD binary is x86_64-only — schedule on an amd64 node.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opend
+  namespace: moneymaker
+  labels:
+    app.kubernetes.io/name: moneymaker
+    app.kubernetes.io/component: opend
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: moneymaker
+      app.kubernetes.io/component: opend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: moneymaker
+        app.kubernetes.io/component: opend
+    spec:
+      restartPolicy: Always
+      nodeSelector:
+        kubernetes.io/arch: amd64
+      containers:
+        - name: opend
+          image: ghcr.io/chasenlab/moomoo-opend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: api
+              containerPort: 11111
+              protocol: TCP
+          volumeMounts:
+            - name: opend-config
+              mountPath: /opend/OpenD.xml
+              subPath: OpenD.xml
+              readOnly: true
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          readinessProbe:
+            tcpSocket:
+              port: api
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            tcpSocket:
+              port: api
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 3
+      tolerations:
+        - key: "maintenance"
+          operator: "Exists"
+          effect: "NoExecute"
+          tolerationSeconds: 60
+      # The cluster default resolv.conf has ndots:5 + a `lab.emc2.build`
+      # search domain backed by a wildcard. Without this, external lookups
+      # (api.moomoo.com, openapi.moomoo.com) match the wildcard first and
+      # OpenD's login attempts hit the cluster ingress instead of moomoo.
+      dnsConfig:
+        nameservers: ["8.8.8.8", "1.1.1.1"]
+        options:
+          - name: ndots
+            value: "2"
+      volumes:
+        - name: opend-config
+          secret:
+            secretName: opend-config
+            items:
+              - key: OpenD.xml
+                path: OpenD.xml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opend
+  namespace: moneymaker
+  labels:
+    app.kubernetes.io/name: moneymaker
+    app.kubernetes.io/component: opend
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: moneymaker
+    app.kubernetes.io/component: opend
+  ports:
+    - name: api
+      port: 11111
+      targetPort: api
+      protocol: TCP

@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: moneymaker-config
+  namespace: moneymaker
+data:
+  # ── Claude models (per role) ───────────────────────────────────────
+  CLAUDE_MODEL: "claude-sonnet-4-6"
+  CLAUDE_MODEL_REGIME: "claude-opus-4-7"
+  CLAUDE_MODEL_REVIEW: ""        # empty → falls back to CLAUDE_MODEL
+  CLAUDE_MODEL_SELECT: ""
+  CLAUDE_MODEL_MANAGE: "claude-haiku-4-5"
+  MANAGE_INTERVAL_MIN: "5"
+
+  # ── MooMoo OpenAPI ─────────────────────────────────────────────────
+  # OpenD runs in-cluster as a sibling Deployment (opend-deployment.yaml).
+  # `opend` resolves to its ClusterIP Service. The OpenD.xml in the
+  # `opend-config` Secret must set <ip>0.0.0.0</ip> so it binds on the
+  # pod's interface (not just loopback).
+  MOOMOO_HOST: "opend"
+  MOOMOO_PORT: "11111"
+  MOOMOO_TRADE_ENV: "SIMULATE"   # SIMULATE | REAL
+  MOOMOO_TRADE_MARKET: "US"
+  MOOMOO_ACCOUNT_INDEX: "0"
+
+  # ── Risk parameters ────────────────────────────────────────────────
+  RISK_PER_TRADE: "0.01"
+  MAX_DAILY_LOSS: "0.03"
+  MAX_OPEN_POSITIONS: "4"
+  LOSS_COOLDOWN_MIN: "30"
+
+  # ── Universes ──────────────────────────────────────────────────────
+  # WATCHLIST       — breakout strategies (ORB, momentum)
+  # WATCHLIST_FADE  — fade strategies (ORF) — chop-prone mid-caps only
+  WATCHLIST: "SPY,QQQ,TSLA,NVDA,AMD,AAPL,MSFT,META,AMZN,GOOGL,COIN,MSTR,PLTR,SMCI,ARM"
+  WATCHLIST_FADE: "RIVN,AFRM,HOOD,SOFI,U,LCID,DKNG,UPST,RBLX,CHWY"
+
+  # ── Scheduler ──────────────────────────────────────────────────────
+  DRY_RUN: "false"
+  USE_CLAUDE: "true"
+  TICK_SECONDS: "60"
+  SESSION_MINUTES: "390"
+  TZ: "America/New_York"
+
+  # ── Observability ──────────────────────────────────────────────────
+  METRICS_ENABLED: "true"
+  METRICS_PORT: "9100"
+  METRICS_ADDR: "0.0.0.0"

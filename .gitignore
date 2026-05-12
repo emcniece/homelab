@@ -1,4 +1,5 @@
 .vault_password
 secrets.yml
+**/secret.yaml
+**/opend-secret.yaml
 .DS_Store
-
