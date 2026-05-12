@@ -28,3 +28,12 @@ data:
         allowUiUpdates: true
         options:
           path: /var/lib/grafana/dashboards/ceph
+      - name: 'moneymaker'
+        orgId: 1
+        folder: 'Moneymaker'
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 30
+        allowUiUpdates: true
+        options:
+          path: /var/lib/grafana/dashboards/moneymaker

@@ -1,0 +1,148 @@
+{
+  "title": "moneymaker — App Metrics",
+  "uid": "moneymaker-app",
+  "tags": ["moneymaker", "trading", "infra"],
+  "timezone": "",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": {"from": "now-6h", "to": "now"},
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "label": "Prometheus",
+        "current": {"text": "Prometheus", "value": "prometheus"}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1, "type": "stat", "title": "Engine status",
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "targets": [{"expr": "engine_halted", "refId": "A"}],
+      "options": {"colorMode": "background", "graphMode": "none"},
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {"type": "value", "options": {"0": {"text": "RUNNING", "color": "green"}, "1": {"text": "HALTED", "color": "red"}}}
+          ]
+        }
+      }
+    },
+    {
+      "id": 2, "type": "stat", "title": "Uptime",
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "targets": [{"expr": "engine_uptime_seconds", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "s"}}
+    },
+    {
+      "id": 3, "type": "stat", "title": "Open positions",
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "targets": [{"expr": "engine_open_positions", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "short", "color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 3}, {"color": "red", "value": 5}]}}}
+    },
+    {
+      "id": 4, "type": "stat", "title": "Tick rate (/min)",
+      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "targets": [{"expr": "60 * sum(rate(engine_ticks_total[5m]))", "refId": "A"}]
+    },
+    {
+      "id": 5, "type": "stat", "title": "Error ticks (5m)",
+      "gridPos": {"h": 4, "w": 4, "x": 16, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "targets": [{"expr": "sum(increase(engine_ticks_total{outcome=\"error\"}[5m]))", "refId": "A"}],
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}}
+    },
+    {
+      "id": 6, "type": "stat", "title": "MooMoo fill timeouts (1h)",
+      "gridPos": {"h": 4, "w": 4, "x": 20, "y": 0},
+      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "targets": [{"expr": "sum(increase(moomoo_fill_timeouts_total[1h]))", "refId": "A"}],
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 5}]}}}
+    },
+    {
+      "id": 10, "type": "timeseries", "title": "Engine tick duration (p50/p95/p99)",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "targets": [
+        {"expr": "histogram_quantile(0.50, sum by (le)(rate(engine_tick_duration_seconds_bucket[5m])))", "legendFormat": "p50", "refId": "A"},
+        {"expr": "histogram_quantile(0.95, sum by (le)(rate(engine_tick_duration_seconds_bucket[5m])))", "legendFormat": "p95", "refId": "B"},
+        {"expr": "histogram_quantile(0.99, sum by (le)(rate(engine_tick_duration_seconds_bucket[5m])))", "legendFormat": "p99", "refId": "C"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "s"}}
+    },
+    {
+      "id": 11, "type": "timeseries", "title": "Anthropic API latency p95 by role",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "targets": [
+        {"expr": "histogram_quantile(0.95, sum by (le, role)(rate(anthropic_request_duration_seconds_bucket[5m])))", "legendFormat": "{{role}}", "refId": "A"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "s"}}
+    },
+    {
+      "id": 12, "type": "timeseries", "title": "MooMoo API latency p95 by operation",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "targets": [
+        {"expr": "histogram_quantile(0.95, sum by (le, operation)(rate(moomoo_request_duration_seconds_bucket[5m])))", "legendFormat": "{{operation}}", "refId": "A"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "s"}}
+    },
+    {
+      "id": 13, "type": "timeseries", "title": "Yahoo Finance latency p95",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 12},
+      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "targets": [
+        {"expr": "histogram_quantile(0.95, sum by (le, kind)(rate(yfinance_request_duration_seconds_bucket[5m])))", "legendFormat": "{{kind}}", "refId": "A"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "s"}}
+    },
+    {
+      "id": 20, "type": "timeseries", "title": "API errors (errors/min)",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "targets": [
+        {"expr": "60 * sum by (role)(rate(anthropic_errors_total[5m]))", "legendFormat": "anthropic/{{role}}", "refId": "A"},
+        {"expr": "60 * sum by (operation)(rate(moomoo_errors_total[5m]))", "legendFormat": "moomoo/{{operation}}", "refId": "B"},
+        {"expr": "60 * sum by (kind)(rate(yfinance_errors_total[5m]))", "legendFormat": "yfinance/{{kind}}", "refId": "C"}
+      ]
+    },
+    {
+      "id": 21, "type": "timeseries", "title": "MooMoo fill wait (p50/p95)",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "targets": [
+        {"expr": "histogram_quantile(0.50, sum by (le)(rate(moomoo_fill_wait_seconds_bucket[5m])))", "legendFormat": "p50", "refId": "A"},
+        {"expr": "histogram_quantile(0.95, sum by (le)(rate(moomoo_fill_wait_seconds_bucket[5m])))", "legendFormat": "p95", "refId": "B"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "s"}}
+    },
+    {
+      "id": 30, "type": "timeseries", "title": "Anthropic tokens consumed (rate, by role)",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 28},
+      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "targets": [
+        {"expr": "sum by (role)(rate(anthropic_input_tokens_total[5m]))", "legendFormat": "input/{{role}}", "refId": "A"},
+        {"expr": "sum by (role)(rate(anthropic_output_tokens_total[5m]))", "legendFormat": "output/{{role}}", "refId": "B"},
+        {"expr": "sum by (role)(rate(anthropic_cache_read_input_tokens_total[5m]))", "legendFormat": "cache_read/{{role}}", "refId": "C"}
+      ]
+    },
+    {
+      "id": 31, "type": "stat", "title": "Cache hit ratio (cache_read / (cache_read + input))",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 28},
+      "datasource": {"type": "prometheus", "uid": "${datasource}"},
+      "targets": [
+        {"expr": "sum(rate(anthropic_cache_read_tokens_total[15m])) / (sum(rate(anthropic_cache_read_tokens_total[15m])) + sum(rate(anthropic_input_tokens_total[15m])))", "refId": "A"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "percentunit", "decimals": 1, "color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "yellow", "value": 0.3}, {"color": "green", "value": 0.6}]}}}
+    }
+  ]
+}

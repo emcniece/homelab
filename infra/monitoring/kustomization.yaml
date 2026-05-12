@@ -28,6 +28,17 @@ resources:
   - ceph-mgr-service.yaml
   - ceph-mgr-endpoints.yaml
 
+configMapGenerator:
+  - name: grafana-dashboards-moneymaker
+    files:
+      - dashboards/moneymaker/app-metrics.json
+      - dashboards/moneymaker/trade-metrics.json
+
+generatorOptions:
+  # Pin the generated ConfigMap name (no hash suffix) so the Deployment's
+  # configMap volume reference stays stable.
+  disableNameSuffixHash: true
+
 commonLabels:
   app.kubernetes.io/part-of: monitoring
   app.kubernetes.io/managed-by: kustomize

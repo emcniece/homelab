@@ -51,6 +51,10 @@ spec:
               mountPath: /etc/grafana/provisioning/datasources
             - name: grafana-alert-rules
               mountPath: /etc/grafana/provisioning/alerting
+            - name: grafana-dashboards-provider
+              mountPath: /etc/grafana/provisioning/dashboards
+            - name: grafana-dashboards-moneymaker
+              mountPath: /var/lib/grafana/dashboards/moneymaker
           resources:
             requests:
               cpu: 100m
@@ -87,3 +91,9 @@ spec:
         - name: grafana-alert-rules
           configMap:
             name: grafana-alert-rules
+        - name: grafana-dashboards-provider
+          configMap:
+            name: grafana-dashboards-provider
+        - name: grafana-dashboards-moneymaker
+          configMap:
+            name: grafana-dashboards-moneymaker
