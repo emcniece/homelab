@@ -36,6 +36,21 @@ data:
   LOSS_COOLDOWN_MIN: "30"
 
   # ── Universes ──────────────────────────────────────────────────────
+  # DYNAMIC_UNIVERSE=true makes the engine ignore the static lists below
+  # and pull today's most-active tickers from MooMoo's get_stock_filter
+  # at session open. Quality gates: price band + 10d cumulative volume
+  # floor (UNIVERSE_MIN_AVG_VOLUME × 10 days). Falls back to the static
+  # union on any failure path — the engine never runs without a list.
+  # Local probe before flipping prod:
+  #   python main.py universe --top 25 --min-avg-volume 5000000
+  DYNAMIC_UNIVERSE: "true"
+  UNIVERSE_TOP_N: "25"
+  UNIVERSE_MIN_PRICE: "5"
+  UNIVERSE_MAX_PRICE: "200"
+  UNIVERSE_MIN_AVG_VOLUME: "5000000"   # 5M shares/day — drops marginals
+
+  # Static fallback — used when DYNAMIC_UNIVERSE=false or any dynamic
+  # path errors out (screener failure, OpenD reconnect mid-session, ...)
   # WATCHLIST       — breakout strategies (ORB, momentum)
   # WATCHLIST_FADE  — fade strategies (ORF) — chop-prone mid-caps only
   WATCHLIST: "SPY,QQQ,TSLA,NVDA,AMD,AAPL,MSFT,META,AMZN,GOOGL,COIN,MSTR,PLTR,SMCI,ARM"
