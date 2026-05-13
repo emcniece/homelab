@@ -25,6 +25,20 @@
           "text": "Prometheus",
           "value": "prometheus"
         }
+      },
+      {
+        "name": "infinity_ds",
+        "label": "Infinity datasource",
+        "type": "datasource",
+        "query": "yesoreyeram-infinity-datasource",
+        "current": {
+          "selected": false,
+          "text": "default",
+          "value": "default"
+        },
+        "hide": 2,
+        "refresh": 1,
+        "skipUrlSync": false
       }
     ]
   },
@@ -734,6 +748,225 @@
         "defaults": {
           "unit": "short"
         }
+      }
+    },
+    {
+      "id": 80,
+      "type": "table",
+      "title": "Trade ledger (last 7 days, newest first)",
+      "description": "Per-trade ledger fetched live from the engine's /trades JSON endpoint via the Infinity datasource. One row per closed trade from output/trades.jsonl on the engine's PVC \u2014 survives pod rolls. Sortable by any column.",
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 56
+      },
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "${infinity_ds}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "url": "http://moneymaker-engine.moneymaker.svc.cluster.local:9100/trades?days=7&limit=200",
+          "url_options": {
+            "method": "GET"
+          },
+          "root_selector": "",
+          "columns": [
+            {
+              "selector": "closed_at",
+              "text": "Closed (UTC)",
+              "type": "time"
+            },
+            {
+              "selector": "symbol",
+              "text": "Symbol",
+              "type": "string"
+            },
+            {
+              "selector": "strategy",
+              "text": "Strategy",
+              "type": "string"
+            },
+            {
+              "selector": "side",
+              "text": "Side",
+              "type": "string"
+            },
+            {
+              "selector": "qty",
+              "text": "Qty",
+              "type": "number"
+            },
+            {
+              "selector": "entry_fill",
+              "text": "Entry $",
+              "type": "number"
+            },
+            {
+              "selector": "exit_fill",
+              "text": "Exit $",
+              "type": "number"
+            },
+            {
+              "selector": "exit_reason",
+              "text": "Exit",
+              "type": "string"
+            },
+            {
+              "selector": "gross_pnl",
+              "text": "Gross P&L",
+              "type": "number"
+            },
+            {
+              "selector": "cost",
+              "text": "Cost",
+              "type": "number"
+            },
+            {
+              "selector": "net_pnl",
+              "text": "Net P&L",
+              "type": "number"
+            },
+            {
+              "selector": "entry_slip_bps",
+              "text": "Entry slip bps",
+              "type": "number"
+            },
+            {
+              "selector": "exit_slip_bps",
+              "text": "Exit slip bps",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Net P&L"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 0
+                    },
+                    {
+                      "color": "green",
+                      "value": 0.01
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Gross P&L"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cost"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Entry $"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Exit $"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "footer": {
+          "show": true,
+          "reducer": [
+            "sum",
+            "count"
+          ],
+          "fields": [
+            "Net P&L",
+            "Gross P&L",
+            "Cost",
+            "Qty"
+          ]
+        },
+        "sortBy": [
+          {
+            "displayName": "Closed (UTC)",
+            "desc": true
+          }
+        ]
       }
     }
   ]
