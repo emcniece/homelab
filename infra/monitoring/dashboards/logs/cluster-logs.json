@@ -1,0 +1,175 @@
+{
+  "uid": "cluster-logs",
+  "title": "Cluster Logs",
+  "tags": ["logs", "loki"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {"from": "now-1h", "to": "now"},
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "label": "Loki",
+        "type": "datasource",
+        "query": "loki",
+        "current": {"text": "Loki", "value": "loki"}
+      },
+      {
+        "name": "namespace",
+        "label": "Namespace",
+        "type": "query",
+        "datasource": {"type": "loki", "uid": "${datasource}"},
+        "query": {"label": "namespace", "type": 1},
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".+",
+        "current": {"text": "All", "value": "$__all"}
+      },
+      {
+        "name": "pod",
+        "label": "Pod",
+        "type": "query",
+        "datasource": {"type": "loki", "uid": "${datasource}"},
+        "query": {"label": "pod", "stream": "{namespace=~\"$namespace\"}", "type": 1},
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".+",
+        "current": {"text": "All", "value": "$__all"}
+      },
+      {
+        "name": "container",
+        "label": "Container",
+        "type": "query",
+        "datasource": {"type": "loki", "uid": "${datasource}"},
+        "query": {"label": "container", "stream": "{namespace=~\"$namespace\", pod=~\"$pod\"}", "type": 1},
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".+",
+        "current": {"text": "All", "value": "$__all"}
+      },
+      {
+        "name": "search",
+        "label": "Filter",
+        "type": "textbox",
+        "current": {"text": "", "value": ""},
+        "description": "Optional |~ regex filter applied to log lines"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Log volume — top 10 namespaces (lines / sec)",
+      "datasource": {"type": "loki", "uid": "${datasource}"},
+      "gridPos": {"h": 8, "w": 16, "x": 0, "y": 0},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10, sum by (namespace) (rate({namespace=~\".+\"}[1m])))",
+          "legendFormat": "{{namespace}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "logs/s",
+          "custom": {"drawStyle": "bars", "stacking": {"mode": "normal"}, "fillOpacity": 80, "lineWidth": 0}
+        }
+      },
+      "options": {"legend": {"showLegend": true, "placement": "right"}}
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Error rate (5m, level=error/warn)",
+      "datasource": {"type": "loki", "uid": "${datasource}"},
+      "gridPos": {"h": 4, "w": 8, "x": 16, "y": 0},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate({namespace=~\"$namespace\"} |~ `(?i)\\b(error|err|fatal|panic)\\b`[5m]))",
+          "legendFormat": "errors/s"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "logs/s",
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 1}, {"color": "red", "value": 10}]}
+        }
+      },
+      "options": {
+        "reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""},
+        "colorMode": "background",
+        "graphMode": "area"
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Active pod streams",
+      "datasource": {"type": "loki", "uid": "${datasource}"},
+      "gridPos": {"h": 4, "w": 8, "x": 16, "y": 4},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(count by (pod) (count_over_time({namespace=~\"$namespace\"}[5m])))",
+          "legendFormat": "pods"
+        }
+      ],
+      "options": {
+        "reduceOptions": {"values": false, "calcs": ["lastNotNull"], "fields": ""},
+        "colorMode": "value"
+      }
+    },
+    {
+      "id": 10,
+      "type": "logs",
+      "title": "Pod logs",
+      "datasource": {"type": "loki", "uid": "${datasource}"},
+      "gridPos": {"h": 16, "w": 24, "x": 0, "y": 8},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{namespace=~\"$namespace\", pod=~\"$pod\", container=~\"$container\"} |~ \"$search\""
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "enableLogDetails": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none"
+      }
+    },
+    {
+      "id": 20,
+      "type": "logs",
+      "title": "Systemd journal (current node selection)",
+      "datasource": {"type": "loki", "uid": "${datasource}"},
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 24},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{job=\"systemd-journal\"} |~ \"$search\""
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none"
+      }
+    }
+  ]
+}

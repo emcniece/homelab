@@ -27,12 +27,21 @@ resources:
   - kube-state-metrics-service.yaml
   - ceph-mgr-service.yaml
   - ceph-mgr-endpoints.yaml
+  - loki-configmap.yaml
+  - loki-pvc.yaml
+  - loki-deployment.yaml
+  - alloy-rbac.yaml
+  - alloy-configmap.yaml
+  - alloy-daemonset.yaml
 
 configMapGenerator:
   - name: grafana-dashboards-moneymaker
     files:
       - dashboards/moneymaker/app-metrics.json
       - dashboards/moneymaker/trade-metrics.json
+  - name: grafana-dashboards-logs
+    files:
+      - dashboards/logs/cluster-logs.json
 
 generatorOptions:
   # Pin the generated ConfigMap name (no hash suffix) so the Deployment's

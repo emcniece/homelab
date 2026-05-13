@@ -37,3 +37,12 @@ data:
         allowUiUpdates: true
         options:
           path: /var/lib/grafana/dashboards/moneymaker
+      - name: 'logs'
+        orgId: 1
+        folder: 'Logs'
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 30
+        allowUiUpdates: true
+        options:
+          path: /var/lib/grafana/dashboards/logs

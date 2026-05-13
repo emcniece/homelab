@@ -1,0 +1,116 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-config
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/component: collector
+data:
+  config.alloy: |
+    logging {
+      level  = "info"
+      format = "logfmt"
+    }
+
+    // ── Pod logs ───────────────────────────────────────────────────
+    // Discover pods, filter to the current node, then tail their log
+    // files on disk (/var/log/pods/...).
+    discovery.kubernetes "pods" {
+      role = "pod"
+      selectors {
+        role  = "pod"
+        field = "spec.nodeName=" + sys.env("HOSTNAME")
+      }
+    }
+
+    discovery.relabel "pod_logs" {
+      targets = discovery.kubernetes.pods.targets
+
+      // Project useful pod metadata into Loki labels.
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label  = "namespace"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label  = "pod"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_container_name"]
+        target_label  = "container"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+        target_label  = "app"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_node_name"]
+        target_label  = "node"
+      }
+
+      // Map to the on-disk log path so loki.source.file can tail it.
+      rule {
+        source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+        target_label  = "__path__"
+        separator     = "/"
+        replacement   = "/var/log/pods/*$1/*.log"
+      }
+    }
+
+    local.file_match "pod_logs" {
+      path_targets = discovery.relabel.pod_logs.output
+    }
+
+    loki.source.file "pod_logs" {
+      targets    = local.file_match.pod_logs.targets
+      forward_to = [loki.process.pod_logs.receiver]
+    }
+
+    loki.process "pod_logs" {
+      forward_to = [loki.write.local.receiver]
+      // k3s/containerd writes CRI-format lines: "TS STREAM TAG MSG".
+      // Strip them down to the original payload + timestamp.
+      stage.cri {}
+    }
+
+    // ── Node systemd journal ───────────────────────────────────────
+    discovery.relabel "journal" {
+      targets = []
+      rule {
+        source_labels = ["__journal__systemd_unit"]
+        target_label  = "unit"
+      }
+      rule {
+        source_labels = ["__journal__hostname"]
+        target_label  = "node"
+      }
+      rule {
+        source_labels = ["__journal_priority_keyword"]
+        target_label  = "level"
+      }
+    }
+
+    loki.source.journal "node" {
+      // Mounted from host (see DaemonSet hostPath volumes). Modern
+      // systemd persists under /var/log/journal; runtime-only fallback
+      // at /run/log/journal is covered by the second mount.
+      path          = "/var/log/journal"
+      max_age       = "12h"
+      relabel_rules = discovery.relabel.journal.rules
+      labels        = {
+        job   = "systemd-journal",
+        source = "journal",
+      }
+      forward_to = [loki.write.local.receiver]
+    }
+
+    // ── Sink ───────────────────────────────────────────────────────
+    loki.write "local" {
+      endpoint {
+        url = "http://loki:3100/loki/api/v1/push"
+      }
+      external_labels = {
+        cluster = "homelab",
+      }
+    }

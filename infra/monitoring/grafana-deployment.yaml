@@ -60,6 +60,8 @@ spec:
               mountPath: /etc/grafana/provisioning/dashboards
             - name: grafana-dashboards-moneymaker
               mountPath: /var/lib/grafana/dashboards/moneymaker
+            - name: grafana-dashboards-logs
+              mountPath: /var/lib/grafana/dashboards/logs
           resources:
             requests:
               cpu: 100m
@@ -102,3 +104,6 @@ spec:
         - name: grafana-dashboards-moneymaker
           configMap:
             name: grafana-dashboards-moneymaker
+        - name: grafana-dashboards-logs
+          configMap:
+            name: grafana-dashboards-logs

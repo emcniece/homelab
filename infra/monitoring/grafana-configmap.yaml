@@ -19,3 +19,11 @@ data:
         editable: false
         jsonData:
           timeInterval: "30s"
+      - name: Loki
+        type: loki
+        uid: loki
+        access: proxy
+        url: http://loki:3100
+        editable: false
+        jsonData:
+          maxLines: 1000
