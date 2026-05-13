@@ -612,6 +612,129 @@
           }
         }
       }
+    },
+    {
+      "id": 70,
+      "type": "stat",
+      "title": "Heuristic gate \u2014 signals saved today",
+      "description": "Count of signals short-circuited by the heuristic pre-review gate (risk_manager.pre_review_check). Each one represents a Claude review call that didn't fire \u2014 roughly 500 input tokens saved per rejection.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 44
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(signals_rejected_total{reason=~\"heuristic_.*\"}[1d]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 10
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 71,
+      "type": "stat",
+      "title": "Heuristic catch rate (heuristic / total rejections)",
+      "description": "Share of today's rejections caught by the cheap upstream gate vs everything else (regime, risk, Claude review, etc.). Higher = the gate is doing more of the work; lower = Claude is still the main veto path and tightening HEURISTIC_* thresholds may save more tokens.",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 44
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(signals_rejected_total{reason=~\"heuristic_.*\"}[1d])) / clamp_min(sum(increase(signals_rejected_total[1d])), 1)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        }
+      }
+    },
+    {
+      "id": 72,
+      "type": "bargauge",
+      "title": "Heuristic rejections (1h, by sub-reason)",
+      "description": "Which heuristic rule did the rejecting:\n  \u2022 heuristic_avoid_strategy   \u2014 signal.strategy was in regime.avoid_strategies\n  \u2022 heuristic_low_rel_volume   \u2014 rel_volume < HEURISTIC_MIN_REL_VOLUME\n  \u2022 heuristic_rr_below_regime_floor \u2014 R:R below the regime-aware floor\nIf one bucket dominates, that's the threshold to tune via the weekly tuner.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 44
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "sum by (reason)(increase(signals_rejected_total{reason=~\"heuristic_.*\"}[1h]))",
+          "legendFormat": "{{reason}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 73,
+      "type": "timeseries",
+      "title": "Heuristic vs Claude review rejections (rate /h)",
+      "description": "Two lines side-by-side: heuristic gate rejections vs Claude review vetoes. The gate is doing its job when the heuristic line is high and the claude_review line trends down. If both are high, the gate is too loose (Claude is still rejecting much of what passes through) \u2014 tune HEURISTIC_MIN_REL_VOLUME / HEURISTIC_CHOP_MIN_RR higher.",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 48
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(signals_rejected_total{reason=~\"heuristic_.*\"}[15m])) * 3600",
+          "legendFormat": "heuristic (total)",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(signals_rejected_total{reason=\"claude_review\"}[15m])) * 3600",
+          "legendFormat": "claude_review",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        }
+      }
     }
   ]
 }

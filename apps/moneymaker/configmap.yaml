@@ -35,6 +35,37 @@ data:
   MAX_OPEN_POSITIONS: "4"
   LOSS_COOLDOWN_MIN: "30"
 
+  # Heuristic pre-review gate: rule-based rejections upstream of the Claude
+  # review_signal call. Catches the patterns Claude was vetoing anyway,
+  # cutting review tokens roughly in half on chop days. Tune thresholds
+  # against the weekly tuner's `heuristic_rejection_counts` block.
+  HEURISTIC_GATE_ENABLED: "true"
+  HEURISTIC_MIN_REL_VOLUME: "0.5"
+  HEURISTIC_CHOP_MIN_RR: "2.0"
+  HEURISTIC_TREND_MIN_RR: "1.4"
+  # MooMoo's SIMULATE account ships with $1M of cash — way too much given
+  # the target real-account size. RISK_EQUITY_OVERRIDE makes the engine
+  # size against this value instead, so paper trades run at the actual
+  # scale we'll go live at. Set to 0 (or remove) to use the broker's
+  # reported equity. Update this BEFORE flipping MOOMOO_TRADE_ENV=REAL.
+  RISK_EQUITY_OVERRIDE: "1000"
+
+  # Equity tiers — selected once at session open against the starting equity.
+  # Each tier overrides the flat RISK_PER_TRADE / MAX_DAILY_LOSS /
+  # MAX_OPEN_POSITIONS and the UNIVERSE_MAX_PRICE / UNIVERSE_MIN_AVG_VOLUME
+  # for that session. As the account grows, the engine self-promotes to the
+  # next tier — no manual ConfigMap edits as we move from cash → margin → scale.
+  #   cash   (<$25k):    PDT-constrained, one position, sub-$50 liquid names,
+  #                      3% risk per trade so single trades fit the budget.
+  #   margin (<$100k):   PDT clears, full mid-cap universe, 2 concurrent.
+  #   scale  ($100k+):   Risk % scales back down, 4 concurrent positions.
+  EQUITY_TIERS_JSON: |
+    [
+      {"name":"cash",   "max_equity": 25000,  "risk_per_trade": 0.03,  "max_daily_loss": 0.05, "max_open_positions": 1, "max_price": 50,   "min_avg_volume": 5000000},
+      {"name":"margin", "max_equity": 100000, "risk_per_trade": 0.015, "max_daily_loss": 0.04, "max_open_positions": 2, "max_price": 200,  "min_avg_volume": 2000000},
+      {"name":"scale",  "max_equity": null,   "risk_per_trade": 0.01,  "max_daily_loss": 0.03, "max_open_positions": 4, "max_price": 1000, "min_avg_volume": 1000000}
+    ]
+
   # ── Universes ──────────────────────────────────────────────────────
   # DYNAMIC_UNIVERSE=true makes the engine ignore the static lists below
   # and pull today's most-active tickers from MooMoo's get_stock_filter
