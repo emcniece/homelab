@@ -28,9 +28,11 @@ spec:
       restartPolicy: Always
       nodeSelector:
         kubernetes.io/arch: amd64
+      imagePullSecrets:
+        - name: ghcr-pull
       containers:
         - name: opend
-          image: ghcr.io/chasenlab/moomoo-opend:latest
+          image: ghcr.io/emcniece/moneymaker-opend:10.5.6508
           imagePullPolicy: IfNotPresent
           ports:
             - name: api
@@ -41,6 +43,15 @@ spec:
               mountPath: /opend/OpenD.xml
               subPath: OpenD.xml
               readOnly: true
+            - name: rsa-key
+              mountPath: /opend/rsa_key.pem
+              subPath: rsa_key.pem
+              readOnly: true
+            # OpenD writes its device fingerprint + session token here after
+            # the first telnet verification. Persist it so reschedules don't
+            # re-prompt. Container runs as root, so $HOME is /root.
+            - name: opend-state
+              mountPath: /root/.com.moomoo.OpenD
           resources:
             requests:
               cpu: "100m"
@@ -81,6 +92,19 @@ spec:
             items:
               - key: OpenD.xml
                 path: OpenD.xml
+        - name: rsa-key
+          secret:
+            secretName: moneymaker-rsa-key
+            defaultMode: 0400
+            # Same Secret the engine pod mounts. Both ends of the InitConnect
+            # RSA handshake need the identical PEM file. Optional so the
+            # deployment can come up while the Secret is being created — but
+            # MooMoo trade calls will fail until the key is present and OpenD
+            # has been restarted with <rsa_private_key> set in OpenD.xml.
+            optional: true
+        - name: opend-state
+          persistentVolumeClaim:
+            claimName: opend-state
 ---
 apiVersion: v1
 kind: Service

@@ -22,6 +22,12 @@ data:
   MOOMOO_TRADE_ENV: "SIMULATE"   # SIMULATE | REAL
   MOOMOO_TRADE_MARKET: "US"
   MOOMOO_ACCOUNT_INDEX: "0"
+  # RSA key shared with the OpenD pod's <rsa_private_key>. MooMoo blocks
+  # unencrypted trade calls whenever OpenD binds to a non-loopback address —
+  # which is always the case in-cluster. Both pods mount the same key from
+  # the `moneymaker-rsa-key` Secret. Leave blank to disable (quotes still
+  # work, but account/trade calls fail).
+  MOOMOO_RSA_KEY_PATH: "/etc/moneymaker/rsa_key.pem"
 
   # ── Risk parameters ────────────────────────────────────────────────
   RISK_PER_TRADE: "0.01"

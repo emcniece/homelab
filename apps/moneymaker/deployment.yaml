@@ -69,9 +69,16 @@ spec:
           volumeMounts:
             - name: output
               mountPath: /app/output
+            - name: rsa-key
+              mountPath: /etc/moneymaker
+              readOnly: true
+          # Same HTTP probe for both: the slim base image lacks `pgrep`
+          # (procps), and the metrics endpoint is the canonical liveness
+          # signal — if it's serving, the scheduler thread is alive.
           livenessProbe:
-            exec:
-              command: ["sh", "-c", "pgrep -f scheduler.py >/dev/null"]
+            httpGet:
+              path: /metrics
+              port: metrics
             initialDelaySeconds: 30
             periodSeconds: 60
             failureThreshold: 3
@@ -103,3 +110,10 @@ spec:
         - name: output
           persistentVolumeClaim:
             claimName: moneymaker-output
+        - name: rsa-key
+          secret:
+            secretName: moneymaker-rsa-key
+            defaultMode: 0400
+            # Booting before the Secret is created shouldn't crashloop —
+            # the broker treats a missing key as "encryption off".
+            optional: true

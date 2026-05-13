@@ -10,3 +10,21 @@ spec:
     requests:
       storage: 2Gi
   storageClassName: csi-rbd-sc
+---
+# OpenD writes its device fingerprint, session token, cached security
+# listing, and logs to ~/.com.moomoo.OpenD/. Persisting that directory
+# across container restarts means MooMoo doesn't re-prompt for telnet
+# verification on every reschedule. Currently ~71MiB but SecListDB.dat
+# grows; 1Gi is well over headroom.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: opend-state
+  namespace: moneymaker
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: csi-rbd-sc
