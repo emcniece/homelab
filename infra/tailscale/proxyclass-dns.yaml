@@ -1,0 +1,16 @@
+apiVersion: tailscale.com/v1alpha1
+kind: ProxyClass
+metadata:
+  name: fix-ndots
+spec:
+  statefulSet:
+    pod:
+      # The cluster has a wildcard DNS entry that catches any name with
+      # ndots >= default (5) and routes it to Traefik, which serves the
+      # wrong TLS cert. With ndots=1, names with 2+ dots (like
+      # controlplane.tailscale.com) are treated as FQDNs and go to the
+      # real upstream resolver instead.
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"

@@ -8,6 +8,7 @@ spec:
   # node IPs (192.168.10.x) and reach the kube-vip API server at
   # 192.168.10.30:6443.
   hostname: homelab-subnet
+  proxyClass: fix-ndots
   subnetRouter:
     advertiseRoutes:
       - "192.168.10.0/24"
