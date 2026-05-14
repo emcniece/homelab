@@ -1,0 +1,15 @@
+apiVersion: tailscale.com/v1alpha1
+kind: Connector
+metadata:
+  name: homelab-subnet
+spec:
+  # Advertise the homelab LAN so that Tailscale peers (including GitHub
+  # Actions runners using tailscale/github-action) can route to cluster
+  # node IPs (192.168.10.x) and reach the kube-vip API server at
+  # 192.168.10.30:6443.
+  hostname: homelab-subnet
+  subnetRouter:
+    advertiseRoutes:
+      - "192.168.10.0/24"
+  tags:
+    - "tag:k8s-operator"
