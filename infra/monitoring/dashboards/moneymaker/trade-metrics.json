@@ -763,7 +763,7 @@
       },
       "datasource": {
         "type": "yesoreyeram-infinity-datasource",
-        "uid": "${infinity_ds}"
+        "uid": "infinity"
       },
       "targets": [
         {
@@ -834,16 +834,40 @@
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "Entry $" },
-            "properties": [{ "id": "unit", "value": "currencyUSD" }]
+            "matcher": {
+              "id": "byName",
+              "options": "Entry $"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              }
+            ]
           },
           {
-            "matcher": { "id": "byName", "options": "Stop $" },
-            "properties": [{ "id": "unit", "value": "currencyUSD" }]
+            "matcher": {
+              "id": "byName",
+              "options": "Stop $"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              }
+            ]
           },
           {
-            "matcher": { "id": "byName", "options": "Target $" },
-            "properties": [{ "id": "unit", "value": "currencyUSD" }]
+            "matcher": {
+              "id": "byName",
+              "options": "Target $"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              }
+            ]
           }
         ]
       },
@@ -869,7 +893,7 @@
       },
       "datasource": {
         "type": "yesoreyeram-infinity-datasource",
-        "uid": "${infinity_ds}"
+        "uid": "infinity"
       },
       "targets": [
         {

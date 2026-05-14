@@ -27,3 +27,10 @@ data:
         editable: false
         jsonData:
           maxLines: 1000
+      - name: Infinity
+        type: yesoreyeram-infinity-datasource
+        uid: infinity
+        editable: false
+        jsonData:
+          allowedHosts:
+            - "http://moneymaker-engine.moneymaker.svc.cluster.local:9100"
