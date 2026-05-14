@@ -751,15 +751,121 @@
       }
     },
     {
+      "id": 82,
+      "type": "table",
+      "title": "Open Positions",
+      "description": "Live snapshot of positions the engine currently holds. Updated every tick via the /positions endpoint. Empty when no session is running or no trades are open.",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 56
+      },
+      "datasource": {
+        "type": "yesoreyeram-infinity-datasource",
+        "uid": "${infinity_ds}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "type": "json",
+          "source": "url",
+          "format": "table",
+          "url": "http://moneymaker-engine.moneymaker.svc.cluster.local:9100/positions",
+          "url_options": {
+            "method": "GET"
+          },
+          "root_selector": "",
+          "columns": [
+            {
+              "selector": "opened_at",
+              "text": "Opened (UTC)",
+              "type": "time"
+            },
+            {
+              "selector": "symbol",
+              "text": "Symbol",
+              "type": "string"
+            },
+            {
+              "selector": "strategy",
+              "text": "Strategy",
+              "type": "string"
+            },
+            {
+              "selector": "side",
+              "text": "Side",
+              "type": "string"
+            },
+            {
+              "selector": "qty",
+              "text": "Qty",
+              "type": "number"
+            },
+            {
+              "selector": "entry_fill",
+              "text": "Entry $",
+              "type": "number"
+            },
+            {
+              "selector": "stop",
+              "text": "Stop $",
+              "type": "number"
+            },
+            {
+              "selector": "target",
+              "text": "Target $",
+              "type": "number"
+            },
+            {
+              "selector": "rr",
+              "text": "R:R",
+              "type": "number"
+            }
+          ]
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto"
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Entry $" },
+            "properties": [{ "id": "unit", "value": "currencyUSD" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Stop $" },
+            "properties": [{ "id": "unit", "value": "currencyUSD" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Target $" },
+            "properties": [{ "id": "unit", "value": "currencyUSD" }]
+          }
+        ]
+      },
+      "options": {
+        "sortBy": [
+          {
+            "displayName": "Opened (UTC)",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
       "id": 80,
       "type": "table",
-      "title": "Trade ledger (last 7 days, newest first)",
+      "title": "Completed Trades \u2014 last 7 days",
       "description": "Per-trade ledger fetched live from the engine's /trades JSON endpoint via the Infinity datasource. One row per closed trade from output/trades.jsonl on the engine's PVC \u2014 survives pod rolls. Sortable by any column.",
       "gridPos": {
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 56
+        "y": 64
       },
       "datasource": {
         "type": "yesoreyeram-infinity-datasource",
