@@ -65,7 +65,7 @@ data:
   #   scale  ($100k+):   Risk % scales back down, 4 concurrent positions.
   EQUITY_TIERS_JSON: |
     [
-      {"name":"cash",   "max_equity": 25000,  "risk_per_trade": 0.03,  "max_daily_loss": 0.05, "max_open_positions": 1, "max_price": 50,   "min_avg_volume": 5000000},
+      {"name":"cash",   "max_equity": 25000,  "risk_per_trade": 0.03,  "max_daily_loss": 0.05, "max_open_positions": 4, "max_price": 50,   "min_avg_volume": 5000000},
       {"name":"margin", "max_equity": 100000, "risk_per_trade": 0.015, "max_daily_loss": 0.04, "max_open_positions": 2, "max_price": 200,  "min_avg_volume": 2000000},
       {"name":"scale",  "max_equity": null,   "risk_per_trade": 0.01,  "max_daily_loss": 0.03, "max_open_positions": 4, "max_price": 1000, "min_avg_volume": 1000000}
     ]
