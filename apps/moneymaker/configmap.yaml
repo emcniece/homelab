@@ -11,6 +11,10 @@ data:
   CLAUDE_MODEL_SELECT: ""
   CLAUDE_MODEL_MANAGE: "claude-haiku-4-5"
   MANAGE_INTERVAL_MIN: "5"
+  # Minimum unrealized P&L as a multiple of initial risk before Claude may
+  # tighten the stop to break-even or better. 1.0 = price must have moved
+  # a full 1R in our favor first. Set to "0" to disable.
+  MANAGE_BREAKEVEN_MIN_R: "1.0"
 
   # ── MooMoo OpenAPI ─────────────────────────────────────────────────
   # OpenD runs in-cluster as a sibling Deployment (opend-deployment.yaml).
