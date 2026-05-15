@@ -6574,6 +6574,11 @@ spec:
                     - mountPath: /oauth
                       name: oauth
                       readOnly: true
+            dnsConfig:
+                nameservers: ["8.8.8.8", "1.1.1.1"]
+                options:
+                  - name: ndots
+                    value: "2"
             nodeSelector:
                 kubernetes.io/os: linux
             serviceAccountName: operator
