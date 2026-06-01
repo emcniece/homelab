@@ -636,7 +636,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 44
+        "y": 48
       },
       "datasource": {
         "type": "prometheus",
@@ -676,7 +676,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 44
+        "y": 48
       },
       "datasource": {
         "type": "prometheus",
@@ -703,7 +703,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 44
+        "y": 48
       },
       "datasource": {
         "type": "prometheus",
@@ -726,7 +726,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 48
+        "y": 52
       },
       "datasource": {
         "type": "prometheus",
@@ -759,7 +759,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 56
+        "y": 60
       },
       "datasource": {
         "type": "yesoreyeram-infinity-datasource",
@@ -889,7 +889,7 @@
         "h": 12,
         "w": 24,
         "x": 0,
-        "y": 64
+        "y": 68
       },
       "datasource": {
         "type": "yesoreyeram-infinity-datasource",
@@ -1097,6 +1097,62 @@
             "desc": true
           }
         ]
+      }
+    },
+    {
+      "id": 63,
+      "type": "stat",
+      "title": "Signals with news context (today)",
+      "description": "How many signals had yfinance headlines fetched and passed to Claude review.",
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 0,
+        "y": 44
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(signals_with_news_total[1d]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0
+        }
+      }
+    },
+    {
+      "id": 64,
+      "type": "stat",
+      "title": "News coverage rate",
+      "description": "Fraction of signals that had news headlines available. Low rate means yfinance isn't returning news for many symbols.",
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 8,
+        "y": 44
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(signals_with_news_total[1d])) / clamp_min(sum(increase(signals_fired_total[1d])), 1)",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1
+        }
       }
     }
   ]
