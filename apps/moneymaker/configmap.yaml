@@ -59,9 +59,16 @@ data:
   # MAX_OPEN_POSITIONS and the UNIVERSE_MAX_PRICE / UNIVERSE_MIN_AVG_VOLUME
   # for that session. As the account grows, the engine self-promotes to the
   # next tier — no manual ConfigMap edits as we move from cash → margin → scale.
-  #   cash   (<$25k):    PDT-constrained, one position, sub-$50 liquid names,
-  #                      3% risk per trade so single trades fit the budget.
-  #   margin (<$100k):   PDT clears, full mid-cap universe, 2 concurrent.
+  #
+  # NOTE: FINRA SR-2025-017 eliminated the Pattern Day Trader (PDT) rule
+  # effective June 4, 2026. The $25k equity minimum and 3-day-trades-per-5-days
+  # limit no longer exist. Tier boundaries are now capital-scale thresholds only.
+  #
+  #   cash   (<$25k):    Small-account tier. High risk% per trade to generate
+  #                      meaningful dollar returns. 4 concurrent positions, sub-$100
+  #                      liquid names. No PDT restriction applies.
+  #   margin (<$100k):   Mid-account tier. Tighter risk%, 2 concurrent positions,
+  #                      broader universe. Margin buying power available.
   #   scale  ($100k+):   Risk % scales back down, 4 concurrent positions.
   EQUITY_TIERS_JSON: |
     [
