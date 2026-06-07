@@ -1,0 +1,67 @@
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: etherpad
+  namespace: default
+  labels:
+    app: etherpad
+spec:
+  replicas: 1
+  progressDeadlineSeconds: 600
+  revisionHistoryLimit: 2
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: etherpad
+  template:
+    metadata:
+      labels:
+        app: etherpad
+    spec:
+      initContainers:
+      - name: fix-permissions
+        image: busybox:latest
+        command: ["sh", "-c", "chown -R 5001:0 /opt/etherpad-lite/var"]
+        volumeMounts:
+        - mountPath: /opt/etherpad-lite/var
+          name: etherpad-data
+      containers:
+      - name: etherpad
+        image: etherpad/etherpad:3
+        ports:
+        - containerPort: 9001
+        env:
+        - name: DB_TYPE
+          value: sqlite
+        - name: DB_FILENAME
+          value: /opt/etherpad-lite/var/dirty.db
+        - name: ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: etherpad-secret
+              key: ADMIN_PASSWORD
+        - name: SESSION_KEY
+          valueFrom:
+            secretKeyRef:
+              name: etherpad-secret
+              key: SESSION_KEY
+        - name: TRUST_PROXY
+          value: "true"
+        volumeMounts:
+        - mountPath: /opt/etherpad-lite/var
+          name: etherpad-data
+      tolerations:
+      - key: "maintenance"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 30
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
+      volumes:
+      - name: etherpad-data
+        persistentVolumeClaim:
+          claimName: etherpad-data
