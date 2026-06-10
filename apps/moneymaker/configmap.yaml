@@ -44,7 +44,7 @@ data:
   # cutting review tokens roughly in half on chop days. Tune thresholds
   # against the weekly tuner's `heuristic_rejection_counts` block.
   HEURISTIC_GATE_ENABLED: "true"
-  HEURISTIC_MIN_REL_VOLUME: "0.5"
+  HEURISTIC_MIN_REL_VOLUME: "0.3"
   HEURISTIC_CHOP_MIN_RR: "1.6"   # VWAPFade min R:R is 2.0 at trigger; 1.6 gives headroom vs old 2.0 floor
   HEURISTIC_TREND_MIN_RR: "1.4"
   # MooMoo's SIMULATE account ships with $1M of cash — way too much given
