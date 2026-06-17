@@ -29,7 +29,11 @@ spec:
             - name: scan
               image: ghcr.io/emcniece/moneymaker:latest
               imagePullPolicy: IfNotPresent
-              command: ["python", "main.py", "scan", "--top", "15"]
+              # --dynamic uses build_universe() — the same source the live
+              # engine uses at session boot (DYNAMIC_UNIVERSE=true). Without
+              # it the scan runs against the static WATCHLIST, whose names
+              # rarely overlap with what the engine actually trades.
+              command: ["python", "main.py", "scan", "--dynamic", "--top", "25"]
               envFrom:
                 - configMapRef:
                     name: moneymaker-config

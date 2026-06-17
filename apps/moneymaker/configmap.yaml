@@ -10,7 +10,7 @@ data:
   CLAUDE_MODEL_REVIEW: ""        # empty → falls back to CLAUDE_MODEL
   CLAUDE_MODEL_SELECT: ""
   CLAUDE_MODEL_MANAGE: "claude-haiku-4-5"
-  MANAGE_INTERVAL_MIN: "5"
+  MANAGE_INTERVAL_MIN: "15"
   # Minimum unrealized P&L as a multiple of initial risk before Claude may
   # tighten the stop to break-even or better. 1.0 = price must have moved
   # a full 1R in our favor first. Set to "0" to disable.
@@ -45,7 +45,7 @@ data:
   # against the weekly tuner's `heuristic_rejection_counts` block.
   HEURISTIC_GATE_ENABLED: "true"
   HEURISTIC_MIN_REL_VOLUME: "0.3"
-  HEURISTIC_CHOP_MIN_RR: "1.6"   # VWAPFade min R:R is 2.0 at trigger; 1.6 gives headroom vs old 2.0 floor
+  HEURISTIC_CHOP_MIN_RR: "1.4"   # ORB rr_target=1.5; 1.4 lets ORB clear the chop floor (VWAPFade disabled 2026-06-11)
   HEURISTIC_TREND_MIN_RR: "1.4"
   # MooMoo's SIMULATE account ships with $1M of cash — way too much given
   # the target real-account size. RISK_EQUITY_OVERRIDE makes the engine
