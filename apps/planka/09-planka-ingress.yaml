@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: default-http-to-https-redirect@kubernetescrd
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  name: planka
+  namespace: planka
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - planka.emc2.build
+    secretName: planka-emc2-build-letsencrypt-tls
+  rules:
+  - host: planka.emc2.build
+    http:
+      paths:
+      - backend:
+          service:
+            name: planka
+            port:
+              number: 1337
+        path: /
+        pathType: Prefix

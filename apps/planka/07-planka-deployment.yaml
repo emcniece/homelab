@@ -1,0 +1,124 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: planka
+  namespace: planka
+  labels:
+    app: planka
+spec:
+  replicas: 1
+  progressDeadlineSeconds: 600
+  revisionHistoryLimit: 2
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: planka
+  template:
+    metadata:
+      labels:
+        app: planka
+    spec:
+      containers:
+      - name: planka
+        image: ghcr.io/plankanban/planka:latest
+        ports:
+        - containerPort: 1337
+          name: http
+        env:
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: POSTGRES_DB
+        - name: BASE_URL
+          value: https://planka.emc2.build
+        - name: DATABASE_URL
+          value: postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres/$(POSTGRES_DB)
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: planka-secret
+              key: SECRET_KEY
+        - name: DEFAULT_ADMIN_EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: planka-secret
+              key: DEFAULT_ADMIN_EMAIL
+        - name: DEFAULT_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: planka-secret
+              key: DEFAULT_ADMIN_PASSWORD
+        - name: DEFAULT_ADMIN_NAME
+          valueFrom:
+            secretKeyRef:
+              name: planka-secret
+              key: DEFAULT_ADMIN_NAME
+        - name: DEFAULT_ADMIN_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: planka-secret
+              key: DEFAULT_ADMIN_USERNAME
+        - name: TRUST_PROXY
+          value: "0"
+        volumeMounts:
+        - name: user-avatars
+          mountPath: /app/public/user-avatars
+        - name: project-backgrounds
+          mountPath: /app/public/project-background-images
+        - name: attachments
+          mountPath: /app/private/attachments
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 1337
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 1337
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+      tolerations:
+      - key: "maintenance"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 30
+      dnsConfig:
+        nameservers: ["8.8.8.8", "1.1.1.1"]
+        options:
+          - name: ndots
+            value: "2"
+      volumes:
+      - name: user-avatars
+        persistentVolumeClaim:
+          claimName: planka-user-avatars
+      - name: project-backgrounds
+        persistentVolumeClaim:
+          claimName: planka-project-backgrounds
+      - name: attachments
+        persistentVolumeClaim:
+          claimName: planka-attachments

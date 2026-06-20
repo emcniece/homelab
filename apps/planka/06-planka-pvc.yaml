@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: planka-user-avatars
+  namespace: planka
+spec:
+  accessModes: ["ReadWriteMany"]
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: csi-cephfs-sc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: planka-project-backgrounds
+  namespace: planka
+spec:
+  accessModes: ["ReadWriteMany"]
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: csi-cephfs-sc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: planka-attachments
+  namespace: planka
+spec:
+  accessModes: ["ReadWriteMany"]
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: csi-cephfs-sc
