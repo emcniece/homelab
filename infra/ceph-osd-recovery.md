@@ -548,6 +548,50 @@ ceph-volume lvm activate <id> <uuid>
 
 ---
 
+## smartd: Drive Swap Procedure (pve2)
+
+pve2's `/etc/smartd.conf` uses **explicit stable by-id paths** instead of `DEVICESCAN`. This was changed on 2026-05-23 after `DEVICESCAN` repeatedly fired false SMART alerts when iDRAC's USB Virtual Floppy reconnected and stole `/dev/sdd` from the WDC Ceph OSD that previously held that node.
+
+When a Ceph OSD drive is physically replaced on pve2, update smartd to track the new drive:
+
+### 1. Find the new drive's stable path
+
+After the new drive is installed and Ceph provisioning is complete:
+
+```bash
+ssh pve2 "ls -la /dev/disk/by-id/ | grep scsi-3 | grep -v dm-"
+```
+
+The new drive will have an unfamiliar WWN. Cross-reference with `lsblk` to confirm which `/dev/sdX` it maps to.
+
+### 2. Update /etc/smartd.conf
+
+Replace the old `scsi-3...` entry for the swapped drive with the new one. Each entry is commented with the drive's serial number for easy identification:
+
+```bash
+ssh pve2 "nano /etc/smartd.conf"
+```
+
+Entry format:
+```
+# /dev/sdX - WDC WUH721818AL4200 S/N <SERIAL> (Ceph OSD, SAS)
+/dev/disk/by-id/scsi-3<WWN> -d scsi -a -m root -M exec /usr/share/smartmontools/smartd-runner
+```
+
+### 3. Restart smartd
+
+```bash
+ssh pve2 "systemctl restart smartmontools && systemctl status smartmontools --no-pager | head -10"
+```
+
+Confirm the log shows the correct number of devices being monitored (currently 5: 1 ATA + 4 SCSI).
+
+### Why not DEVICESCAN?
+
+The iDRAC USB virtual media interface (Virtual CD, Virtual Floppy, LCDRIVE) appears as SCSI block devices and gets assigned `/dev/sdd` or similar node letters on reconnect. `DEVICESCAN` picks these up, fails to read SMART values from the USB bridge, and sends false alerts tagged with whatever real drive last held that node. Stable by-id paths are immune to this.
+
+---
+
 ## Related Documentation
 
 - [Ceph CSI README](./ceph-csi/README.md)

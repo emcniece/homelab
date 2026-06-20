@@ -62,6 +62,8 @@ spec:
               mountPath: /var/lib/grafana/dashboards/moneymaker
             - name: grafana-dashboards-logs
               mountPath: /var/lib/grafana/dashboards/logs
+            - name: grafana-dashboards-trailwave
+              mountPath: /var/lib/grafana/dashboards/trailwave
           resources:
             requests:
               cpu: 100m
@@ -107,3 +109,6 @@ spec:
         - name: grafana-dashboards-logs
           configMap:
             name: grafana-dashboards-logs
+        - name: grafana-dashboards-trailwave
+          configMap:
+            name: grafana-dashboards-trailwave

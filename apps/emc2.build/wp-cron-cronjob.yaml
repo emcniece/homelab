@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: wordpress-cron
+  namespace: emc2-build
+spec:
+  schedule: "* * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: wp-cron
+              image: curlimages/curl:latest
+              command:
+                - curl
+                - -s
+                - --max-time
+                - "30"
+                - http://wordpress-service/wp-cron.php

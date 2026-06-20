@@ -42,6 +42,9 @@ configMapGenerator:
   - name: grafana-dashboards-logs
     files:
       - dashboards/logs/cluster-logs.json
+  - name: grafana-dashboards-trailwave
+    files:
+      - dashboards/trailwave/trailwave-overview.json
 
 generatorOptions:
   # Pin the generated ConfigMap name (no hash suffix) so the Deployment's

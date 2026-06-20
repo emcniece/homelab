@@ -46,3 +46,12 @@ data:
         allowUiUpdates: true
         options:
           path: /var/lib/grafana/dashboards/logs
+      - name: 'trailwave'
+        orgId: 1
+        folder: 'Trailwave'
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 30
+        allowUiUpdates: true
+        options:
+          path: /var/lib/grafana/dashboards/trailwave
