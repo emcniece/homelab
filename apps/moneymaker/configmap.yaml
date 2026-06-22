@@ -102,7 +102,11 @@ data:
   DRY_RUN: "false"
   USE_CLAUDE: "true"
   TICK_SECONDS: "60"
-  SESSION_MINUTES: "390"
+  # 385 = 6h25m → EOD close runs at 15:55 ET, 5 minutes before market
+  # close. With 390 (full session) the close_all_positions() call fires
+  # at 16:00 ET; by the time MARKET orders are submitted (~16:01) the
+  # exchange is shut and orders time out (6/18 + 6/22 silent ghosts).
+  SESSION_MINUTES: "385"
   TZ: "America/New_York"
 
   # ── Observability ──────────────────────────────────────────────────
