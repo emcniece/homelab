@@ -99,7 +99,14 @@ data:
   WATCHLIST_FADE: "RIVN,AFRM,HOOD,SOFI,U,LCID,DKNG,UPST,RBLX,CHWY"
 
   # ── Scheduler ──────────────────────────────────────────────────────
-  DRY_RUN: "false"
+  # Research mode 2026-06-23 → ~2026-06-30. Live execution paused after
+  # 11-day live paper run produced consistent daily losses (cumulative
+  # ~-6.7%) on what looks like a real edge problem, not an execution
+  # problem. Engine still ticks, generates signals, runs Claude calls,
+  # writes audit log — just doesn't place orders. Flip back to "false"
+  # after a backtest against the actual dynamic universe confirms (or
+  # refutes) ORB edge on the names we're really trading.
+  DRY_RUN: "true"
   USE_CLAUDE: "true"
   TICK_SECONDS: "60"
   # 385 = 6h25m → EOD close runs at 15:55 ET, 5 minutes before market
