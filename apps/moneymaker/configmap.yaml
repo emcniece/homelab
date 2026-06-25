@@ -43,7 +43,17 @@ data:
   # review_signal call. Catches the patterns Claude was vetoing anyway,
   # cutting review tokens roughly in half on chop days. Tune thresholds
   # against the weekly tuner's `heuristic_rejection_counts` block.
-  HEURISTIC_GATE_ENABLED: "true"
+  # Phase B (2026-06-24) attribution showed both gates destroy alpha:
+  # baseline backtest exp +$33/trade, heuristic gate +$10, both gates +$2.
+  # Disabled in research mode while DRY_RUN=true to observe the unfiltered
+  # funnel for 5 sessions. Re-enable selectively if any specific rule
+  # (e.g. rel_volume floor) shows attributable edge.
+  HEURISTIC_GATE_ENABLED: "false"
+  # Claude review counterfactual on 13 audit sessions: approved trades
+  # exp -$25/trade vs rejected +$107/trade. Reviewer was anti-selecting.
+  # Disabled — manage role still runs (Claude handles open positions),
+  # but every signal that survives select gets executed.
+  CLAUDE_REVIEW_ENABLED: "false"
   HEURISTIC_MIN_REL_VOLUME: "0.3"
   HEURISTIC_CHOP_MIN_RR: "1.4"   # ORB rr_target=1.5; 1.4 lets ORB clear the chop floor (VWAPFade disabled 2026-06-11)
   HEURISTIC_TREND_MIN_RR: "1.4"
