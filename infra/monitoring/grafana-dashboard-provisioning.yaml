@@ -9,16 +9,12 @@ metadata:
 data:
   dashboards.yaml: |
     apiVersion: 1
+    # NOTE: do NOT add a provider rooted at /var/lib/grafana/dashboards
+    # itself — its recursive walk overlaps every named-provider subfolder
+    # below and Grafana 11's resource manager rejects the duplicate claim
+    # ("Cannot change resource manager identity"), looping every 30s and
+    # OOMing the pod. Each provider must own a disjoint subtree.
     providers:
-      - name: 'default'
-        orgId: 1
-        folder: ''
-        type: file
-        disableDeletion: false
-        updateIntervalSeconds: 30
-        allowUiUpdates: true
-        options:
-          path: /var/lib/grafana/dashboards
       - name: 'ceph'
         orgId: 1
         folder: 'Ceph'

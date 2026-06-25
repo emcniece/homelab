@@ -67,10 +67,14 @@ spec:
           resources:
             requests:
               cpu: 100m
-              memory: 128Mi
+              memory: 256Mi
             limits:
               cpu: 500m
-              memory: 512Mi
+              # 1Gi gives headroom for file-provisioning retries on the
+              # multi-source dashboard setup. 512Mi was OOMKilling every
+              # ~5 min once Grafana 11's resource-manager-identity check
+              # got into a retry loop on provisioned dashboards.
+              memory: 1Gi
           livenessProbe:
             httpGet:
               path: /api/health
