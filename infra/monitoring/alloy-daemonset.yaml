@@ -73,10 +73,14 @@ spec:
           resources:
             requests:
               cpu: 50m
-              memory: 128Mi
+              memory: 256Mi
             limits:
               cpu: 500m
-              memory: 512Mi
+              # 1Gi gives headroom on the busy node (k3s-06 was OOMing
+              # every ~3 days at 512Mi because it tails ~3x the pod logs
+              # of the quieter nodes). DaemonSet is uniform — quiet nodes
+              # won't actually use the extra; busy ones will.
+              memory: 1Gi
           readinessProbe:
             httpGet:
               path: /-/ready
