@@ -116,7 +116,12 @@ data:
   # writes audit log — just doesn't place orders. Flip back to "false"
   # after a backtest against the actual dynamic universe confirms (or
   # refutes) ORB edge on the names we're really trading.
-  DRY_RUN: "true"
+  # Flipped back to false 2026-06-30 after research week. Live Phase B
+  # validation begins next session. Conditions for keeping it off after
+  # 5 sessions: net positive, no silent ghosts, no recurrence of the
+  # claude_exit-past-stop pattern. If any of those break, set "true" and
+  # investigate before re-flipping.
+  DRY_RUN: "false"
   USE_CLAUDE: "true"
   TICK_SECONDS: "60"
   # 385 = 6h25m → EOD close runs at 15:55 ET, 5 minutes before market
