@@ -11,6 +11,11 @@ data:
   CLAUDE_MODEL_SELECT: ""
   CLAUDE_MODEL_MANAGE: "claude-haiku-4-5"
   MANAGE_INTERVAL_MIN: "15"
+  # Regime brief refresh cadence in minutes. Originally called once at
+  # boot; 7/7 disaster (6-of-6 LONGs stopped after SPY reversed 0.77%
+  # in the first hour) exposed that the boot-time regime state stayed
+  # stale all session. 30 min catches morning reversals cheaply.
+  REGIME_REFRESH_MIN: "30"
   # Minimum unrealized P&L as a multiple of initial risk before Claude may
   # tighten the stop to break-even or better. 1.0 = price must have moved
   # a full 1R in our favor first. Set to "0" to disable.
