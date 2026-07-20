@@ -126,7 +126,14 @@ data:
   # 5 sessions: net positive, no silent ghosts, no recurrence of the
   # claude_exit-past-stop pattern. If any of those break, set "true" and
   # investigate before re-flipping.
-  DRY_RUN: "false"
+  # Flipped true 2026-07-20 after extended Phase B window (7/9-7/17)
+  # closed -$11.14 across 63 trades. Framework clean; strategy edge is the
+  # open question. Live paused while `scripts/phase_b.py` is rerun on
+  # 7/8-7/17 audit data with per-side and per-regime×side splits to
+  # localize the losing subset. Re-flip false once a positive-edge
+  # configuration is validated in backtest AND risk_per_trade lowered
+  # from 0.5 to a defensible number.
+  DRY_RUN: "true"
   USE_CLAUDE: "true"
   TICK_SECONDS: "60"
   # 385 = 6h25m → EOD close runs at 15:55 ET, 5 minutes before market
