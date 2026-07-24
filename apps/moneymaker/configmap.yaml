@@ -59,6 +59,15 @@ data:
   # Disabled — manage role still runs (Claude handles open positions),
   # but every signal that survives select gets executed.
   CLAUDE_REVIEW_ENABLED: "false"
+  # Rejects LONG signals from regime_direction_aware strategies (ORB)
+  # whenever the regime brief returns trend_up or trend_down. Phase B
+  # rerun on 7/8-7/17 audit data (209 trades) localized the alpha leak
+  # to this exact subset: LONG in either trend regime lost -$52/trade
+  # (trend_up) and -$124/trade (trend_down); every other regime × side
+  # cell was flat or positive. Ablation with this gate: kept 81% of
+  # trades, expectancy +$21.17/trade vs baseline +$6.47. Currently the
+  # only filter we've measured that adds alpha rather than costs it.
+  LONG_TREND_GATE_ENABLED: "true"
   HEURISTIC_MIN_REL_VOLUME: "0.3"
   HEURISTIC_CHOP_MIN_RR: "1.4"   # ORB rr_target=1.5; 1.4 lets ORB clear the chop floor (VWAPFade disabled 2026-06-11)
   HEURISTIC_TREND_MIN_RR: "1.4"
