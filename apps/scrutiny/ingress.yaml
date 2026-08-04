@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  name: scrutiny
+  namespace: scrutiny
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - scrutiny.lab.emc2.build
+    secretName: scrutiny-letsencrypt-tls
+  rules:
+  - host: scrutiny.lab.emc2.build
+    http:
+      paths:
+      - backend:
+          service:
+            name: scrutiny-web
+            port:
+              number: 8080
+        path: /
+        pathType: Prefix
