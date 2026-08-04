@@ -45,6 +45,9 @@ configMapGenerator:
   - name: grafana-dashboards-trailwave
     files:
       - dashboards/trailwave/trailwave-overview.json
+  - name: grafana-dashboards-scrutiny
+    files:
+      - dashboards/scrutiny/scrutiny-overview.json
 
 generatorOptions:
   # Pin the generated ConfigMap name (no hash suffix) so the Deployment's

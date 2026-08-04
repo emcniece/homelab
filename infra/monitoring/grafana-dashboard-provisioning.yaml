@@ -51,3 +51,12 @@ data:
         allowUiUpdates: true
         options:
           path: /var/lib/grafana/dashboards/trailwave
+      - name: 'scrutiny'
+        orgId: 1
+        folder: 'Scrutiny'
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 30
+        allowUiUpdates: true
+        options:
+          path: /var/lib/grafana/dashboards/scrutiny

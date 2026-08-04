@@ -137,6 +137,24 @@ data:
           - source_labels: [__meta_kubernetes_endpoint_address_target_name]
             target_label: instance
 
+      # Scrutiny — native Prometheus metrics at /api/metrics (enabled by
+      # default, no auth). See apps/scrutiny/web-service.yaml.
+      - job_name: 'scrutiny'
+        metrics_path: /api/metrics
+        scrape_interval: 60s
+        scrape_timeout: 10s
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names:
+                - scrutiny
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name]
+            action: keep
+            regex: scrutiny-web
+          - source_labels: [__meta_kubernetes_endpoint_address_target_name]
+            target_label: instance
+
       # Traefik
       - job_name: 'traefik'
         kubernetes_sd_configs:

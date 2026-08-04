@@ -130,6 +130,23 @@ The monitoring stack uses the `ceph-rbd` storage class for persistent volumes. E
 - Excludes certain filesystem types and mount points
 - Runs with appropriate security context
 
+### Scrutiny (disk S.M.A.R.T. monitoring)
+
+Grafana has an InfluxDB datasource (`Scrutiny InfluxDB`) pointed at the
+InfluxDB instance in `apps/scrutiny/` — that's where the actual per-disk
+SMART data lives (Scrutiny's own `/api/metrics` only exposes two aggregate
+counters, not enough for a real dashboard). Since Secrets don't cross
+namespaces, Grafana needs its own copy of the InfluxDB token:
+
+```sh
+TOKEN=$(kubectl -n scrutiny get secret scrutiny-influxdb -o jsonpath='{.data.TOKEN}' | base64 -d)
+kubectl -n monitoring create secret generic grafana-scrutiny-influxdb-token \
+  --from-literal=token="$TOKEN"
+```
+
+Re-run this if the `scrutiny-influxdb` Secret's token ever changes (e.g. if
+you wipe and re-provision that PVC).
+
 ## Monitoring Targets
 
 The Prometheus configuration automatically discovers and monitors:

@@ -34,3 +34,19 @@ data:
         jsonData:
           allowedHosts:
             - "http://moneymaker-engine.moneymaker.svc.cluster.local:9100"
+      - name: Scrutiny InfluxDB
+        type: influxdb
+        uid: scrutiny-influxdb
+        access: proxy
+        url: http://scrutiny-influxdb.scrutiny.svc.cluster.local:8086
+        editable: false
+        jsonData:
+          version: Flux
+          organization: scrutiny
+          defaultBucket: metrics
+          httpMode: POST
+        secureJsonData:
+          # Token is mounted from a Secret, not stored in this ConfigMap —
+          # see grafana-deployment.yaml's grafana-scrutiny-influxdb-token
+          # volume and infra/monitoring/README.md for how to create it.
+          token: $__file{/etc/secrets/scrutiny-influxdb/token}
