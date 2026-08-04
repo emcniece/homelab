@@ -64,10 +64,18 @@ data:
   # rerun on 7/8-7/17 audit data (209 trades) localized the alpha leak
   # to this exact subset: LONG in either trend regime lost -$52/trade
   # (trend_up) and -$124/trade (trend_down); every other regime × side
-  # cell was flat or positive. Ablation with this gate: kept 81% of
-  # trades, expectancy +$21.17/trade vs baseline +$6.47. Currently the
-  # only filter we've measured that adds alpha rather than costs it.
-  LONG_TREND_GATE_ENABLED: "true"
+  # cell was flat or positive. Ablation on that window: +$21.17/trade
+  # vs baseline +$6.47.
+  #
+  # Disabled 2026-08-04 after Phase B counterfactual on 7/27-8/04
+  # inverted: baseline exp -$0.07/trade, gate exp -$12.63/trade (worst
+  # ablation measured). The regime × side cells that lost on 7/8-7/17
+  # (LONG-in-trend) were the profit leaders on 7/27-8/04 (+$27.40/trade
+  # trend_down, +$10.97/trade trend_up). Static regime-side gates don't
+  # generalize week-to-week; keep off until either (a) the weekly tuner
+  # computes per-cell expectancy on a rolling window and gates on that,
+  # or (b) the gate is redesigned as strategy-level expectancy filter.
+  LONG_TREND_GATE_ENABLED: "false"
   HEURISTIC_MIN_REL_VOLUME: "0.3"
   HEURISTIC_CHOP_MIN_RR: "1.4"   # ORB rr_target=1.5; 1.4 lets ORB clear the chop floor (VWAPFade disabled 2026-06-11)
   HEURISTIC_TREND_MIN_RR: "1.4"
