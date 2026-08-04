@@ -4,6 +4,7 @@ metadata:
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: default-http-to-https-redirect@kubernetescrd
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
   name: etherpad
   namespace: default
@@ -13,8 +14,21 @@ spec:
   - hosts:
     - etherpad.lab.emc2.build
     secretName: etherpad-letsencrypt-tls
+  - hosts:
+    - etherpad.emc2.build
+    secretName: etherpad-emc2-build-letsencrypt-tls
   rules:
   - host: etherpad.lab.emc2.build
+    http:
+      paths:
+      - backend:
+          service:
+            name: etherpad
+            port:
+              number: 9001
+        path: /
+        pathType: Prefix
+  - host: etherpad.emc2.build
     http:
       paths:
       - backend:
