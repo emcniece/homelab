@@ -29,3 +29,16 @@ ansible-playbook playbooks/beelink/provision.yml -e "@secrets.yml"
 ansible-playbook playbooks/beelink/provision.yml -e "@secrets.yml" --tags os
 ansible-playbook playbooks/beelink/provision.yml -e "@secrets.yml" --tags pihole
 ```
+
+### Proxmox cluster (Ceph + ZFS hosts)
+
+Fill in real IPs/hostnames under `[proxmox]` in `inventory.ini` first. This
+installs Docker and the Scrutiny S.M.A.R.T. collector, which watches every
+physical disk on the host (Ceph OSD disks, the ZFS array, and the boot RAID)
+and reports to the Scrutiny web app running in K8s (`apps/scrutiny/`). See
+`roles/scrutiny-collector/README.md` for why this runs outside K8s.
+
+```sh
+ansible-playbook playbooks/proxmox/provision-scrutiny.yml
+ansible-playbook playbooks/proxmox/provision-scrutiny.yml --tags scrutiny
+```

@@ -1,0 +1,39 @@
+# Managed by https://github.com/emcniece/homelab
+#
+# Scrutiny collector reads S.M.A.R.T. data from this host's physical disks
+# and pushes it to the central Scrutiny web app running in K8s. This has to
+# run here rather than in K8s: our K8s nodes are VMs on Proxmox, so pods
+# never see the host's raw block devices (which are already claimed by
+# Ceph OSDs / ZFS / the boot RAID). Devices below are auto-detected from
+# ansible_devices at provision time — re-run the playbook after adding or
+# removing drives on this host.
+services:
+  scrutiny-collector:
+    container_name: scrutiny-collector
+    image: ghcr.io/starosdev/scrutiny:latest-collector-omnibus
+    cap_add:
+      - SYS_RAWIO
+      - SYS_ADMIN
+    # Docker's default AppArmor profile blocks the raw device ioctls
+    # smartctl needs, even with the devices/caps above granted. Observed
+    # concretely on pve1: smartctl --scan silently found zero devices
+    # under confinement. See Scrutiny's own
+    # docs/TROUBLESHOOTING_APPARMOR.md.
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - /run/udev:/run/udev:ro
+      # smartctl --scan (the collector's device auto-discovery step) walks
+      # /sys/class/block to enumerate devices. Without this mount, --scan
+      # silently returns zero devices even though explicit `smartctl -i
+      # /dev/X` works fine against the same node (seen on pve1).
+      - /sys:/sys:ro
+    devices:
+{% for dev in scrutiny_disks %}
+      - "/dev/{{ dev }}"
+{% endfor %}
+    environment:
+      COLLECTOR_API_ENDPOINT: '{{ scrutiny_api_endpoint }}'
+      COLLECTOR_HOST_ID: '{{ inventory_hostname }}'
+      COLLECTOR_CRON_SCHEDULE: '{{ scrutiny_collector_cron_schedule }}'
+    restart: unless-stopped

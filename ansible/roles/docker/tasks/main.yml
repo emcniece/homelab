@@ -1,10 +1,93 @@
 ---
-- name: Update repositories cache and install packages
-  apt:
-    update_cache: yes
-    pkg:
-    - docker.io
-    - docker-compose
+# Checking for a `docker` binary or even `docker compose version` isn't
+# enough — both can succeed from just the CLI/compose-plugin packages
+# (e.g. a partial prior install) without the docker-ce engine package or
+# its systemd unit actually present. Check for the unit file itself, since
+# that's the thing that's actually needed to have a running daemon.
+- name: Check whether the docker-ce engine is installed
+  stat:
+    path: /lib/systemd/system/docker.service
+  register: docker_service_unit
+
+- name: Install Docker CE + Compose v2 plugin
+  when: not docker_service_unit.stat.exists
+  block:
+    # hp/beelink playbooks run with gather_facts: no, but the steps below
+    # need ansible_distribution/ansible_architecture — gather just those
+    # explicitly rather than depending on the calling playbook's setting.
+    - name: Gather distribution/architecture facts if not already present
+      ansible.builtin.setup:
+        gather_subset:
+          - '!all'
+          - '!min'
+          - distribution
+          - architecture
+      when: ansible_distribution is not defined
+
+    # Debian/Ubuntu's docker.io/docker-compose packages lag well behind
+    # upstream and don't ship the Compose v2 CLI plugin. Install from
+    # Docker's own apt repo instead — gives us `docker compose` directly,
+    # no Python SDK needed since we drive it via the CLI (see
+    # scrutiny-collector role), not the community.docker.docker_compose
+    # Ansible module.
+    #
+    # docker-ce-cli conflicts with Debian's own docker-cli/docker-buildx/
+    # containerd packages (both provide /usr/bin/docker), so clear those
+    # out first.
+    - name: Remove distro docker packages that conflict with docker-ce
+      apt:
+        pkg:
+          - docker.io
+          - docker-compose
+          - docker-cli
+          - docker-buildx
+          - containerd
+        state: absent
+
+    - name: Install prerequisites for adding Docker's apt repo
+      apt:
+        update_cache: yes
+        pkg:
+          - ca-certificates
+          - curl
+          - gnupg
+
+    - name: Create keyrings directory
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Add Docker's GPG key
+      get_url:
+        url: 'https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg'
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+
+    - name: Add Docker's apt repo
+      apt_repository:
+        repo: >-
+          deb [arch={{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}
+          signed-by=/etc/apt/keyrings/docker.asc]
+          https://download.docker.com/linux/{{ ansible_distribution | lower }}
+          {{ ansible_distribution_release }} stable
+        filename: docker
+        state: present
+
+    - name: Install Docker Engine + Compose v2 plugin
+      apt:
+        update_cache: yes
+        pkg:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-compose-plugin
+
+- name: Ensure docker is running and enabled
+  ansible.builtin.systemd_service:
+    name: docker
+    state: started
+    enabled: true
 
 - name: Add the runtime user with a primary group of 'docker'
   user:

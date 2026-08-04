@@ -1,0 +1,17 @@
+- name: Provision Scrutiny collector on Proxmox hosts
+  hosts: proxmox
+  remote_user: root
+  gather_facts: yes
+
+  vars:
+    runtime_user: emc
+    scrutiny_api_endpoint: https://scrutiny.lab.emc2.build
+
+  tasks:
+    - import_role:
+        name: docker
+      tags: [os]
+
+    - import_role:
+        name: scrutiny-collector
+      tags: [scrutiny]

@@ -1,0 +1,48 @@
+---
+- name: Detect physical disks (sd*, vd*, nvme*, hd*) from gathered facts
+  set_fact:
+    scrutiny_disks: >-
+      {{ ansible_devices.keys()
+         | select('match', '^(sd|vd|nvme|hd)[a-z0-9]+$')
+         | sort
+         | list }}
+
+- name: Fail if no physical disks were detected
+  fail:
+    msg: >-
+      No physical disks detected via ansible_devices on {{ inventory_hostname }}.
+      This role requires gather_facts: yes — check the playbook and re-run.
+  when: scrutiny_disks | length == 0
+
+- name: Report detected disks
+  debug:
+    msg: "{{ inventory_hostname }}: collector will watch {{ scrutiny_disks | join(', ') }}"
+
+- name: Ensure apps directory exists
+  file:
+    path: '/home/{{ runtime_user }}/apps/scrutiny-collector'
+    state: directory
+    owner: '{{ runtime_user }}'
+    mode: '0755'
+
+- name: Template docker-compose to ~/apps/scrutiny-collector/
+  template:
+    src: ../files/docker-compose.yml.j2
+    dest: '/home/{{ runtime_user }}/apps/scrutiny-collector/docker-compose.yml'
+    mode: '0644'
+
+- name: Pull latest collector image
+  command:
+    cmd: docker compose pull
+    chdir: '/home/{{ runtime_user }}/apps/scrutiny-collector'
+  changed_when: false
+
+- name: Create and start scrutiny-collector
+  command:
+    cmd: docker compose up -d --remove-orphans
+    chdir: '/home/{{ runtime_user }}/apps/scrutiny-collector'
+  register: output
+  changed_when: >-
+    'Started' in (output.stdout + output.stderr)
+    or 'Created' in (output.stdout + output.stderr)
+    or 'Recreate' in (output.stdout + output.stderr)
