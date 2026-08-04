@@ -1,2 +1,12 @@
 ---
 scrutiny_collector_cron_schedule: "0 */6 * * *"
+# Label shown as the host in Scrutiny's UI. Defaults to inventory_hostname,
+# which is already a readable alias for the proxmox group (pve1/pve2/pve3)
+# but is a bare IP for hosts listed without one (e.g. [beelink]) — override
+# per-playbook in that case.
+scrutiny_host_id: "{{ inventory_hostname }}"
+# Explicit DNS server(s) for the collector container. Leave empty to use
+# Docker's default (forwards to the host's own resolver) — only needed
+# when that chain is broken, e.g. a host that runs Pi-hole itself and has
+# no working resolv.conf of its own to forward to.
+scrutiny_collector_dns: []

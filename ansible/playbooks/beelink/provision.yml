@@ -7,6 +7,13 @@
     - runtime_user: emcniece
     - ha_version: stable
     - cloudflare_domain: home.emc2.build
+    - scrutiny_api_endpoint: https://scrutiny.lab.emc2.build
+    - scrutiny_host_id: beelink
+    # This host runs Pi-hole itself, and its own /etc/resolv.conf is empty
+    # (the pihole role disables systemd-resolved to free port 53). Point
+    # the collector straight at Pi-hole's own address rather than relying
+    # on Docker forwarding to a host resolver that doesn't exist.
+    - scrutiny_collector_dns: ["192.168.10.10"]
 
   tasks:
     - import_role:
@@ -24,4 +31,8 @@
     - import_role:
         name: home-assistant
       tags: [ha]
+
+    - import_role:
+        name: scrutiny-collector
+      tags: [scrutiny]
 

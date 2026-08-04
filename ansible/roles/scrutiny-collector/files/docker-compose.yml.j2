@@ -28,12 +28,19 @@ services:
       # silently returns zero devices even though explicit `smartctl -i
       # /dev/X` works fine against the same node (seen on pve1).
       - /sys:/sys:ro
+      - ./collector.yaml:/opt/scrutiny/config/collector.yaml:ro
+{% if scrutiny_collector_dns %}
+    dns:
+{% for ns in scrutiny_collector_dns %}
+      - "{{ ns }}"
+{% endfor %}
+{% endif %}
     devices:
 {% for dev in scrutiny_disks %}
       - "/dev/{{ dev }}"
 {% endfor %}
     environment:
       COLLECTOR_API_ENDPOINT: '{{ scrutiny_api_endpoint }}'
-      COLLECTOR_HOST_ID: '{{ inventory_hostname }}'
+      COLLECTOR_HOST_ID: '{{ scrutiny_host_id }}'
       COLLECTOR_CRON_SCHEDULE: '{{ scrutiny_collector_cron_schedule }}'
     restart: unless-stopped

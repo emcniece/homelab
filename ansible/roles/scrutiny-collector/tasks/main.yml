@@ -1,4 +1,15 @@
 ---
+# This role is shared across playbooks with different gather_facts
+# settings (beelink/hp run with gather_facts: no). Gather just what we
+# need rather than depending on the caller.
+- name: Gather device facts if not already present
+  ansible.builtin.setup:
+    gather_subset:
+      - '!all'
+      - '!min'
+      - devices
+  when: ansible_devices is not defined
+
 - name: Detect physical disks (sd*, vd*, nvme*, hd*) from gathered facts
   set_fact:
     scrutiny_disks: >-
@@ -29,6 +40,12 @@
   template:
     src: ../files/docker-compose.yml.j2
     dest: '/home/{{ runtime_user }}/apps/scrutiny-collector/docker-compose.yml'
+    mode: '0644'
+
+- name: Template collector.yaml to ~/apps/scrutiny-collector/
+  template:
+    src: ../files/collector.yaml.j2
+    dest: '/home/{{ runtime_user }}/apps/scrutiny-collector/collector.yaml'
     mode: '0644'
 
 - name: Pull latest collector image

@@ -1,0 +1,17 @@
+# Managed by https://github.com/emcniece/homelab
+#
+# `smartctl --scan` (the collector's device auto-discovery step) has proven
+# unreliable for NVMe devices across every host tested here — it silently
+# finds nothing for them, even though explicit `smartctl -i /dev/nvmeXnY`
+# works fine. Declaring every detected disk here explicitly means discovery
+# no longer depends on --scan actually finding it; --scan's own results
+# (when it works, e.g. for the SAS/SATA drives here) are simply layered on
+# top of / overridden by this list, per Scrutiny's own docs.
+version: 1
+devices:
+{% for dev in scrutiny_disks %}
+  - device: /dev/{{ dev }}
+{% if dev.startswith('nvme') %}
+    type: nvme
+{% endif %}
+{% endfor %}
