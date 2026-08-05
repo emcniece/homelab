@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scrutiny-web-scrutiny-yaml
+  namespace: scrutiny
+data:
+  scrutiny.yaml: |
+    version: 1
+    smart:
+      attribute_overrides:
+        # pve3's boot SSD (Lexar SSD NS100 256GB) reports devstat_7_8
+        # (Percentage Used Endurance Indicator) as 228 against a
+        # threshold of 100 — not a physically meaningful percentage, and
+        # smartctl's own pass/fail plus Scrutiny's risk_score/
+        # risk_category both read healthy otherwise. Matches a known
+        # false-positive pattern (some drives report impossibly high
+        # values for specific devstat attributes). Scoped to this one
+        # drive's WWN rather than ignored globally, so a genuine reading
+        # on a different drive still alerts.
+        - protocol: ATA
+          attribute_id: "devstat_7_8"
+          wwn: "0x53a5a27467120ce3"
+          action: ignore

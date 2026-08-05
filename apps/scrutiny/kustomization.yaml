@@ -9,6 +9,7 @@ resources:
   - influxdb-deployment.yaml
   - influxdb-service.yaml
   - web-pvc.yaml
+  - web-configmap.yaml
   - web-deployment.yaml
   - web-service.yaml
   - ingress.yaml

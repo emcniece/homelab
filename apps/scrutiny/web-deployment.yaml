@@ -59,6 +59,15 @@ spec:
           volumeMounts:
             - mountPath: /opt/scrutiny/config
               name: scrutiny-web-config
+            # Layered on top of the PVC above via subPath — mounts just
+            # this one file without conflicting with the PVC's ownership
+            # of the rest of the directory (scrutiny.db lives there too).
+            # Note: subPath mounts don't live-update on ConfigMap change;
+            # a rollout restart is needed after editing this config.
+            - mountPath: /opt/scrutiny/config/scrutiny.yaml
+              name: scrutiny-web-configfile
+              subPath: scrutiny.yaml
+              readOnly: true
           readinessProbe:
             httpGet:
               path: /api/health
@@ -77,3 +86,6 @@ spec:
         - name: scrutiny-web-config
           persistentVolumeClaim:
             claimName: scrutiny-web-config
+        - name: scrutiny-web-configfile
+          configMap:
+            name: scrutiny-web-scrutiny-yaml
