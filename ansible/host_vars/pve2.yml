@@ -1,0 +1,6 @@
+---
+# sdf is a real (non-zero-sector) block device but a plain USB thumb drive
+# with no SMART support at all — smartctl always fails on it, firing a
+# "collector error" notification email on every scan.
+scrutiny_ignore_devices:
+  - sdf
