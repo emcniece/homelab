@@ -1,0 +1,67 @@
+---
+# Installs ssacli (HPE's Smart Storage Administrator CLI) so we can query
+# the physical drives behind an HP Smart Array RAID controller — needed to
+# derive the `smartctl -d cciss,N` index mapping used by the
+# scrutiny-collector role's scrutiny_raid_devices override (see
+# host_vars/pve1.yml). Debian's own repos don't carry ssacli; it comes
+# from HPE's own apt repo.
+- name: Check whether ssacli is already installed
+  command: which ssacli
+  register: ssacli_bin
+  changed_when: false
+  failed_when: false
+
+- name: Install ssacli from HPE's apt repo
+  when: ssacli_bin.rc != 0
+  block:
+    # This role can run under playbooks with gather_facts: no (hp does).
+    - name: Gather distribution facts if not already present
+      ansible.builtin.setup:
+        gather_subset:
+          - '!all'
+          - '!min'
+          - distribution
+      when: ansible_distribution_release is not defined
+
+    - name: Install prerequisites for adding HPE's apt repo
+      apt:
+        update_cache: yes
+        pkg:
+          - ca-certificates
+          - curl
+
+    - name: Create keyrings directory
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    # HPE publishes package-signing keys under a few different filenames
+    # across the years (hpPublicKey vs hpePublicKey, key1 vs key2) and
+    # doesn't clearly document which one actually signs the mcp repo's
+    # Release file — the repo we need failed apt's signature check until
+    # all three were present. Keeping all three is the safe/future-proof
+    # option since HPE may rotate which one is active.
+    - name: Add HPE's GPG keys
+      get_url:
+        url: '{{ item }}'
+        dest: '/etc/apt/keyrings/{{ item | basename }}'
+        mode: '0644'
+      loop:
+        - https://downloads.linux.hpe.com/SDR/hpPublicKey2048_key1.pub
+        - https://downloads.linux.hpe.com/SDR/hpePublicKey2048_key1.pub
+        - https://downloads.linux.hpe.com/SDR/hpePublicKey2048_key2.pub
+
+    - name: Add HPE Management Component Pack (MCP) apt repo
+      apt_repository:
+        repo: >-
+          deb [signed-by=/etc/apt/keyrings/hpPublicKey2048_key1.pub,/etc/apt/keyrings/hpePublicKey2048_key1.pub,/etc/apt/keyrings/hpePublicKey2048_key2.pub]
+          https://downloads.linux.hpe.com/SDR/repo/mcp/debian
+          {{ ansible_distribution_release }}/current non-free
+        filename: hpe-mcp
+        state: present
+
+    - name: Install ssacli
+      apt:
+        update_cache: yes
+        name: ssacli

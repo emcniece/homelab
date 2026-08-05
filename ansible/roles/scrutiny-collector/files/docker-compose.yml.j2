@@ -43,4 +43,11 @@ services:
       COLLECTOR_API_ENDPOINT: '{{ scrutiny_api_endpoint }}'
       COLLECTOR_HOST_ID: '{{ scrutiny_host_id }}'
       COLLECTOR_CRON_SCHEDULE: '{{ scrutiny_collector_cron_schedule }}'
+      # Default (60s) is too tight for some devices — seen concretely on
+      # pve3's sda: the web app's own POST handler legitimately takes
+      # 50-65s to ingest that device's SMART submission (data lands fine
+      # server-side; the client just gives up first and logs a spurious
+      # publish failure). Not fully root-caused, but padding the client
+      # timeout is a safe, low-cost mitigation either way.
+      COLLECTOR_API_TIMEOUT: "180"
     restart: unless-stopped

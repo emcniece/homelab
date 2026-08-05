@@ -11,10 +11,19 @@
   when: ansible_devices is not defined
 
 - name: Detect physical disks (sd*, vd*, nvme*, hd*) from gathered facts
+  # Excludes zero-sector devices — HP iLO (and similar BMC) virtual media
+  # (Virtual Floppy, LCDRIVE, etc.) show up as real block devices with a
+  # matching name but no actual backing disk. smartctl always fails on
+  # them, and every failure fires a "collector error" notification email
+  # from the web app — seen concretely on pve3's sdf/sdg.
   set_fact:
     scrutiny_disks: >-
-      {{ ansible_devices.keys()
-         | select('match', '^(sd|vd|nvme|hd)[a-z0-9]+$')
+      {{ ansible_devices
+         | dict2items
+         | selectattr('key', 'match', '^(sd|vd|nvme|hd)[a-z0-9]+$')
+         | rejectattr('value.sectors', 'equalto', '0')
+         | map(attribute='key')
+         | reject('in', scrutiny_ignore_devices)
          | sort
          | list }}
 

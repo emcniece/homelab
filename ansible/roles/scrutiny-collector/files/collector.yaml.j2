@@ -9,9 +9,20 @@
 # top of / overridden by this list, per Scrutiny's own docs.
 version: 1
 devices:
+{% set raid_devices = scrutiny_raid_devices | map(attribute='device') | list %}
 {% for dev in scrutiny_disks %}
+{% if dev not in raid_devices %}
   - device: /dev/{{ dev }}
 {% if dev.startswith('nvme') %}
     type: nvme
 {% endif %}
+{% endif %}
+{% endfor %}
+{% for raid in scrutiny_raid_devices %}
+  # {{ raid.description | default('Hardware RAID — one type entry per physical drive behind the controller.') }}
+  - device: /dev/{{ raid.device }}
+    type:
+{% for t in raid.types %}
+      - '{{ t }}'
+{% endfor %}
 {% endfor %}

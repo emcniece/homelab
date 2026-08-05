@@ -13,5 +13,9 @@
       tags: [os]
 
     - import_role:
+        name: hp-smart-array
+      tags: [os]
+
+    - import_role:
         name: cloudflare-ddns
       tags: [cfddns]

@@ -1,0 +1,32 @@
+---
+# pve1's boot (sda) and bulk-storage (sdb) arrays both sit behind an HP
+# Smart Array P420i controller (hpsa driver) — smartctl can't read them at
+# all without an explicit physical-drive index (`-d cciss,N`), confirmed
+# via `smartctl -i -d cciss,N /dev/sda` for N=0..6 matching serial numbers
+# 1:1 against `ssacli ctrl all show config detail`:
+#   cciss,0 = bay 2 (WDC WDS100T1R0A 1TB)  — array A, /dev/sda
+#   cciss,1 = bay 3 (Samsung 870 QVO 4TB)  \
+#   cciss,2 = bay 4 (Samsung 870 QVO 4TB)   |
+#   cciss,3 = bay 5 (Samsung 870 QVO 4TB)   |- array B, /dev/sdb
+#   cciss,4 = bay 6 (Samsung 870 QVO 4TB)   |
+#   cciss,5 = bay 7 (Samsung 870 QVO 4TB)   |
+#   cciss,6 = bay 8 (Samsung 870 QVO 4TB)  /
+# All 7 are reachable through /dev/sda alone — sdb doesn't need its own
+# collector.yaml entry, so it's excluded from plain per-disk scanning too
+# (it would otherwise fail the same way sda used to, every single scan).
+#
+# Re-run `ssacli ctrl all show config detail` and re-derive this mapping
+# if a drive in this array is ever replaced (bay assignment could shift).
+scrutiny_ignore_devices:
+  - sdb
+scrutiny_raid_devices:
+  - device: sda
+    description: "HP Smart Array P420i — 7 physical drives across arrays A+B"
+    types:
+      - cciss,0
+      - cciss,1
+      - cciss,2
+      - cciss,3
+      - cciss,4
+      - cciss,5
+      - cciss,6

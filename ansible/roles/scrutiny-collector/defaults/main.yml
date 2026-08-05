@@ -10,3 +10,18 @@ scrutiny_host_id: "{{ inventory_hostname }}"
 # when that chain is broken, e.g. a host that runs Pi-hole itself and has
 # no working resolv.conf of its own to forward to.
 scrutiny_collector_dns: []
+# Disk names to skip even though they're real (non-zero-sector) block
+# devices — e.g. a USB thumb drive with no SMART support at all. Set per
+# host via host_vars/<name>.yml. Zero-sector devices (BMC virtual media
+# like HP iLO's Virtual Floppy/LCDRIVE) are already excluded automatically.
+scrutiny_ignore_devices: []
+# Hardware-RAID controllers (HP Smart Array, MegaRAID, 3ware, etc.) hide
+# their physical drives behind one opaque logical device — smartctl needs
+# an explicit `-d <type>,<N>` per physical drive to see through it. Each
+# entry: {device: "sda", types: ["cciss,0", "cciss,1", ...], description}.
+# Any disk name listed here as `device` is excluded from the plain
+# per-disk loop above (it gets this multi-type entry instead) — add it to
+# scrutiny_ignore_devices too if OTHER disk names also route through the
+# same controller path and don't need their own device entry (see
+# host_vars/pve1.yml).
+scrutiny_raid_devices: []
