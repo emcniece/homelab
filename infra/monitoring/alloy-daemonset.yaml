@@ -39,6 +39,10 @@ spec:
             - --storage.path=/var/lib/alloy/data
             - --server.http.listen-addr=0.0.0.0:12345
             - --cluster.enabled=false
+            # Usage-report POSTs to stats.grafana.org fail cert validation
+            # here (egress is intercepted/routed via internal Traefik) and
+            # retry-spam "failed to send usage report" every ~30s per pod.
+            - --disable-reporting
           env:
             - name: HOSTNAME
               valueFrom:

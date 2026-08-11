@@ -115,6 +115,8 @@ data:
 
       # Node Exporter
       - job_name: 'node-exporter'
+        scrape_interval: 30s
+        scrape_timeout: 25s
         kubernetes_sd_configs:
           - role: endpoints
         relabel_configs:

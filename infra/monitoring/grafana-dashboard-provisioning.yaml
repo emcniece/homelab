@@ -15,15 +15,11 @@ data:
     # ("Cannot change resource manager identity"), looping every 30s and
     # OOMing the pod. Each provider must own a disjoint subtree.
     providers:
-      - name: 'ceph'
-        orgId: 1
-        folder: 'Ceph'
-        type: file
-        disableDeletion: false
-        updateIntervalSeconds: 30
-        allowUiUpdates: true
-        options:
-          path: /var/lib/grafana/dashboards/ceph
+      # No 'ceph' file provider: those dashboards are imported straight
+      # into Grafana's DB via import-ceph-dashboards.sh, not provisioned
+      # from a ConfigMap. A provider pointed at a path with no matching
+      # volume mount made Grafana re-fail "no such file or directory"
+      # every updateIntervalSeconds, forever.
       - name: 'moneymaker'
         orgId: 1
         folder: 'Moneymaker'

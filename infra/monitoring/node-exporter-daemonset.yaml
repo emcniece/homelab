@@ -40,7 +40,9 @@ spec:
               cpu: 5m
               memory: 16Mi
             limits:
-              cpu: 50m
+              # No CPU limit: throttling here delays metric encoding past
+              # Prometheus's scrape_timeout, which aborts the connection
+              # mid-write ("connection reset by peer" in node-exporter logs).
               memory: 50Mi
           volumeMounts:
             - name: proc
@@ -52,18 +54,21 @@ spec:
             - name: rootfs
               mountPath: /rootfs
               readOnly: true
+          # tcpSocket, not httpGet /metrics: kubelet's httpGet probe closes
+          # the connection as soon as it reads the 200 status line, while
+          # node-exporter is still mid-stream writing the rest of the
+          # metric families — every write after that errors ("connection
+          # reset by peer"/"broken pipe"), once per remaining metric
+          # family, every 10s on every node. Harmless to health, but it
+          # was the dominant source of monitoring-namespace log volume.
           livenessProbe:
-            httpGet:
-              path: /metrics
+            tcpSocket:
               port: 9100
             initialDelaySeconds: 30
-            timeoutSeconds: 30
           readinessProbe:
-            httpGet:
-              path: /metrics
+            tcpSocket:
               port: 9100
             initialDelaySeconds: 30
-            timeoutSeconds: 30
       volumes:
         - name: proc
           hostPath:
