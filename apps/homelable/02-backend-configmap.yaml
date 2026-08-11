@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backend-config
+  namespace: homelable
+data:
+  SQLITE_PATH: /app/data/homelab.db
+  CORS_ORIGINS: '["https://homelable.lab.emc2.build"]'
+  AUTH_MODE: local
+  AUTH_USERNAME: admin
+  # CIDRs Homelable is allowed to nmap-scan. Add every VLAN you want it to see
+  # (cluster LAN, media subnet, IoT/camera VLANs, etc). Verify the cluster
+  # nodes can actually route to a CIDR before adding it here — see the
+  # network-test-pod note in README.md for this app.
+  SCANNER_RANGES: '["192.168.1.0/24", "192.168.2.0/24", "192.168.10.0/23", "192.168.0.0/24"]'
+  SCANNER_HTTP_PROBE_ENABLED: "false"
+  SCANNER_HTTP_VERIFY_TLS: "false"
+  STATUS_CHECKER_INTERVAL: "60"

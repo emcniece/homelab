@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp
+  namespace: homelable
+spec:
+  # Internal only — expose via its own Ingress later if you want external
+  # AI-client access to the MCP server.
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 8001
+    targetPort: 8001
+  selector:
+    app: mcp
