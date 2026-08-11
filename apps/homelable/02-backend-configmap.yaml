@@ -15,4 +15,9 @@ data:
   SCANNER_RANGES: '["192.168.1.0/24", "192.168.2.0/24", "192.168.10.0/23", "192.168.0.0/24"]'
   SCANNER_HTTP_PROBE_ENABLED: "false"
   SCANNER_HTTP_VERIFY_TLS: "false"
+  # pve1's cert (Let's Encrypt) is only valid for pve1.lab.emc2.build, but
+  # that hostname resolves inside the cluster to the *.lab.emc2.build
+  # wildcard ingress (192.168.10.91), not the actual Proxmox host — so
+  # PROXMOX_HOST below has to be the bare IP, which fails cert SAN checks.
+  PROXMOX_VERIFY_TLS: "false"
   STATUS_CHECKER_INTERVAL: "60"
