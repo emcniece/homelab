@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  name: homelable-mcp
+  namespace: homelable
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - homelable-mcp.lab.emc2.build
+    secretName: homelable-mcp-letsencrypt-tls
+  rules:
+  - host: homelable-mcp.lab.emc2.build
+    http:
+      paths:
+      - backend:
+          service:
+            name: mcp
+            port:
+              number: 8001
+        path: /
+        pathType: Prefix
