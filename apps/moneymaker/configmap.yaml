@@ -102,11 +102,18 @@ data:
   #   margin (<$100k):   Mid-account tier. Tighter risk%, 2 concurrent positions,
   #                      broader universe. Margin buying power available.
   #   scale  ($100k+):   Risk % scales back down, 4 concurrent positions.
+  # max_notional_pct: per-tier notional cap as a fraction of equity.
+  # Historic hardcoded value was 0.25 for all tiers, which contradicted
+  # the cash tier's 50% risk_per_trade — at $395 equity the 25% cap =
+  # $99 max notional, silently zeroing every name priced above ~$100
+  # (META, AAPL, MSFT, SPY, COIN, etc.). 8/13 audit: 46 of 164 signals
+  # (28%) rejected as qty_zero, all high-priced names. Aggressive tiers
+  # need looser caps; scale tier keeps the historic 25%.
   EQUITY_TIERS_JSON: |
     [
-      {"name":"cash",   "max_equity": 25000,  "risk_per_trade": 0.50,  "max_daily_loss": 0.20, "max_open_positions": 4, "max_price": 100,   "min_avg_volume": 5000000},
-      {"name":"margin", "max_equity": 100000, "risk_per_trade": 0.015, "max_daily_loss": 0.04, "max_open_positions": 2, "max_price": 200,  "min_avg_volume": 2000000},
-      {"name":"scale",  "max_equity": null,   "risk_per_trade": 0.01,  "max_daily_loss": 0.03, "max_open_positions": 4, "max_price": 1000, "min_avg_volume": 1000000}
+      {"name":"cash",   "max_equity": 25000,  "risk_per_trade": 0.50,  "max_daily_loss": 0.20, "max_open_positions": 4, "max_price": 100,   "min_avg_volume": 5000000, "max_notional_pct": 1.5},
+      {"name":"margin", "max_equity": 100000, "risk_per_trade": 0.015, "max_daily_loss": 0.04, "max_open_positions": 2, "max_price": 200,  "min_avg_volume": 2000000, "max_notional_pct": 0.5},
+      {"name":"scale",  "max_equity": null,   "risk_per_trade": 0.01,  "max_daily_loss": 0.03, "max_open_positions": 4, "max_price": 1000, "min_avg_volume": 1000000, "max_notional_pct": 0.25}
     ]
 
   # ── Universes ──────────────────────────────────────────────────────
