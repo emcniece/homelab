@@ -8,18 +8,25 @@ jobs:
     name: Deploy
     runs-on: ubuntu-latest
     steps:
+    # tag:k8s-operator is the identity the Tailscale Connector's ACL
+    # permits to reach the 192.168.10.0/24 subnet route it advertises.
+    # tag:ci is not in the ACL — runners tagged that way can join the
+    # tailnet but can't reach cluster node IPs.
     - name: Tailscale
       uses: tailscale/github-action@v2
       with:
         oauth-client-id: ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
         oauth-secret: ${{ secrets.TAILSCALE_OAUTH_SECRET }}
-        tags: tag:ci
+        tags: tag:k8s-operator
 
+    # API server is the kube-vip VIP (.30) fronting the three control-plane
+    # nodes (k3s-01/02/03 at .38/.39/.40). Historic .222 was a stale
+    # single-node setup that no longer resolves.
     - name: Set the Kubernetes context
-      uses: azure/k8s-set-context@v2
+      uses: azure/k8s-set-context@v4
       with:
         method: service-account
-        k8s-url: https://192.168.10.222:6443
+        k8s-url: https://192.168.10.30:6443
         k8s-secret: ${{ secrets.KUBERNETES_SECRET }}
 
     - name: Checkout source code
