@@ -17,9 +17,19 @@ data:
   # stale all session. 30 min catches morning reversals cheaply.
   REGIME_REFRESH_MIN: "30"
   # Minimum unrealized P&L as a multiple of initial risk before Claude may
-  # tighten the stop to break-even or better. 1.0 = price must have moved
-  # a full 1R in our favor first. Set to "0" to disable.
-  MANAGE_BREAKEVEN_MIN_R: "1.0"
+  # tighten the stop to break-even or better. Set to "0" to disable.
+  #
+  # Lowered from 1.0 to 0.5 on 2026-08-18 after audit expectancy split
+  # over 47 trades (8/11-8/18) showed:
+  #   - trades with stop_tightened fired:      +$1.78/trade (n=5)
+  #   - trades with stop_tighten deferred:     +$0.23/trade (n=10)
+  #   - trades with no tighten attempted:      -$0.02/trade (n=42)
+  # All 10 blocked-trail trades ended as claude_partial_full (winners
+  # trimmed early). Median partial_R was ~0.5R — the 1.0R gate was
+  # rejecting Claude's trail attempts on exactly the trades that could
+  # have converted to bracket targets. Watch position.stop_tightened vs
+  # position.stop_tighten.deferred counts next week to measure impact.
+  MANAGE_BREAKEVEN_MIN_R: "0.5"
 
   # ── MooMoo OpenAPI ─────────────────────────────────────────────────
   # OpenD runs in-cluster as a sibling Deployment (opend-deployment.yaml).
