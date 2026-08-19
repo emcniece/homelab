@@ -121,7 +121,7 @@ data:
   # need looser caps; scale tier keeps the historic 25%.
   EQUITY_TIERS_JSON: |
     [
-      {"name":"cash",   "max_equity": 25000,  "risk_per_trade": 0.50,  "max_daily_loss": 0.20, "max_open_positions": 4, "max_price": 100,   "min_avg_volume": 5000000, "max_notional_pct": 1.75},
+      {"name":"cash",   "max_equity": 25000,  "risk_per_trade": 0.50,  "max_daily_loss": 0.20, "max_open_positions": 4, "max_price": 100,   "min_avg_volume": 5000000, "max_notional_pct": 2.25},
       {"name":"margin", "max_equity": 100000, "risk_per_trade": 0.015, "max_daily_loss": 0.04, "max_open_positions": 2, "max_price": 200,  "min_avg_volume": 2000000, "max_notional_pct": 0.5},
       {"name":"scale",  "max_equity": null,   "risk_per_trade": 0.01,  "max_daily_loss": 0.03, "max_open_positions": 4, "max_price": 1000, "min_avg_volume": 1000000, "max_notional_pct": 0.25}
     ]
