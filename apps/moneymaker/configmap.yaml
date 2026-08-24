@@ -19,17 +19,16 @@ data:
   # Minimum unrealized P&L as a multiple of initial risk before Claude may
   # tighten the stop to break-even or better. Set to "0" to disable.
   #
-  # Lowered from 1.0 to 0.5 on 2026-08-18 after audit expectancy split
-  # over 47 trades (8/11-8/18) showed:
-  #   - trades with stop_tightened fired:      +$1.78/trade (n=5)
-  #   - trades with stop_tighten deferred:     +$0.23/trade (n=10)
-  #   - trades with no tighten attempted:      -$0.02/trade (n=42)
-  # All 10 blocked-trail trades ended as claude_partial_full (winners
-  # trimmed early). Median partial_R was ~0.5R — the 1.0R gate was
-  # rejecting Claude's trail attempts on exactly the trades that could
-  # have converted to bracket targets. Watch position.stop_tightened vs
-  # position.stop_tighten.deferred counts next week to measure impact.
-  MANAGE_BREAKEVEN_MIN_R: "0.5"
+  # History:
+  #   1.0 → 0.5 on 2026-08-18: audit showed 42/47 trades never had a
+  #     trail even attempted, and the 10 that Claude tried were blocked
+  #     by the 1.0R gate. Trades with tightens fired were +$1.78/trade
+  #     vs -$0.02/trade without.
+  #   0.5 → 0.3 on 2026-08-24: 0.5R gate still deferred 7 of 9 trail
+  #     attempts today. CHWY was the one trail that fired end-to-end
+  #     and closed +$6.75 via stop (locked +0.5R gain). Lowering to
+  #     0.3R should unblock 5-6 of the deferred attempts per session.
+  MANAGE_BREAKEVEN_MIN_R: "0.3"
 
   # ── MooMoo OpenAPI ─────────────────────────────────────────────────
   # OpenD runs in-cluster as a sibling Deployment (opend-deployment.yaml).
