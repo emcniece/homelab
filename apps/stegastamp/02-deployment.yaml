@@ -19,6 +19,11 @@ spec:
       labels:
         app: stegastamp-web
     spec:
+      # The TensorFlow pip wheel is compiled with AVX; the only cluster node
+      # with AVX is k3s-04 (Xeon E5-2696 v2). k3s-05/06 (Xeon X5650) crash with
+      # SIGILL. Label added with: kubectl label node k3s-04 avx=true
+      nodeSelector:
+        avx: "true"
       containers:
       - name: stegastamp-web
         # Built and pushed by github.com/emcniece/stegastamp-web
@@ -36,21 +41,29 @@ spec:
           limits:
             memory: "2Gi"
             cpu: "2"
+        # First request loads the TensorFlow graph (~1 min on this node, which
+        # has AVX but not AVX2/FMA). The startupProbe gives that up to 5 min
+        # before the liveness probe takes over.
+        startupProbe:
+          httpGet:
+            path: /api/health
+            port: http
+          periodSeconds: 10
+          timeoutSeconds: 10
+          failureThreshold: 30
         readinessProbe:
           httpGet:
             path: /api/health
             port: http
-          initialDelaySeconds: 20
           periodSeconds: 10
-          timeoutSeconds: 5
+          timeoutSeconds: 10
           failureThreshold: 3
         livenessProbe:
           httpGet:
             path: /api/health
             port: http
-          initialDelaySeconds: 40
           periodSeconds: 30
-          timeoutSeconds: 5
+          timeoutSeconds: 10
           failureThreshold: 3
       tolerations:
       - key: "maintenance"
