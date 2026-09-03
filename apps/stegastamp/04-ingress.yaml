@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: default-http-to-https-redirect@kubernetescrd
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  name: stegastamp
+  namespace: stegastamp
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - stegastamp.emc2.build
+    secretName: stegastamp-emc2-build-letsencrypt-tls
+  rules:
+  - host: stegastamp.emc2.build
+    http:
+      paths:
+      - backend:
+          service:
+            name: stegastamp-web
+            port:
+              number: 80
+        path: /
+        pathType: Prefix

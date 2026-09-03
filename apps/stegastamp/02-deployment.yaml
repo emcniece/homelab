@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stegastamp-web
+  namespace: stegastamp
+  labels:
+    app: stegastamp-web
+spec:
+  replicas: 1
+  progressDeadlineSeconds: 600
+  revisionHistoryLimit: 2
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: stegastamp-web
+  template:
+    metadata:
+      labels:
+        app: stegastamp-web
+    spec:
+      containers:
+      - name: stegastamp-web
+        # Built and pushed by github.com/emcniece/stegastamp-web
+        image: ghcr.io/emcniece/stegastamp-web:latest
+        ports:
+        - containerPort: 5001
+          name: http
+        env:
+        - name: WEB_CONCURRENCY
+          value: "1"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "2"
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: http
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: http
+          initialDelaySeconds: 40
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+      tolerations:
+      - key: "maintenance"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 30
+      dnsConfig:
+        nameservers: ["8.8.8.8", "1.1.1.1"]
+        options:
+          - name: ndots
+            value: "2"
