@@ -66,6 +66,8 @@ spec:
               mountPath: /var/lib/grafana/dashboards/trailwave
             - name: grafana-dashboards-scrutiny
               mountPath: /var/lib/grafana/dashboards/scrutiny
+            - name: grafana-dashboards-glyphdex
+              mountPath: /var/lib/grafana/dashboards/glyphdex
             - name: grafana-scrutiny-influxdb-token
               mountPath: /etc/secrets/scrutiny-influxdb
               readOnly: true
@@ -124,6 +126,9 @@ spec:
         - name: grafana-dashboards-scrutiny
           configMap:
             name: grafana-dashboards-scrutiny
+        - name: grafana-dashboards-glyphdex
+          configMap:
+            name: grafana-dashboards-glyphdex
         - name: grafana-scrutiny-influxdb-token
           secret:
             # Created out-of-band — see infra/monitoring/README.md.

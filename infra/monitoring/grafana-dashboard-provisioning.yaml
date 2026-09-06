@@ -56,3 +56,12 @@ data:
         allowUiUpdates: true
         options:
           path: /var/lib/grafana/dashboards/scrutiny
+      - name: 'glyphdex'
+        orgId: 1
+        folder: 'Glyphdex'
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 30
+        allowUiUpdates: true
+        options:
+          path: /var/lib/grafana/dashboards/glyphdex

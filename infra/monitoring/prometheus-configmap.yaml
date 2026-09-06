@@ -241,3 +241,123 @@ data:
             target_label: namespace
           - source_labels: [__meta_kubernetes_service_name]
             target_label: service
+
+      # Glyphdex — one job per component so the `job` label matches what the
+      # provisioned dashboards (Grafana folder "Glyphdex") query for, same as
+      # the docker-compose reference prometheus.yml (job_name == component).
+      - job_name: 'web'
+        metrics_path: /metrics
+        scrape_interval: 30s
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names: [glyphdex]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name]
+            action: keep
+            regex: glyphdex-web
+          - source_labels: [__meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: http
+          - source_labels: [__meta_kubernetes_endpoint_address_target_name]
+            target_label: instance
+          - target_label: job
+            replacement: web
+
+      - job_name: 'mcp-server'
+        metrics_path: /metrics
+        scrape_interval: 30s
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names: [glyphdex]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name]
+            action: keep
+            regex: glyphdex-mcp
+          - source_labels: [__meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: metrics
+          - source_labels: [__meta_kubernetes_endpoint_address_target_name]
+            target_label: instance
+          - target_label: job
+            replacement: mcp-server
+
+      - job_name: 'worker'
+        metrics_path: /metrics
+        scrape_interval: 30s
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names: [glyphdex]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name]
+            action: keep
+            regex: glyphdex-worker
+          - source_labels: [__meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: metrics
+          - source_labels: [__meta_kubernetes_endpoint_address_target_name]
+            target_label: instance
+          - target_label: job
+            replacement: worker
+
+      - job_name: 'extractor'
+        metrics_path: /metrics
+        scrape_interval: 30s
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names: [glyphdex]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name]
+            action: keep
+            regex: glyphdex-extractor
+          - source_labels: [__meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: http
+          - source_labels: [__meta_kubernetes_endpoint_address_target_name]
+            target_label: instance
+          - target_label: job
+            replacement: extractor
+
+      - job_name: 'capture'
+        metrics_path: /metrics
+        scrape_interval: 30s
+        kubernetes_sd_configs:
+          - role: endpoints
+            namespaces:
+              names: [glyphdex]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_name]
+            action: keep
+            regex: glyphdex-capture
+          - source_labels: [__meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: http
+          - source_labels: [__meta_kubernetes_endpoint_address_target_name]
+            target_label: instance
+          - target_label: job
+            replacement: capture
+
+      # CNPG's built-in exporter (port 9187 on each instance pod) — no
+      # dedicated metrics Service, so this discovers pods directly rather
+      # than via Endpoints.
+      - job_name: 'postgres'
+        metrics_path: /metrics
+        scrape_interval: 30s
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: [glyphdex]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_cnpg_io_cluster]
+            action: keep
+            regex: .+
+          - source_labels: [__meta_kubernetes_pod_container_port_name]
+            action: keep
+            regex: metrics
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: instance
+          - target_label: job
+            replacement: postgres

@@ -1,0 +1,180 @@
+{
+  "uid": "glyphdex-overview",
+  "title": "Glyphdex — Overview",
+  "tags": ["glyphdex"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-6h", "to": "now" },
+  "templating": { "list": [] },
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Targets up",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      },
+      "targets": [{ "expr": "min(up{job=~\"web|mcp-server|worker|extractor|capture\"})" }]
+    },
+    {
+      "type": "stat",
+      "title": "Ollama up",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      },
+      "targets": [{ "expr": "max(glyphdex_ollama_up)" }]
+    },
+    {
+      "type": "stat",
+      "title": "Ingest queue depth",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "targets": [{ "expr": "max(glyphdex_ingest_queue_depth)" }]
+    },
+    {
+      "type": "stat",
+      "title": "Oldest ingest job (s)",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "targets": [{ "expr": "max(glyphdex_ingest_queue_oldest_seconds)" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Web request rate by status",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "targets": [
+        {
+          "expr": "sum by (status) (rate(glyphdex_http_requests_total[5m]))",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Web latency p50/p95 (s)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum(rate(glyphdex_http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(glyphdex_http_request_duration_seconds_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Search p95 latency (s)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(glyphdex_search_duration_seconds_bucket[10m])) by (le))",
+          "legendFormat": "search p95"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Retrieval leg durations p95 (s)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(glyphdex_vector_search_duration_seconds_bucket[10m])) by (le))",
+          "legendFormat": "vector"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(glyphdex_lexical_search_duration_seconds_bucket[10m])) by (le))",
+          "legendFormat": "lexical"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(glyphdex_rerank_duration_seconds_bucket[10m])) by (le))",
+          "legendFormat": "rerank"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Embedding cache events/s",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "targets": [
+        {
+          "expr": "sum by (event) (rate(glyphdex_query_embedding_cache_events_total[5m]))",
+          "legendFormat": "{{event}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Documents ingested/s by outcome",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "targets": [
+        {
+          "expr": "sum by (outcome) (rate(glyphdex_documents_ingested_total[15m]))",
+          "legendFormat": "{{outcome}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Ingest stage p95 duration (s)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(glyphdex_ingest_job_duration_seconds_bucket[30m])) by (le, stage))",
+          "legendFormat": "{{stage}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Extractor failure ratio",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "targets": [
+        {
+          "expr": "sum(rate(glyphdex_extract_requests_total{result!~\"ok|empty\"}[15m])) / clamp_min(sum(rate(glyphdex_extract_requests_total[15m])), 1)",
+          "legendFormat": "fail ratio"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Rate-limit rejections/s + failed logins/s",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
+      "targets": [
+        {
+          "expr": "sum(rate(glyphdex_rate_limit_rejections_total[5m]))",
+          "legendFormat": "rate-limit"
+        },
+        {
+          "expr": "sum(rate(glyphdex_auth_attempts_total{result=\"failure\"}[5m]))",
+          "legendFormat": "failed logins"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Postgres connections in use",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 },
+      "targets": [
+        { "expr": "sum(pg_stat_activity_count) by (instance)", "legendFormat": "{{instance}}" }
+      ]
+    }
+  ]
+}

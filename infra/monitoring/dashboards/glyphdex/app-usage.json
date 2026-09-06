@@ -1,0 +1,689 @@
+{
+  "uid": "glyphdex-app-usage",
+  "title": "Glyphdex \u2014 App usage",
+  "tags": ["glyphdex"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 3,
+  "refresh": "30s",
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "templating": {
+    "list": []
+  },
+  "panels": [
+    {
+      "type": "row",
+      "title": "Corpus",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Corpus version",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 1
+      },
+      "targets": [
+        {
+          "expr": "max(glyphdex_corpus_version)"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "query_log rows",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 1
+      },
+      "targets": [
+        {
+          "expr": "max(glyphdex_query_log_rows)"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Financial line items",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 1
+      },
+      "targets": [
+        {
+          "expr": "sum(glyphdex_financial_line_items_total)"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Archived artifact bytes",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 1
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(glyphdex_corpus_artifact_bytes_total)"
+        }
+      ],
+      "description": "Current size on disk (query_result_cache-free \u2014 recomputed from document_artifacts every 15 min), not cumulative writes."
+    },
+    {
+      "type": "timeseries",
+      "title": "Documents ingested / day by outcome",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 11
+      },
+      "targets": [
+        {
+          "expr": "sum by (outcome) (increase(glyphdex_documents_ingested_total[1d]))",
+          "legendFormat": "{{outcome}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Chunks + pages processed / hour",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 11
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(glyphdex_chunks_written_total[1h])) * 3600",
+          "legendFormat": "chunks"
+        },
+        {
+          "expr": "sum(rate(glyphdex_pages_processed_total[1h])) * 3600",
+          "legendFormat": "pages"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Reads",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 19
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Search + financial requests / s",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(glyphdex_search_requests_total[10m]))",
+          "legendFormat": "search"
+        },
+        {
+          "expr": "sum(rate(glyphdex_financial_requests_total[10m]))",
+          "legendFormat": "financial"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Artifact downloads / s by kind",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "targets": [
+        {
+          "expr": "sum by (kind) (rate(glyphdex_artifact_downloads_total[10m]))",
+          "legendFormat": "{{kind}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Saved views created + run / day",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 28
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(glyphdex_saved_view_created_total[1d]))",
+          "legendFormat": "created"
+        },
+        {
+          "expr": "sum(increase(glyphdex_saved_view_runs_total[1d]))",
+          "legendFormat": "runs"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Reports created + viewed / day",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 28
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(glyphdex_report_created_total[1d]))",
+          "legendFormat": "created"
+        },
+        {
+          "expr": "sum(increase(glyphdex_report_views_total[1d]))",
+          "legendFormat": "views"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Ask answers / day by result",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 28
+      },
+      "targets": [
+        {
+          "expr": "sum by (result) (increase(glyphdex_ask_answers_total[1d]))",
+          "legendFormat": "{{result}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Ask answer-cache events / hour",
+      "description": "hit / miss / store on the ASK_CACHE_ENABLED answer cache (\u00a78.1 exception).",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 28
+      },
+      "targets": [
+        {
+          "expr": "sum by (event) (rate(glyphdex_ask_cache_events_total[1h])) * 3600",
+          "legendFormat": "{{event}}"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Pipeline health-as-usage",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 36
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Ingest jobs / day by result",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 37
+      },
+      "targets": [
+        {
+          "expr": "sum by (result) (increase(glyphdex_ingest_jobs_total[1d]))",
+          "legendFormat": "{{result}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Re-extract requests / day by force_ocr",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 37
+      },
+      "targets": [
+        {
+          "expr": "sum by (force_ocr) (increase(glyphdex_document_reextract_requests_total[1d]))",
+          "legendFormat": "force_ocr={{force_ocr}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Cache hit / miss ratio",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 45
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(glyphdex_query_embedding_cache_events_total{event=\"hit\"}[1h])) / clamp_min(sum(rate(glyphdex_query_embedding_cache_events_total[1h])), 1)",
+          "legendFormat": "query-embedding hit"
+        },
+        {
+          "expr": "sum(rate(glyphdex_financial_cache_events_total{event=\"hit\"}[1h])) / clamp_min(sum(rate(glyphdex_financial_cache_events_total[1h])), 1)",
+          "legendFormat": "financial hit"
+        },
+        {
+          "expr": "sum(rate(glyphdex_ask_cache_events_total{event=\"hit\"}[1h])) / clamp_min(sum(rate(glyphdex_ask_cache_events_total{event=~\"hit|miss\"}[1h])), 1)",
+          "legendFormat": "ask-answer hit"
+        },
+        {
+          "expr": "sum(rate(glyphdex_search_cache_events_total{event=\"hit\"}[1h])) / clamp_min(sum(rate(glyphdex_search_cache_events_total{event=~\"hit|miss\"}[1h])), 1)",
+          "legendFormat": "search hit"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Extract-quality flags opened / resolved per day by kind",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 45
+      },
+      "targets": [
+        {
+          "expr": "sum by (kind) (increase(glyphdex_extract_flags_total[1d]))",
+          "legendFormat": "opened \u2014 {{kind}}"
+        },
+        {
+          "expr": "sum by (kind) (increase(glyphdex_extract_flags_resolved_total[1d]))",
+          "legendFormat": "resolved \u2014 {{kind}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Open extract-quality flags (backlog) by kind + severity",
+      "description": "Live triage backlog \u2014 glyphdex_extract_flags_open, refreshed on the worker rollup cron. financial:* flags come from scanFinancialRows.",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 45
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (kind, severity) (glyphdex_extract_flags_open)",
+          "legendFormat": "{{kind}} \u00b7 {{severity}}"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Automated sources",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 53
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Source polls / hour by result",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 54
+      },
+      "targets": [
+        {
+          "expr": "sum by (result) (rate(glyphdex_scrape_runs_total[1h])) * 3600",
+          "legendFormat": "{{result}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Scraped items / day by outcome",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 54
+      },
+      "targets": [
+        {
+          "expr": "sum by (outcome) (increase(glyphdex_scrape_items_total[1d]))",
+          "legendFormat": "{{outcome}}"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Indexed documents",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 6
+      },
+      "targets": [
+        {
+          "expr": "sum(glyphdex_corpus_documents_total{status=\"indexed\"})"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Total pages",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 6
+      },
+      "targets": [
+        {
+          "expr": "max(glyphdex_corpus_pages_total)"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Paid & post-v1 features",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 62
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Watches created / removed / day",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 63
+      },
+      "targets": [
+        {
+          "expr": "sum by (action) (increase(glyphdex_watches_total[1d]))",
+          "legendFormat": "{{action}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Watch alerts / day by result",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 63
+      },
+      "targets": [
+        {
+          "expr": "sum by (result) (increase(glyphdex_watch_alerts_total[1d]))",
+          "legendFormat": "{{result}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Saved-view change alerts / day by result",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 63
+      },
+      "targets": [
+        {
+          "expr": "sum by (result) (increase(glyphdex_view_alerts_total[1d]))",
+          "legendFormat": "{{result}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Embeds: create/remove + widget renders / day",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 63
+      },
+      "targets": [
+        {
+          "expr": "sum by (action) (increase(glyphdex_embeds_total[1d]))",
+          "legendFormat": "{{action}}"
+        },
+        {
+          "expr": "sum by (result) (increase(glyphdex_embed_renders_total[1d]))",
+          "legendFormat": "render {{result}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Bulk exports / day by dataset + format",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 71
+      },
+      "targets": [
+        {
+          "expr": "sum by (dataset, format) (increase(glyphdex_bulk_exports_total[1d]))",
+          "legendFormat": "{{dataset}} {{format}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Financial analytics requests / day by result",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 71
+      },
+      "targets": [
+        {
+          "expr": "sum by (result) (increase(glyphdex_financial_analytics_requests_total[1d]))",
+          "legendFormat": "{{result}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Community reviews / day by verdict",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 71
+      },
+      "targets": [
+        {
+          "expr": "sum by (verdict) (increase(glyphdex_community_reviews_total[1d]))",
+          "legendFormat": "{{verdict}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Text corrections / day by outcome",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 71
+      },
+      "targets": [
+        {
+          "expr": "sum by (outcome) (increase(glyphdex_text_corrections_total[1d]))",
+          "legendFormat": "{{outcome}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "In-document search / hour by result",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 79
+      },
+      "targets": [
+        {
+          "expr": "sum by (result) (increase(glyphdex_indoc_search_total[1h]))",
+          "legendFormat": "{{result}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "MCP resource reads / day by resource + result",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 79
+      },
+      "targets": [
+        {
+          "expr": "sum by (resource, result) (increase(glyphdex_mcp_resource_reads_total[1d]))",
+          "legendFormat": "{{resource}} {{result}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Popular-query requests / day by scope",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 79
+      },
+      "targets": [
+        {
+          "expr": "sum by (scope) (increase(glyphdex_popular_query_requests_total[1d]))",
+          "legendFormat": "{{scope}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Review-steward awards / 30d",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 79
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(glyphdex_review_quota_awards_total[30d]))",
+          "legendFormat": "awards"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Ask latency p50 / p95",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 0,
+        "y": 87
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(glyphdex_ask_duration_seconds_bucket[10m])))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(glyphdex_ask_duration_seconds_bucket[10m])))",
+          "legendFormat": "p95"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Ask tokens / hour by kind",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 6,
+        "y": 87
+      },
+      "targets": [
+        {
+          "expr": "sum by (kind) (rate(glyphdex_ask_tokens_total[1h]) * 3600)",
+          "legendFormat": "{{kind}}"
+        }
+      ]
+    }
+  ]
+}

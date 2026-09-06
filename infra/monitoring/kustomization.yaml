@@ -48,6 +48,12 @@ configMapGenerator:
   - name: grafana-dashboards-scrutiny
     files:
       - dashboards/scrutiny/scrutiny-overview.json
+  - name: grafana-dashboards-glyphdex
+    files:
+      - dashboards/glyphdex/overview.json
+      - dashboards/glyphdex/performance.json
+      - dashboards/glyphdex/app-usage.json
+      - dashboards/glyphdex/human-usage.json
 
 generatorOptions:
   # Pin the generated ConfigMap name (no hash suffix) so the Deployment's

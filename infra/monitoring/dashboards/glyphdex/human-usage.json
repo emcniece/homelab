@@ -1,0 +1,169 @@
+{
+  "uid": "glyphdex-human-usage",
+  "title": "Glyphdex — Human usage (web vs MCP)",
+  "tags": ["glyphdex"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-7d", "to": "now" },
+  "templating": { "list": [] },
+  "description": "Aggregates only — no fingerprint values, no identities (PLAN §8.3).",
+  "panels": [
+    {
+      "type": "row",
+      "title": "Which door",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Queries / s by source (stacked)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "fieldConfig": { "defaults": { "custom": { "stacking": { "mode": "normal" } } } },
+      "targets": [
+        {
+          "expr": "sum by (source) (rate(glyphdex_query_log_total[10m]))",
+          "legendFormat": "{{source}}"
+        }
+      ]
+    },
+    {
+      "type": "piechart",
+      "title": "Query mix by tool (7d)",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 1 },
+      "targets": [
+        {
+          "expr": "sum by (tool) (increase(glyphdex_query_log_total[7d]))",
+          "legendFormat": "{{tool}}"
+        }
+      ]
+    },
+    {
+      "type": "piechart",
+      "title": "Fingerprint kind (7d)",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 1 },
+      "targets": [
+        {
+          "expr": "sum by (fingerprint_kind) (increase(glyphdex_query_log_total[7d]))",
+          "legendFormat": "{{fingerprint_kind}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "query_log rows in last 7d by source",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 9 },
+      "targets": [{ "expr": "glyphdex_query_log_by_source", "legendFormat": "{{source}}" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "MCP tool calls / s by tool",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 9 },
+      "targets": [
+        {
+          "expr": "sum by (tool) (rate(glyphdex_mcp_tool_calls_total[10m]))",
+          "legendFormat": "{{tool}}"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Distinct callers",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 }
+    },
+    {
+      "type": "stat",
+      "title": "Distinct callers — web (24h)",
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 17 },
+      "targets": [{ "expr": "max(glyphdex_active_callers{source=\"web\", window=\"24h\"})" }]
+    },
+    {
+      "type": "stat",
+      "title": "Distinct callers — MCP (24h)",
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 17 },
+      "targets": [{ "expr": "max(glyphdex_active_callers{source=\"mcp\", window=\"24h\"})" }]
+    },
+    {
+      "type": "stat",
+      "title": "Distinct callers — web (7d)",
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 17 },
+      "targets": [{ "expr": "max(glyphdex_active_callers{source=\"web\", window=\"7d\"})" }]
+    },
+    {
+      "type": "stat",
+      "title": "Distinct callers — MCP (7d)",
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 17 },
+      "targets": [{ "expr": "max(glyphdex_active_callers{source=\"mcp\", window=\"7d\"})" }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Distinct-caller trend by source + window",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 22 },
+      "targets": [{ "expr": "glyphdex_active_callers", "legendFormat": "{{source}} / {{window}}" }]
+    },
+    {
+      "type": "row",
+      "title": "Auth door",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 30 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Password logins / s by result",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 31 },
+      "targets": [
+        {
+          "expr": "sum by (result) (rate(glyphdex_auth_attempts_total[10m]))",
+          "legendFormat": "{{result}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "API-key auths / s by result",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 31 },
+      "targets": [
+        {
+          "expr": "sum by (result) (rate(glyphdex_api_key_auth_total[10m]))",
+          "legendFormat": "{{result}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Rate-limit rejections / s by reason",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 31 },
+      "targets": [
+        {
+          "expr": "sum by (reason) (rate(glyphdex_rate_limit_rejections_total[10m]))",
+          "legendFormat": "{{reason}}"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Free-tier limits",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 39
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Free-tier quota rejections / s by source + limit",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 40
+      },
+      "targets": [
+        {
+          "expr": "sum by (source, limit) (rate(glyphdex_free_quota_rejections_total[10m]))",
+          "legendFormat": "{{source}} / {{limit}}"
+        }
+      ]
+    }
+  ]
+}
