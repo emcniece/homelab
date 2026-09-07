@@ -37,7 +37,13 @@ spec:
         name: organizr
         ports:
         - containerPort: 80
-        resources: {}
+        resources:
+          requests:
+            cpu: 10m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
         volumeMounts:
         - mountPath: /config
           name: organizr-config

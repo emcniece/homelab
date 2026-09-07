@@ -26,6 +26,13 @@ spec:
       containers:
       - name: homer
         image: b4bz/homer:latest
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
         volumeMounts:
         - name: homer-config
           mountPath: /www/assets

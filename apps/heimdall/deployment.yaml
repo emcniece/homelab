@@ -23,6 +23,13 @@ spec:
       containers:
       - name: heimdall
         image: lscr.io/linuxserver/heimdall:latest
+        resources:
+          requests:
+            cpu: 10m
+            memory: 64Mi
+          limits:
+            cpu: 300m
+            memory: 256Mi
         volumeMounts:
         - name: heimdall-config
           mountPath: /config

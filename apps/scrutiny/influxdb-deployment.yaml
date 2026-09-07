@@ -23,6 +23,13 @@ spec:
       containers:
         - name: influxdb
           image: influxdb:2.9
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
           ports:
             - containerPort: 8086
           env:

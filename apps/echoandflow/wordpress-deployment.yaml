@@ -23,6 +23,13 @@ spec:
       containers:
         - name: wordpress
           image: wordpress:6.8.3-php8.1-apache
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
           ports:
             - containerPort: 80
               name: wordpress
@@ -51,7 +58,13 @@ spec:
           image: redis:3-alpine
           imagePullPolicy: ""
           name: redis
-          resources: {}
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
           ports:
             - containerPort: 6379
               name: redis    

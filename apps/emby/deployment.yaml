@@ -37,7 +37,13 @@ spec:
         name: emby
         ports:
         - containerPort: 8096
-        resources: {}
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+          limits:
+            cpu: "4"
+            memory: 2Gi
         volumeMounts:
         - mountPath: /config
           name: emby-config

@@ -43,7 +43,13 @@ spec:
         name: calibre-web
         ports:
         - containerPort: 8083
-        resources: {}
+        resources:
+          requests:
+            cpu: 25m
+            memory: 256Mi
+          limits:
+            cpu: "1"
+            memory: 512Mi
         volumeMounts:
         - mountPath: /config
           name: calibre-web-config

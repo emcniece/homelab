@@ -40,7 +40,13 @@ spec:
           protocol: UDP
         - containerPort: 1900 # optional: Service Discovery, DLNA
           protocol: UDP
-        resources: {}
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+          limits:
+            cpu: "4"
+            memory: 2Gi
         volumeMounts:
         - mountPath: /config
           name: jellyfin-config

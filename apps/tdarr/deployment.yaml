@@ -65,7 +65,13 @@ spec:
           name: webui
         - containerPort: 8266
           name: server
-        resources: {}
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+          limits:
+            cpu: "2"
+            memory: 1Gi
         volumeMounts:
         - mountPath: /app/server
           name: tdarr-server
@@ -184,7 +190,13 @@ spec:
           value: '0'
         - name: healthcheckcpuWorkers
           value: '1'
-        resources: {}
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: "4"
+            memory: 2Gi
         volumeMounts:
         - mountPath: /app/configs
           name: tdarr-config

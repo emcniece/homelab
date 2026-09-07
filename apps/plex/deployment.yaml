@@ -65,7 +65,13 @@ spec:
         - containerPort: 5353
           protocol: UDP
         - containerPort: 8324
-        resources: {}
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+          limits:
+            cpu: "4"
+            memory: 2Gi
         volumeMounts:
         - mountPath: /config
           name: plex-config

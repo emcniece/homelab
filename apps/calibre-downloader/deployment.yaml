@@ -43,7 +43,13 @@ spec:
         name: calibre-downloader
         ports:
         - containerPort: 8084
-        resources: {}
+        resources:
+          requests:
+            cpu: 10m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
         volumeMounts:
         - mountPath: /auth/app.db
           name: calibre-downloader-config

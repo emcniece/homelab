@@ -19,6 +19,13 @@ spec:
       containers:
       - name: database
         image: mariadb:10.11
+        resources:
+          requests:
+            cpu: 100m
+            memory: 384Mi
+          limits:
+            cpu: "1"
+            memory: 768Mi
         args:
           - "--ignore-db-dir=lost+found"
           - "--skip-ssl"

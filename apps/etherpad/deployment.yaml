@@ -30,6 +30,13 @@ spec:
       containers:
       - name: etherpad
         image: etherpad/etherpad:3
+        resources:
+          requests:
+            cpu: 50m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
         ports:
         - containerPort: 9001
         env:

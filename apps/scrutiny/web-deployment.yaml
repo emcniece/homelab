@@ -23,6 +23,13 @@ spec:
       containers:
         - name: web
           image: ghcr.io/starosdev/scrutiny:latest-web
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
           ports:
             - containerPort: 8080
           env:

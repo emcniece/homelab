@@ -26,6 +26,13 @@ spec:
       - name: whoami
         image: traefik/whoami:latest
         args: ["--verbose"]
+        resources:
+          requests:
+            cpu: 5m
+            memory: 16Mi
+          limits:
+            cpu: 100m
+            memory: 64Mi
       tolerations:
       - key: "maintenance"
         operator: "Exists"
