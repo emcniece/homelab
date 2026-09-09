@@ -1,0 +1,51 @@
+# Same protection as apps/createsleeprepeat/xmlrpc-block.yaml — WordPress's
+# xmlrpc.php is a common pingback/brute-force flood target, and this cluster
+# already had one site (createsleeprepeat.ca) taken down by exactly that.
+# Applied proactively here, before this site suffers the same.
+#
+# Blocks the endpoint at the Traefik ingress, before it ever reaches the pod:
+# an ipAllowList middleware with a source range that matches no real client
+# makes Traefik return 403 for every request to that path. A separate
+# Ingress object (same host, but an Exact match on /xmlrpc.php) is required
+# because router.middlewares applies per-Ingress-object, not per-path — the
+# main kamloopsdentalsociety Ingress (wordpress-deployment.yaml) keeps
+# handling everything else unchanged. Traefik prefers the more specific
+# (Exact) matcher over the general "/" Prefix rule, so this takes precedence
+# only for xmlrpc.php.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: block-xmlrpc
+  namespace: kdds
+spec:
+  ipAllowList:
+    sourceRange:
+      - 255.255.255.255/32
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: 'true'
+    traefik.ingress.kubernetes.io/router.middlewares: kdds-block-xmlrpc@kubernetescrd
+    cert-manager.io/cluster-issuer: 'letsencrypt-prod'
+  name: kamloopsdentalsociety-block-xmlrpc
+  namespace: kdds
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - kamloopsdentalsociety.com
+      secretName: kamloopsdentalsociety-tls
+  rules:
+    - host: kamloopsdentalsociety.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: wordpress-service
+                port:
+                  number: 80
+            path: /xmlrpc.php
+            pathType: Exact
