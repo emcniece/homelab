@@ -1,0 +1,53 @@
+# createsleeprepeat.ca was hit by a sustained XML-RPC flood: dozens of
+# concurrent POST /xmlrpc.php requests each hanging 100-400+s (the classic
+# WordPress pingback/brute-force abuse pattern), exhausting Apache's
+# MaxRequestWorkers pool so legitimate requests couldn't get a worker and
+# timed out — the site looked fully down externally even though the pod was
+# healthy and still serving other paths internally.
+#
+# Blocks the endpoint at the Traefik ingress, before it ever reaches the pod:
+# an ipWhiteList middleware with a source range that matches no real client
+# makes Traefik return 403 for every request to that path. A separate
+# Ingress object (same host, but an Exact match on /xmlrpc.php) is required
+# because router.middlewares applies per-Ingress-object, not per-path — the
+# main createsleeprepeat Ingress (wordpress-deployment.yaml) keeps handling
+# everything else unchanged. Traefik prefers the more specific (Exact)
+# matcher over the general "/" Prefix rule, so this takes precedence only
+# for xmlrpc.php.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: block-xmlrpc
+  namespace: createsleeprepeat
+spec:
+  ipAllowList:
+    sourceRange:
+      - 255.255.255.255/32
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: 'true'
+    traefik.ingress.kubernetes.io/router.middlewares: createsleeprepeat-block-xmlrpc@kubernetescrd
+    cert-manager.io/cluster-issuer: 'letsencrypt-prod'
+  name: createsleeprepeat-block-xmlrpc
+  namespace: createsleeprepeat
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - createsleeprepeat.ca
+      secretName: createsleeprepeat-ca-letsencrypt-tls
+  rules:
+    - host: createsleeprepeat.ca
+      http:
+        paths:
+          - backend:
+              service:
+                name: wordpress-service
+                port:
+                  number: 80
+            path: /xmlrpc.php
+            pathType: Exact
