@@ -17,7 +17,7 @@ Team knowledge base / wiki, published at **https://docs.emc2.build**.
 | `01-secret.example.yaml` | template — copy to `01-secret.yaml` (gitignored) and fill in |
 | `10-postgres.yaml` | Postgres PVC + Deployment + Service |
 | `20-redis.yaml` | Redis Deployment + Service |
-| `40-outline.yaml` | migrate initContainer + Outline Deployment + Service |
+| `40-outline.yaml` | Outline Deployment + Service (auto-migrates on start) |
 | `50-ingress.yaml` | Traefik ingress for `docs.emc2.build` + LE cert |
 
 ## First-time setup
@@ -94,12 +94,15 @@ kubectl -n outline get pods -w
 The first user to sign in via Google becomes the admin. Restrict who else can
 join under **Settings → Security** (allowed domains / invite-only).
 
+First boot runs ~10 years of DB migrations (~3 min) before the app listens;
+the `startupProbe` covers this. `kubectl -n outline logs -f deploy/outline`
+to watch.
+
 ## Operations
 
-**Re-run migrations manually:**
-```sh
-kubectl -n outline exec deploy/outline -- yarn db:migrate
-```
+Outline runs pending migrations itself on every start (the `outlinewiki/outline`
+image no longer ships `yarn`, so there is no separate migrate step). To force
+it: `kubectl -n outline rollout restart deploy/outline`.
 
 **Postgres backup:**
 ```sh

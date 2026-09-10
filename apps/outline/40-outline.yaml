@@ -30,43 +30,10 @@ spec:
             - /bin/sh
             - -c
             - 'until pg_isready -h postgres -U "$POSTGRES_USER"; do echo waiting for postgres; sleep 2; done'
-        # Run database migrations before the app starts.
-        - name: migrate
-          image: outlinewiki/outline:latest
-          imagePullPolicy: IfNotPresent
-          command: ["yarn", "db:migrate"]
-          env:
-            - name: NODE_ENV
-              value: production
-            - name: PGSSLMODE
-              value: disable
-            - name: POSTGRES_USER
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_USER
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_PASSWORD
-            - name: POSTGRES_DB
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-secret
-                  key: POSTGRES_DB
-            - name: DATABASE_URL
-              value: postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/$(POSTGRES_DB)
-            - name: SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: outline-secret
-                  key: SECRET_KEY
-            - name: UTILS_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: outline-secret
-                  key: UTILS_SECRET
+        # Note: Outline runs pending DB migrations itself on startup
+        # (server/scripts/checkMigrations via checkPendingMigrations), so no
+        # separate migrate step is needed. replicas:1 + Recreate keeps that
+        # single-writer.
       containers:
         - name: outline
           image: outlinewiki/outline:latest
@@ -137,19 +104,27 @@ spec:
             limits:
               memory: "1Gi"
               cpu: "1"
+          # Generous first-boot window (image start + migrations) before
+          # liveness kicks in.
+          startupProbe:
+            httpGet:
+              path: /_health
+              port: 3000
+            periodSeconds: 10
+            timeoutSeconds: 5
+            # First boot on a fresh DB runs ~10 years of migrations (~3 min).
+            failureThreshold: 60
           readinessProbe:
             httpGet:
               path: /_health
               port: 3000
-            initialDelaySeconds: 15
             periodSeconds: 10
             timeoutSeconds: 5
-            failureThreshold: 6
+            failureThreshold: 3
           livenessProbe:
             httpGet:
               path: /_health
               port: 3000
-            initialDelaySeconds: 45
             periodSeconds: 30
             timeoutSeconds: 5
             failureThreshold: 3
