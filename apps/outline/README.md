@@ -6,9 +6,8 @@ Team knowledge base / wiki, published at **https://docs.emc2.build**.
 - **Auth:** Google OAuth (only sign-in method configured)
 - **DB:** in-namespace Postgres 16 (`csi-rbd-sc`, 5Gi)
 - **Cache/queue:** in-namespace Redis 7 (ephemeral)
-- **File storage:** in-namespace MinIO (`csi-rbd-sc`, 20Gi), bucket `outline`.
-  S3 API published at **https://s3.emc2.build** (the browser uploads/downloads
-  there directly via presigned URLs); the MinIO console stays internal.
+- **File storage:** Backblaze B2 (S3-compatible API). Outline's browser
+  uploads/downloads directly against the B2 endpoint via presigned URLs.
 
 ## Components
 
@@ -18,9 +17,6 @@ Team knowledge base / wiki, published at **https://docs.emc2.build**.
 | `01-secret.example.yaml` | template — copy to `01-secret.yaml` (gitignored) and fill in |
 | `10-postgres.yaml` | Postgres PVC + Deployment + Service |
 | `20-redis.yaml` | Redis Deployment + Service |
-| `30-minio.yaml` | MinIO PVC + Deployment + Service (S3 API :9000, console :9001) |
-| `31-minio-bucket-job.yaml` | creates the `outline` bucket + scoped access key |
-| `35-minio-ingress.yaml` | Traefik ingress for `s3.emc2.build` (S3 API only) + LE cert |
 | `40-outline.yaml` | migrate initContainer + Outline Deployment + Service |
 | `50-ingress.yaml` | Traefik ingress for `docs.emc2.build` + LE cert |
 
@@ -35,37 +31,55 @@ OAuth client ID**:
 - Authorized JavaScript origin: `https://docs.emc2.build`
 - Authorized redirect URI: `https://docs.emc2.build/auth/google.callback`
 
-Also configure the OAuth consent screen (External, add your email as a test
-user, or publish). Copy the client ID and secret.
+Configure the OAuth consent screen (External; add your email as a test user or
+publish). Copy the client ID and secret.
 
-### 2. Secret
+### 2. Backblaze B2 bucket
+
+1. **Create a bucket** (private). Note its **Endpoint**
+   (e.g. `s3.us-west-004.backblazeb2.com`) — the region is the middle segment
+   (`us-west-004`).
+2. **Application key:** B2 → *Application Keys* → *Add a New Application Key*,
+   scoped to that bucket, read + write. Save the `keyID` and `applicationKey`.
+3. **CORS:** the browser POSTs/GETs directly to B2, so the bucket needs CORS
+   rules. Bucket → *CORS Rules*. Either "Share everything in this bucket with
+   every origin", or a scoped rule:
+   - Allowed origins: `https://docs.emc2.build`
+   - Allowed operations: `s3_head`, `s3_get`, `s3_put`, `s3_post`, `s3_delete`
+   - Allowed headers: `*`
+   - Expose headers: `ETag`, `Content-Length`
+   Via CLI: `b2 bucket update --cors-rules "$(cat cors.json)" <bucket> allPrivate`
+
+### 3. Secret
 
 ```sh
 cp apps/outline/01-secret.example.yaml apps/outline/01-secret.yaml
 # fill in:
-#   POSTGRES_PASSWORD        openssl rand -hex 20
-#   MINIO_ROOT_PASSWORD      openssl rand -hex 20
-#   OUTLINE_S3_SECRET_KEY    openssl rand -hex 20
-#   SECRET_KEY               openssl rand -hex 32
-#   UTILS_SECRET             openssl rand -hex 32
-#   GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET   from step 1
+#   POSTGRES_PASSWORD                       openssl rand -hex 20
+#   SECRET_KEY, UTILS_SECRET                openssl rand -hex 32
+#   GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET from step 1
+#   AWS_ACCESS_KEY_ID                       B2 keyID
+#   AWS_SECRET_ACCESS_KEY                   B2 applicationKey
+#   AWS_REGION                              e.g. us-west-004
+#   AWS_S3_UPLOAD_BUCKET_URL                https://s3.<region>.backblazeb2.com
+#   AWS_S3_UPLOAD_BUCKET_NAME               the bucket name
 ```
 
-`01-secret.yaml` is gitignored (this repo is public). The committed
-`01-secret.yaml` in the initial deploy already has the random values filled;
-only the two `GOOGLE_*` keys need to be set before logins work.
+`01-secret.yaml` is gitignored (this repo is public). In the initial commit it
+already has the random `SECRET_KEY` / `UTILS_SECRET` / `POSTGRES_PASSWORD`
+filled; the `GOOGLE_*` and B2 values are `REPLACE_ME`.
 
-### 3. DNS
+### 4. DNS
 
-Add Cloudflare DNS records for **`docs.emc2.build`** and **`s3.emc2.build`**,
-each matching `planka.emc2.build` (same target, proxied). The LE certs use the
-DNS-01 solver so they issue once the records exist.
+Add a Cloudflare DNS record for `docs.emc2.build` matching `planka.emc2.build`
+(same target, proxied). The LE cert uses the DNS-01 solver so it issues once
+the record exists.
 
-> If Cloudflare proxying is on, make sure the upload size limit is acceptable
-> (free plan caps request bodies at 100 MB) or set an appropriate
-> `FILE_STORAGE_UPLOAD_MAX_SIZE` in `40-outline.yaml`.
+> If Cloudflare proxying is on, note the free plan caps request bodies at
+> 100 MB. Uploads go browser → B2 directly (not through the proxy), so this
+> only limits Outline's own API payloads, not attachments.
 
-### 4. Deploy
+### 5. Deploy
 
 ```sh
 export KUBECONFIG=~/.kube/config-homelab
@@ -75,27 +89,12 @@ kubectl apply -f apps/outline/            # the rest
 kubectl -n outline get pods -w
 ```
 
-Apply order matters only in that the namespace and secrets come first;
-`kubectl apply -f apps/outline/` re-applies everything and is safe to repeat.
-
-### 5. First login
+### 6. First login
 
 The first user to sign in via Google becomes the admin. Restrict who else can
 join under **Settings → Security** (allowed domains / invite-only).
 
 ## Operations
-
-**MinIO console:**
-```sh
-kubectl -n outline port-forward svc/minio 9001:9001
-# http://localhost:9001  (MINIO_ROOT_USER / MINIO_ROOT_PASSWORD)
-```
-
-**Re-run the bucket job:**
-```sh
-kubectl -n outline delete job minio-bucket-setup
-kubectl apply -f apps/outline/31-minio-bucket-job.yaml
-```
 
 **Re-run migrations manually:**
 ```sh
@@ -108,16 +107,19 @@ kubectl -n outline exec deploy/postgres -- \
   sh -c 'pg_dump -U outline outline' > outline-$(date +%F).sql
 ```
 
+Attachments live in B2 — back that up with B2 lifecycle rules / versioning.
+
 ## Notes / follow-ups
 
 - **Pin the image.** `outlinewiki/outline:latest` is used to match repo
   convention; pin to a released tag (e.g. `outlinewiki/outline:0.82.0`) so a
   future release with breaking migrations can't roll in unnoticed.
-- **MCP server.** To let Claude read/write docs, run an Outline MCP server
-  (community: `outline-mcp` / `mcp-outline`) pointed at
-  `https://docs.emc2.build` with an API token from **Settings → API Tokens**.
+- **MCP server.** To let Claude read/write docs, generate an API token in
+  Outline (**Settings → API Tokens**) and run a community Outline MCP server
+  (`outline-mcp` / `mcp-outline`) pointed at `https://docs.emc2.build`.
 - If Outline hits an HTTPS redirect loop behind Traefik, set
-  `FORCE_HTTPS=false` in `40-outline.yaml` (Traefik already terminates TLS and
-  the ingress redirects http→https).
+  `FORCE_HTTPS=false` in `40-outline.yaml`.
 - SMTP is not configured, so email invites/notifications are disabled. Add
   `SMTP_*` env vars later if wanted.
+- If B2 rejects presigned requests, try `AWS_S3_FORCE_PATH_STYLE=false` in
+  `40-outline.yaml` (B2's S3 API accepts both; path-style is the default here).
