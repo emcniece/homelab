@@ -21,6 +21,18 @@ spec:
             app.kubernetes.io/component: backup
         spec:
           restartPolicy: OnFailure
+          # grafana-storage is a ReadWriteOnce Ceph RBD volume held by the
+          # grafana pod, so the backup pod must land on the same node to mount
+          # it. Without this it schedules anywhere and hangs on FailedMount,
+          # and concurrencyPolicy: Forbid then blocks all subsequent backups.
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/name: grafana
+                      app.kubernetes.io/component: server
+                  topologyKey: kubernetes.io/hostname
           containers:
             - name: backup
               image: alpine:latest
