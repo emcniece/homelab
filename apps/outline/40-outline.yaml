@@ -53,7 +53,7 @@ spec:
             - containerPort: 3000
               name: http
           envFrom:
-            # SECRET_KEY, UTILS_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+            # SECRET_KEY, UTILS_SECRET, OIDC_CLIENT_ID, OIDC_CLIENT_SECRET
             - secretRef:
                 name: outline-secret
             # AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION,
@@ -77,6 +77,16 @@ spec:
               value: en_US
             - name: RATE_LIMITER_ENABLED
               value: "false"
+            # --- auth: Google via the generic OIDC plugin ---
+            # OIDC_CLIENT_ID / OIDC_CLIENT_SECRET come from outline-secret.
+            # Using OIDC rather than the Google plugin because the latter
+            # rejects personal @gmail.com accounts when creating the team.
+            - name: OIDC_ISSUER_URL
+              value: https://accounts.google.com
+            - name: OIDC_DISPLAY_NAME
+              value: Google
+            - name: OIDC_USERNAME_CLAIM
+              value: email
             # --- database ---
             - name: PGSSLMODE
               value: disable
