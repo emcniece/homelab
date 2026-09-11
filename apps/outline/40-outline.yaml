@@ -18,6 +18,17 @@ spec:
       labels:
         app: outline
     spec:
+      # The node search domain includes lab.emc2.build, which has a wildcard
+      # record. With the default ndots:5, external hostnames like
+      # accounts.google.com get resolved as *.lab.emc2.build first and hijacked
+      # to the ingress - which breaks Outline's server-side Google OAuth token
+      # exchange. ndots:2 makes short public names resolve absolute first.
+      # (Same workaround as apps/planka.)
+      dnsConfig:
+        nameservers: ["8.8.8.8", "1.1.1.1"]
+        options:
+          - name: ndots
+            value: "2"
       initContainers:
         # Block until Postgres accepts connections.
         - name: wait-for-postgres
