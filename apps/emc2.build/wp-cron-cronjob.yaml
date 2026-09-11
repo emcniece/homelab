@@ -10,6 +10,8 @@ spec:
   failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 120
       template:
         spec:
           restartPolicy: Never
@@ -18,7 +20,7 @@ spec:
               image: curlimages/curl:latest
               command:
                 - curl
-                - -s
+                - -sS
                 - --max-time
-                - "30"
+                - "110"
                 - http://wordpress-service/wp-cron.php
