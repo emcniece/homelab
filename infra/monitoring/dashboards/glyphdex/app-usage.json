@@ -4,7 +4,7 @@
   "tags": ["glyphdex"],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 3,
+  "version": 4,
   "refresh": "30s",
   "time": {
     "from": "now-7d",
@@ -684,6 +684,49 @@
           "legendFormat": "{{kind}}"
         }
       ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Ask cost / hour by kind (estimate)",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 12,
+        "y": 87
+      },
+      "targets": [
+        {
+          "expr": "(sum by (kind) (rate(glyphdex_ask_tokens_total[1h]) * 3600) * on(kind) group_left() avg by (kind) (glyphdex_ask_price_usd_per_mtok)) / 1e6",
+          "legendFormat": "{{kind}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD"
+        }
+      },
+      "description": "Anthropic list price x actual token usage - operator-set on /admin/analytics (glyphdex_ask_price_usd_per_mtok), not Anthropic's own billed number (their Usage/Cost API needs an org Admin API key this deployment doesn't hold)."
+    },
+    {
+      "type": "stat",
+      "title": "Ask cost / day (estimate)",
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 18,
+        "y": 87
+      },
+      "targets": [
+        {
+          "expr": "sum(increase(glyphdex_ask_tokens_total[1d]) * on(kind) group_left() avg by (kind) (glyphdex_ask_price_usd_per_mtok)) / 1e6"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD"
+        }
+      },
+      "description": "Same estimate as the hourly-by-kind panel, summed over both kinds for the trailing day."
     }
   ]
 }
