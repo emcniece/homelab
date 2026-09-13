@@ -65,3 +65,19 @@ service:
   externalIPs:
   - 192.168.10.91
   type: LoadBalancer
+  # 2026-09-12: preserve the real client IP instead of kube-proxy SNATing
+  # every inbound connection to the receiving node's internal gateway
+  # address. Confirmed live: Traefik's own access log showed every request
+  # to every site -- real visitors and a bot flood alike -- arriving as one
+  # of only two source IPs (10.42.3.1 / 10.42.5.0, the flannel gateway
+  # addresses for whichever node happened to receive the packet), which made
+  # the new per-source-IP WordPress rate-limit middlewares unable to
+  # distinguish one visitor from another. Safe here specifically because
+  # there's only a single Traefik replica (no cross-node load-balancing to
+  # lose by pinning traffic to whichever node it physically arrives on).
+  # Re-evaluate if Traefik is ever scaled to multiple replicas across nodes.
+  # NOTE: this chart (traefik-37.1.2) only reads externalTrafficPolicy from
+  # under service.spec, not as a top-level service.* key -- see
+  # templates/_service.tpl's "traefik.service-spec" helper.
+  spec:
+    externalTrafficPolicy: Local

@@ -1,0 +1,9 @@
+- name: Provision UDM Pro
+  hosts: udmp
+  remote_user: root
+  gather_facts: no
+
+  tasks:
+    - import_role:
+        name: udmp-persist
+      tags: [persist]

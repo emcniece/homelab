@@ -1,0 +1,64 @@
+---
+# Installs the UDM Pro survives-firmware-updates scripts documented at
+# https://docs.emc2.build/doc/udm-pro-persisting-config-across-firmware-updates-1cdqqdD4wQ
+#
+# UniFi OS firmware updates reset the root filesystem overlay (/usr/bin,
+# /etc/systemd/system, /root, etc), which wipes any binary/config installed
+# there. /data survives updates, and UniFi OS already runs every script in
+# /data/on_boot.d/ on boot (see bootup-bottom-invoke.service), so we persist
+# the real files under /data/ and drop reinstall scripts in /data/on_boot.d/.
+
+- name: Create /data/on_boot.d
+  ansible.builtin.file:
+    path: /data/on_boot.d
+    state: directory
+    mode: '0755'
+
+- name: Install on_boot.d scripts
+  ansible.builtin.copy:
+    src: 'on_boot.d/{{ item }}'
+    dest: '/data/on_boot.d/{{ item }}'
+    mode: '0755'
+  loop:
+    - 10-ssh-authorized-keys.sh
+    - 15-cloudflared.sh
+  register: on_boot_scripts
+
+- name: Create /data/ssh
+  ansible.builtin.file:
+    path: /data/ssh
+    state: directory
+    mode: '0700'
+
+- name: Persist authorized_keys under /data/ssh
+  ansible.builtin.template:
+    src: authorized_keys.j2
+    dest: /data/ssh/authorized_keys
+    mode: '0600'
+  register: authorized_keys_persisted
+
+- name: Create /data/cloudflared
+  ansible.builtin.file:
+    path: /data/cloudflared
+    state: directory
+    mode: '0700'
+
+- name: Persist cloudflared tunnel token under /data/cloudflared
+  ansible.builtin.template:
+    src: cloudflared-token.j2
+    dest: /data/cloudflared/token
+    mode: '0600'
+  register: cloudflared_token_persisted
+
+# Re-running the on_boot.d scripts now (rather than waiting for the next
+# reboot) reinstalls authorized_keys/the cloudflared service immediately, and
+# is what actually applies the token/key content above.
+- name: Run on_boot.d/10-ssh-authorized-keys.sh
+  ansible.builtin.command: /data/on_boot.d/10-ssh-authorized-keys.sh
+  when: on_boot_scripts.changed or authorized_keys_persisted.changed
+  changed_when: true
+
+- name: Run on_boot.d/15-cloudflared.sh
+  ansible.builtin.command: /data/on_boot.d/15-cloudflared.sh
+  when: on_boot_scripts.changed or cloudflared_token_persisted.changed
+  changed_when: true

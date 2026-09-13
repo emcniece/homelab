@@ -42,3 +42,16 @@ and reports to the Scrutiny web app running in K8s (`apps/scrutiny/`). See
 ansible-playbook playbooks/proxmox/provision-scrutiny.yml
 ansible-playbook playbooks/proxmox/provision-scrutiny.yml --tags scrutiny
 ```
+
+### UDM Pro
+
+Installs the `/data/on_boot.d/` scripts that re-provision the cloudflared
+tunnel and `/root/.ssh/authorized_keys` on every boot, so they survive
+UniFi OS firmware updates instead of needing to be manually reinstalled. See
+`roles/udmp-persist/README.md` and
+https://docs.emc2.build/doc/udm-pro-persisting-config-across-firmware-updates-1cdqqdD4wQ
+for the full story.
+
+```sh
+ansible-playbook playbooks/udmp/provision.yml -e "@secrets.yml"
+```
