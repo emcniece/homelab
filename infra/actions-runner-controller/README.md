@@ -78,6 +78,16 @@ helm upgrade --install arc \
   oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller \
   --version "$CHART_VERSION" --wait
 
+# 1.5. DNS fix for the controller pod — see "DNS: the lab.emc2.build ndots
+#      hijack" below. The controller chart has no values field for
+#      dnsConfig, so this is a direct patch, NOT captured by the values
+#      file — re-run it after every `helm upgrade` of the arc release
+#      (it patches the live Deployment; a Helm upgrade re-renders the
+#      full spec and drops it).
+kubectl -n arc-systems patch deployment arc-gha-rs-controller --type=merge -p \
+  '{"spec":{"template":{"spec":{"dnsConfig":{"nameservers":["8.8.8.8","1.1.1.1"],"options":[{"name":"ndots","value":"2"}]}}}}}'
+kubectl -n arc-systems rollout status deployment/arc-gha-rs-controller
+
 # 2. GitHub credential — created directly, never written to a file or git.
 #    Paste your PAT when prompted; it never appears in shell history this way.
 kubectl create namespace arc-runners --dry-run=client -o yaml | kubectl apply -f -
@@ -94,6 +104,32 @@ helm upgrade --install glyphdex-runners \
   oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set \
   --version "$CHART_VERSION" --wait
 ```
+
+## DNS: the lab.emc2.build ndots hijack
+
+Hit live during the first install (2026-09-14): the controller and listener
+pods' calls to `api.github.com` came back with a **Traefik** certificate
+instead of GitHub's. Root cause is the same one already documented in
+`apps/outline` and `apps/planka`: the node search domain includes
+`lab.emc2.build`, which has a wildcard DNS record. With the default
+`ndots:5`, a short external name like `api.github.com` (2 dots) gets tried
+as `api.github.com.lab.emc2.build` *first* — which the wildcard record
+answers, sending the request into the cluster's own ingress instead of the
+real internet host. Confirmed the bare name resolves correctly on its own
+(`kubectl run --rm -it --image=busybox:1.36 -- nslookup api.github.com`
+returns GitHub's real IP) — this is purely the ndots search-list expansion
+picking a wrong answer *before* the absolute name is ever tried.
+
+Fix is `ndots:2` (a name with ≥2 dots resolves absolute first), applied to
+every pod that talks to the GitHub API:
+
+- **Controller** — no `dnsConfig` field in the chart's values schema, so
+  it's a direct `kubectl patch` (see step 1.5 above). Must be re-applied
+  after any `helm upgrade` of the `arc` release.
+- **Listener pod** and **runner/dind pod** — `dnsConfig` set directly in
+  `runner-values.yaml` (`listenerTemplate.spec.dnsConfig` /
+  `template.spec.dnsConfig`), so these survive a normal `helm upgrade` of
+  `glyphdex-runners`.
 
 ## Point Glyphdex's workflows at it
 
@@ -112,22 +148,43 @@ schedules and completes a job before switching everything over.
 ## Verify
 
 ```sh
-kubectl -n arc-systems get pods                 # controller running
+kubectl -n arc-systems get pods                 # controller + listener pod, both Running
 kubectl -n arc-runners get pods                  # 0 runner pods at idle (minRunners: 0) — expected
 kubectl -n arc-runners get autoscalingrunnersets  # the scale set object, should be healthy
+kubectl -n arc-systems logs -l app.kubernetes.io/component=runner-scale-set-listener --tail=20
+  # should show "Getting next message" — it's connected and polling GitHub
 # push to main / trigger a workflow that uses runs-on: glyphdex-arc-runners, then:
 kubectl -n arc-runners get pods --watch           # a runner pod should appear within ~10-30s
 ```
+
+Note the listener pod runs in `arc-systems` (the controller's namespace),
+not `arc-runners` — only the ephemeral runner/dind pods run in `arc-runners`.
 
 The scale set should also show as an available runner group under Glyphdex's
 repo Settings → Actions → Runners on GitHub.
 
 ## Troubleshooting
 
+- **Controller/listener logs show a TLS cert error mentioning `*.traefik.*`
+  when calling `api.github.com`**: the ndots DNS hijack above — check the
+  fix is actually applied (`kubectl -n arc-systems get deploy
+  arc-gha-rs-controller -o jsonpath='{.spec.template.spec.dnsConfig}'`
+  should show the patch; it's dropped by every `helm upgrade` of the
+  controller).
+- **Listener pod stuck `Terminating` with `FailedMount` events referencing a
+  Secret/ServiceAccount that "not found"**: hit this once after a
+  `runner-values.yaml` change forced the listener to recreate — the
+  controller's cleanup deleted the listener's ServiceAccount/config Secret
+  before the old pod's volumes finished unmounting, deadlocking the
+  termination (pod can't finish tearing down → controller won't remove the
+  finalizer → but it already deleted the SA/Secret the pod needs). Break it
+  with a force-delete, which lets the controller recreate everything clean:
+  `kubectl -n arc-systems delete pod <listener-pod> --grace-period=0 --force`.
 - **No runner pod appears on a triggered job**: check the controller logs
   (`kubectl -n arc-systems logs deploy/arc-gha-rs-controller`) and the
-  listener pod's logs in `arc-runners` — a bad PAT or wrong
-  `githubConfigUrl` shows up there first.
+  listener pod's logs (`kubectl -n arc-systems logs -l
+  app.kubernetes.io/component=runner-scale-set-listener`) — a bad PAT or
+  wrong `githubConfigUrl` shows up there first.
 - **Job starts but the Docker build step fails**: dind sidecar didn't come up
   — check `kubectl -n arc-runners describe pod <runner-pod>` for a blocked
   privileged-pod admission (PodSecurity policy) or resource pressure on the

@@ -31,8 +31,30 @@ maxRunners: 3
 containerMode:
   type: "dind"
 
+# The node search domain includes lab.emc2.build, which has a wildcard
+# record. With the default ndots:5, short external hostnames like
+# api.github.com get resolved as *.lab.emc2.build first and hijacked to the
+# ingress (Traefik's cert, not GitHub's) instead of the real internet host.
+# ndots:2 makes a name with >=2 dots resolve absolute first. Same workaround
+# as apps/outline and apps/planka — needed on both the listener pod (polls
+# the Actions API) and the runner/dind pod (checks out + reports back).
+listenerTemplate:
+  spec:
+    dnsConfig:
+      nameservers: ["8.8.8.8", "1.1.1.1"]
+      options:
+        - name: ndots
+          value: "2"
+    containers:
+      - name: listener
+
 template:
   spec:
+    dnsConfig:
+      nameservers: ["8.8.8.8", "1.1.1.1"]
+      options:
+        - name: ndots
+          value: "2"
     containers:
       - name: runner
         image: ghcr.io/actions/actions-runner:latest
