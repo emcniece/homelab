@@ -49,9 +49,9 @@ mitigations in place / to keep in place:
   stay on the restrictive default (requires approval for first-time
   contributors) as a second layer, even though (1) already covers it for
   this specific runner.
-- The runner pods run with `containerMode: dind` (privileged, for Docker
-  builds) — privileged pods can affect the node they're scheduled on, so
-  don't casually point untrusted workflows at this scale set later.
+- The runner pods run a privileged dind (Docker-in-Docker) container for
+  Docker builds — privileged pods can affect the node they're scheduled on,
+  so don't casually point untrusted workflows at this scale set later.
 
 ## Prerequisites
 
@@ -97,7 +97,11 @@ kubectl create secret generic glyphdex-arc-github-secret \
   --from-literal=github_token="$GH_PAT"
 unset GH_PAT
 
-# 3. Runner scale set (one per repo)
+# 3. Shared pnpm-store PVC — see "Caching" below for why this one's shared
+#    and the Docker cache isn't.
+kubectl apply -f infra/actions-runner-controller/pnpm-store-pvc.yaml
+
+# 4. Runner scale set (one per repo)
 helm upgrade --install glyphdex-runners \
   --namespace arc-runners \
   -f infra/actions-runner-controller/runner-values.yaml \
@@ -120,8 +124,14 @@ real internet host. Confirmed the bare name resolves correctly on its own
 returns GitHub's real IP) — this is purely the ndots search-list expansion
 picking a wrong answer *before* the absolute name is ever tried.
 
-Fix is `ndots:2` (a name with ≥2 dots resolves absolute first), applied to
-every pod that talks to the GitHub API:
+Fix is a low `ndots` value (a name with at least that many dots resolves
+absolute first), applied to every pod that talks to the GitHub API. Started
+at `ndots:2` (apps/outline's / apps/planka's value); raised to `ndots:1`
+(2026-09-14) after finding it wasn't low enough here — a bare `github.com`
+(1 dot, from a plain `git clone`/checkout URL, not just `api.github.com`)
+still hit the hijack under `ndots:2`. `ndots:1` means only a fully bare
+single-label name (no dot at all) still goes through the search list, which
+nothing this scale set does:
 
 - **Controller** — no `dnsConfig` field in the chart's values schema, so
   it's a direct `kubectl patch` (see step 1.5 above). Must be re-applied
@@ -131,19 +141,71 @@ every pod that talks to the GitHub API:
   `template.spec.dnsConfig`), so these survive a normal `helm upgrade` of
   `glyphdex-runners`.
 
+## Caching
+
+Two persistent volumes, added 2026-09-14 to speed up jobs beyond what the
+registry-based Docker layer cache alone gives (`cache-from`/`cache-to:
+type=registry` in `release.yml`, chosen over `type=gha` for reasons in that
+workflow's own history):
+
+- **`docker-cache`** — a node-local `hostPath` (`/var/lib/arc-docker-cache`)
+  mounted at `/var/lib/docker` in the `dind` container. **Deliberately not
+  a shared PVC.** Two `dockerd` processes pointed at the same data root
+  concurrently is unsupported by Docker itself — the daemon takes an
+  exclusive lock on its data root, so a second one starting against the
+  same path fails to acquire it (a clean failure + job retry, not silent
+  corruption) rather than actually corrupting anything, but it does mean
+  two jobs landing on the *same node* at the *same time* can make one of
+  them fail on a lock conflict. A CephFS-backed shared volume was
+  considered and rejected for this mount for the same reason, one level
+  worse (network-filesystem semantics under Docker's overlay2 storage
+  driver are explicitly unsupported). The actual benefit — base image
+  layers persisting across job runs — still holds either way, since most
+  jobs land on one of only 3 untainted nodes.
+- **`pnpm-store`** (PVC `glyphdex-arc-pnpm-store`, applied separately —
+  see `pnpm-store-pvc.yaml` and the Install section) — CephFS
+  `ReadWriteMany`, mounted at `/mnt/pnpm-store` in the `runner` container.
+  Safe to share concurrently, unlike the Docker cache, because pnpm's
+  store is content-addressed with its own file locking around writes —
+  that's the whole point of pnpm's store design. `ci.yml`'s `node` job
+  points pnpm's `store-dir` there on the self-hosted path
+  (`pnpm config set store-dir /mnt/pnpm-store`, gated on
+  `github.event_name == 'push'` since the PVC only exists on this scale
+  set, not on `ubuntu-latest`).
+- A `fix-pnpm-store-perms` initContainer (`busybox`, `chmod -R 0777`)
+  runs before the `runner` container starts — a fresh/first-touch CephFS
+  mount is root-owned by default, and the `runner` container isn't root.
+  The Docker cache mount needs no equivalent fix: the `dind` container
+  already runs privileged/as root.
+
+**Why this isn't just `containerMode: dind`** — the chart's own shorthand
+(`containerMode: { type: "dind" }`) generates its own fixed `volumes` /
+`initContainers` internally and silently ignores anything added under
+those same keys in `template.spec` (only `template.spec.containers`,
+merged by container name, is actually honored on top of it). Found this
+the hard way: `docker-cache`/`pnpm-store` additions rendered fine into the
+`AutoscalingRunnerSet` object itself (so `helm get values` / `-o yaml` on
+it looked correct) but never made it into the `EphemeralRunnerSet` the
+controller actually builds pods from. `runner-values.yaml` now spells out
+the full dind pod spec by hand instead (copied verbatim from what
+`containerMode: dind` used to generate, plus the two extra volumes) — see
+the comments in that file if the upstream chart changes its dind-mode
+defaults and this needs re-syncing.
+
 ## Point Glyphdex's workflows at it
 
-In `emcniece/Glyphdex`, change the jobs you want to move off GitHub-hosted
-minutes:
+Already done for `emcniece/Glyphdex` — `.github/workflows/release.yml`
+(all push-triggered) and `.github/workflows/ci.yml`
+(`runs-on: ${{ github.event_name == 'push' && 'glyphdex-arc-runners' ||
+'ubuntu-latest' }}`, since that workflow also triggers on `pull_request` —
+see the Security note above for why that one needs the conditional instead
+of switching outright). For a workflow that's always push-only, the plain
+version is enough:
 
 ```diff
 - runs-on: ubuntu-latest
 + runs-on: glyphdex-arc-runners
 ```
-
-Start with `.github/workflows/release.yml` (the expensive one — 5 parallel
-Docker-build jobs on every push) before `CI.yml`, and confirm a real push
-schedules and completes a job before switching everything over.
 
 ## Verify
 
@@ -193,6 +255,22 @@ repo Settings → Actions → Runners on GitHub.
   `template.spec.containers[0].resources` in `runner-values.yaml` — the
   extractor image (torch) and the multi-arch node images are the heaviest
   builds.
+- **A `runner-values.yaml` change (new volume, resources, etc.) doesn't
+  show up on new runner pods**, even though `helm upgrade` succeeded and
+  `kubectl -n arc-runners get autoscalingrunnerset ... -o yaml` shows the
+  change correctly: the controller only rolls a new `EphemeralRunnerSet`
+  when its computed spec hash changes *and* the scale set isn't currently
+  busy — while runners are actively running jobs, a spec-only change can
+  sit un-rolled for a while. Check the `EphemeralRunnerSet`'s age
+  (`kubectl -n arc-runners get ephemeralrunnerset -o
+  jsonpath='{.items[0].metadata.creationTimestamp}'`) against your `helm
+  upgrade` time; if it's stale, either wait for the in-flight jobs to
+  finish (it rolls over on its own once idle — this is what happened
+  2026-09-14, no manual fix needed) or, if nothing is running,
+  `kubectl -n arc-runners delete ephemeralrunnerset --all` to force an
+  immediate recreation from the current `AutoscalingRunnerSet` spec.
+  **Never delete it while a runner pod from it is `Running`** — that pod is
+  owned by the `EphemeralRunnerSet` and deleting the parent can cascade.
 
 ## Uninstall
 

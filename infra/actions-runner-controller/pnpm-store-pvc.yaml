@@ -1,0 +1,18 @@
+# A shared pnpm content-addressable store, reused across concurrent runner
+# pods. Safe to share concurrently (unlike the dind Docker data root — see
+# runner-values.yaml) because pnpm's store is designed for exactly this:
+# content-addressed, hard-linked, with its own file locking around writes.
+# CephFS (ReadWriteMany) so multiple runner pods on different nodes can all
+# mount it at once. Not managed by the gha-runner-scale-set chart — applied
+# once, referenced by name from runner-values.yaml.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: glyphdex-arc-pnpm-store
+  namespace: arc-runners
+spec:
+  accessModes: ["ReadWriteMany"]
+  storageClassName: csi-cephfs-sc
+  resources:
+    requests:
+      storage: 10Gi
