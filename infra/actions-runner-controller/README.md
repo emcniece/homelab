@@ -143,25 +143,34 @@ nothing this scale set does:
 
 ## Caching
 
-Two persistent volumes, added 2026-09-14 to speed up jobs beyond what the
-registry-based Docker layer cache alone gives (`cache-from`/`cache-to:
+The registry-based Docker layer cache (`cache-from`/`cache-to:
 type=registry` in `release.yml`, chosen over `type=gha` for reasons in that
-workflow's own history):
+workflow's own history) plus one persistent volume:
 
-- **`docker-cache`** — a node-local `hostPath` (`/var/lib/arc-docker-cache`)
-  mounted at `/var/lib/docker` in the `dind` container. **Deliberately not
-  a shared PVC.** Two `dockerd` processes pointed at the same data root
-  concurrently is unsupported by Docker itself — the daemon takes an
-  exclusive lock on its data root, so a second one starting against the
-  same path fails to acquire it (a clean failure + job retry, not silent
-  corruption) rather than actually corrupting anything, but it does mean
-  two jobs landing on the *same node* at the *same time* can make one of
-  them fail on a lock conflict. A CephFS-backed shared volume was
-  considered and rejected for this mount for the same reason, one level
-  worse (network-filesystem semantics under Docker's overlay2 storage
-  driver are explicitly unsupported). The actual benefit — base image
-  layers persisting across job runs — still holds either way, since most
-  jobs land on one of only 3 untainted nodes.
+### Docker layer cache: tried a node-local hostPath, reverted
+
+Tried 2026-09-14: a node-local `hostPath` (`/var/lib/arc-docker-cache`)
+mounted at `/var/lib/docker` in the `dind` container, deliberately *not* a
+shared PVC — the reasoning at the time was that two `dockerd` processes
+pointed at the same data root concurrently is unsupported by Docker, but a
+second one starting against an already-locked path would just fail to
+acquire the lock cleanly (job retries) rather than actually corrupting
+anything. **That assumption was wrong in a way that mattered**: confirmed
+live that containerd's boltdb metadata store doesn't fail fast on a lock
+conflict — it blocks for ~15s ("waiting for response from boltdb open")
+and then the whole `dind` sidecar fails to start, taking the runner pod
+down with it. At `maxRunners: 8` across only 3 untainted nodes, concurrent
+pods land on the same node constantly, so this took down most of a batch
+at once (`kubectl -n arc-runners get pods` showed 6+ pods stuck
+`Init:x/2`/`Error` simultaneously). **Reverted** — `dind` is back to the
+chart's default ephemeral storage (plain `emptyDir`). If this gets
+revisited, it needs either a genuinely per-runner-pod volume (no reuse
+across pods at all, so no benefit) or a way to guarantee at most one dind
+per node at a time (defeats concurrency) — the registry cache is the
+supported mechanism for this and is the whole point of a "reduce GitHub
+Actions minutes" project not needing a second, riskier caching layer badly
+enough to be worth re-attempting soon.
+
 - **`pnpm-store`** (PVC `glyphdex-arc-pnpm-store`, applied separately —
   see `pnpm-store-pvc.yaml` and the Install section) — CephFS
   `ReadWriteMany`, mounted at `/mnt/pnpm-store` in the `runner` container.
@@ -175,22 +184,20 @@ workflow's own history):
 - A `fix-pnpm-store-perms` initContainer (`busybox`, `chmod -R 0777`)
   runs before the `runner` container starts — a fresh/first-touch CephFS
   mount is root-owned by default, and the `runner` container isn't root.
-  The Docker cache mount needs no equivalent fix: the `dind` container
-  already runs privileged/as root.
 
 **Why this isn't just `containerMode: dind`** — the chart's own shorthand
 (`containerMode: { type: "dind" }`) generates its own fixed `volumes` /
 `initContainers` internally and silently ignores anything added under
 those same keys in `template.spec` (only `template.spec.containers`,
 merged by container name, is actually honored on top of it). Found this
-the hard way: `docker-cache`/`pnpm-store` additions rendered fine into the
-`AutoscalingRunnerSet` object itself (so `helm get values` / `-o yaml` on
-it looked correct) but never made it into the `EphemeralRunnerSet` the
-controller actually builds pods from. `runner-values.yaml` now spells out
-the full dind pod spec by hand instead (copied verbatim from what
-`containerMode: dind` used to generate, plus the two extra volumes) — see
-the comments in that file if the upstream chart changes its dind-mode
-defaults and this needs re-syncing.
+the hard way: the (now-reverted) `docker-cache`/`pnpm-store` additions
+rendered fine into the `AutoscalingRunnerSet` object itself (so `helm get
+values` / `-o yaml` on it looked correct) but never made it into the
+`EphemeralRunnerSet` the controller actually builds pods from.
+`runner-values.yaml` now spells out the full dind pod spec by hand instead
+(copied verbatim from what `containerMode: dind` used to generate, plus
+`pnpm-store`) — see the comments in that file if the upstream chart
+changes its dind-mode defaults and this needs re-syncing.
 
 ## Point Glyphdex's workflows at it
 

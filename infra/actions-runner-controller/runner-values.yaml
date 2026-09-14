@@ -66,24 +66,24 @@ template:
       options:
         - name: ndots
           value: "1"
-    # docker-cache: node-local hostPath (NOT a shared PVC) for the dind
-    # sidecar's /var/lib/docker. Deliberately not shared across nodes —
-    # two dockerd processes pointed at the same data root concurrently is
-    # unsupported by Docker itself (the daemon takes an exclusive lock on
-    # its data root; a second one starting against the same path fails to
-    # acquire it rather than corrupting anything, but it does mean two
-    # jobs landing on the *same* node at the *same* time can make one of
-    # them fail on a lock conflict — a clean failure + retry, not silent
-    # corruption). A CephFS-backed shared volume was considered and
-    # rejected for this specific mount for the same reason, one level
-    # worse (network filesystem semantics under overlay2 are explicitly
-    # unsupported). Base image layers persist per-node across job runs
-    # either way, which is the actual point — most jobs still land on one
-    # of only 3 untainted nodes.
+    # docker-cache (hostPath, dind's /var/lib/docker) was tried and reverted
+    # 2026-09-14 — see the "Docker layer cache: reverted" note in README.md.
+    # In practice, at maxRunners:8 across only 3 untainted nodes, concurrent
+    # runner pods land on the same node constantly, and containerd's boltdb
+    # metadata store doesn't just fail cleanly on a second concurrent open
+    # like a plain flock would — it blocks for ~15s ("waiting for response
+    # from boltdb open") and then the whole dind sidecar fails to start,
+    # taking the runner pod down with it. Confirmed live: most of a
+    # maxRunners:8 batch failed this way. Back to the chart's default
+    # ephemeral dind storage (ordinary emptyDir); the registry-based Docker
+    # layer cache (`cache-from`/`cache-to: type=registry` in release.yml)
+    # is the supported caching mechanism for this.
+    #
     # pnpm-store: shared CephFS PVC (glyphdex-arc-pnpm-store, applied
     # separately — see README) — safe for concurrent access, unlike the
-    # docker cache, because pnpm's content-addressable store is designed
-    # for exactly this (hard-linked, its own file locking on writes).
+    # Docker cache above, because pnpm's content-addressable store is
+    # designed for exactly this (hard-linked, its own file locking on
+    # writes) rather than a single-writer daemon owning a data root.
     restartPolicy: Never
     serviceAccountName: glyphdex-arc-runners-gha-rs-no-permission
     volumes:
@@ -94,10 +94,6 @@ template:
         emptyDir: {}
       - name: dind-externals
         emptyDir: {}
-      - name: docker-cache
-        hostPath:
-          path: /var/lib/arc-docker-cache
-          type: DirectoryOrCreate
       - name: pnpm-store
         persistentVolumeClaim:
           claimName: glyphdex-arc-pnpm-store
@@ -166,5 +162,3 @@ template:
             mountPath: /var/run
           - name: dind-externals
             mountPath: /home/runner/externals
-          - name: docker-cache
-            mountPath: /var/lib/docker
