@@ -1,0 +1,50 @@
+# gha-runner-scale-set Helm values — one release per repo/workload.
+# Chart: oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set
+#
+# This release is scoped to a single repo (emcniece/Glyphdex) rather than the
+# whole GitHub account/org — only that repo's workflows can target the scale
+# set name below, so a workflow in an unrelated repo can't schedule work onto
+# homelab hardware. See README.md for why repo-scoped, the containerMode:dind
+# tradeoff, and the githubConfigSecret this depends on.
+
+githubConfigUrl: "https://github.com/emcniece/Glyphdex"
+
+# Referenced by name only — the Secret itself is never committed (see
+# README.md "Create the GitHub credential" for the kubectl command that
+# creates it directly, so the token never touches this repo or git history).
+githubConfigSecret: glyphdex-arc-github-secret
+
+# workflows reference this as `runs-on: glyphdex-arc-runners`.
+runnerScaleSetName: glyphdex-arc-runners
+
+# Scale-to-zero when idle; cap concurrent runners so a burst of pushes can't
+# starve the rest of the cluster. release.yml's 5 parallel image-build jobs
+# are the realistic ceiling for one push.
+minRunners: 0
+maxRunners: 3
+
+# docker/build-push-action needs a Docker daemon — dind mode runs one
+# alongside each runner pod and is the simplest of ARC's two build options
+# (the alternative, containerMode: kubernetes, needs a container-native build
+# tool like buildkit-in-k8s and is more setup for no benefit at this scale).
+# Requires privileged pods for the dind sidecar (see README security note).
+containerMode:
+  type: "dind"
+
+template:
+  spec:
+    containers:
+      - name: runner
+        image: ghcr.io/actions/actions-runner:latest
+        command: ["/home/runner/run.sh"]
+        resources:
+          # No cpu *limit* — ARC's own guidance: a CPU limit throttles the
+          # runner process itself (unlike a normal service pod) and tends to
+          # make builds slower and flakier, not just capped, without
+          # actually protecting the node. Memory limit still applies since
+          # an OOM there fails cleanly (job retried) instead of degrading.
+          requests:
+            cpu: "1"
+            memory: 2Gi
+          limits:
+            memory: 4Gi

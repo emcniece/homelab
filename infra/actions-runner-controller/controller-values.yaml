@@ -1,0 +1,15 @@
+# gha-runner-scale-set-controller Helm values.
+# Chart: oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set-controller
+# One controller manages every runner scale set in the cluster (repo- or
+# org-scoped) — install it once, then add a runner-scale-set release per
+# repo/workload that needs its own runners. See README.md for the install
+# command and the split from runner-values.yaml.
+
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 256Mi
