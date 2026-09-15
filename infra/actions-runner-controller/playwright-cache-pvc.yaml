@@ -1,0 +1,21 @@
+# Shared cache for Playwright's downloaded browser binaries
+# (PLAYWRIGHT_BROWSERS_PATH). Safe to share concurrently for the same reason
+# pnpm-store is: Playwright writes each browser version to its own
+# immutable, version-named subdirectory and skips the download entirely when
+# that directory already exists — no shared mutable state a concurrent
+# writer could corrupt, unlike the dind Docker data root (see
+# runner-values.yaml). CephFS (ReadWriteMany) so multiple runner pods on
+# different nodes can all mount it at once. Not managed by the
+# gha-runner-scale-set chart — applied once, referenced by name from
+# runner-values.yaml.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: glyphdex-arc-playwright-cache
+  namespace: arc-runners
+spec:
+  accessModes: ["ReadWriteMany"]
+  storageClassName: csi-cephfs-sc
+  resources:
+    requests:
+      storage: 5Gi

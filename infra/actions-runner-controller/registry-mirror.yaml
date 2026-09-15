@@ -1,0 +1,86 @@
+# A Docker Hub pull-through cache, so the runner pods' ephemeral dind
+# sidecars don't each pull the same images (pgvector/pgvector:pg16 for the
+# testcontainers DB suites, prom/prometheus for the alerts job, etc.) cold
+# from the internet on every single run. Unlike the reverted docker-cache
+# hostPath attempt (see runner-values.yaml / README.md "Caching"), this is
+# NOT a shared Docker data root — it's a separate, single-writer proxy
+# service that dind's dockerd talks to as a registry-mirror. No boltdb-style
+# concurrent-open risk: it's just an HTTP cache in front of Docker Hub, and
+# the upstream `registry:2` image is built for concurrent reads.
+#
+# One replica is enough — it's a cache, not a source of truth; losing it
+# just means the next pull goes to Docker Hub directly and re-populates it.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: glyphdex-arc-registry-mirror
+  namespace: arc-runners
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: glyphdex-arc-registry-mirror
+  namespace: arc-runners
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: glyphdex-arc-registry-mirror
+  template:
+    metadata:
+      labels:
+        app: glyphdex-arc-registry-mirror
+    spec:
+      # Same lab.emc2.build ndots hijack as everything else that talks to a
+      # real external host from this cluster (see README.md "DNS") — without
+      # this, registry-1.docker.io resolves via the wildcard record into
+      # Traefik's ingress instead of the real internet host, and the proxy
+      # panics on the resulting cert mismatch.
+      dnsConfig:
+        nameservers: ["8.8.8.8", "1.1.1.1"]
+        options:
+          - name: ndots
+            value: "1"
+      containers:
+        - name: registry
+          image: registry:2
+          env:
+            - name: REGISTRY_PROXY_REMOTEURL
+              value: https://registry-1.docker.io
+            - name: REGISTRY_STORAGE_DELETE_ENABLED
+              value: "true"
+          ports:
+            - containerPort: 5000
+          volumeMounts:
+            - name: cache
+              mountPath: /var/lib/registry
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+      volumes:
+        - name: cache
+          persistentVolumeClaim:
+            claimName: glyphdex-arc-registry-mirror
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: glyphdex-arc-registry-mirror
+  namespace: arc-runners
+spec:
+  selector:
+    app: glyphdex-arc-registry-mirror
+  ports:
+    - port: 5000
+      targetPort: 5000

@@ -97,13 +97,20 @@ template:
       - name: pnpm-store
         persistentVolumeClaim:
           claimName: glyphdex-arc-pnpm-store
+      # Playwright's downloaded browser binaries (PLAYWRIGHT_BROWSERS_PATH) —
+      # see README.md "Caching". Safe to share the same way pnpm-store is:
+      # each browser version is its own immutable directory, and `playwright
+      # install` skips the download entirely when it already exists.
+      - name: playwright-cache
+        persistentVolumeClaim:
+          claimName: glyphdex-arc-playwright-cache
     # init-dind-externals: dind mode's own initContainer (copies the runner's
     # externals into the dind-externals volume the runner container reads
-    # them back from). fix-pnpm-store-perms runs as root only to fix
-    # ownership on the pnpm-store mount before the runner (non-root)
-    # container starts — a fresh/first-touch CephFS mount is root-owned by
-    # default. The docker-cache mount needs no such fix: dind already runs
-    # privileged/as root.
+    # them back from). fix-pnpm-store-perms / fix-playwright-cache-perms run
+    # as root only to fix ownership on their CephFS mounts before the runner
+    # (non-root) container starts — a fresh/first-touch CephFS mount is
+    # root-owned by default. The docker-cache mount needs no such fix: dind
+    # already runs privileged/as root.
     initContainers:
       - name: init-dind-externals
         image: ghcr.io/actions/actions-runner:latest
@@ -118,6 +125,12 @@ template:
         volumeMounts:
           - name: pnpm-store
             mountPath: /pnpm-store
+      - name: fix-playwright-cache-perms
+        image: busybox:1.36
+        command: ["sh", "-c", "chmod -R 0777 /playwright-cache"]
+        volumeMounts:
+          - name: playwright-cache
+            mountPath: /playwright-cache
     containers:
       - name: runner
         image: ghcr.io/actions/actions-runner:latest
@@ -136,6 +149,10 @@ template:
             # ci.yml's node job points pnpm's store-dir here when running on
             # this scale set — see that workflow for the other half of this.
             mountPath: /mnt/pnpm-store
+          - name: playwright-cache
+            # ci.yml's node job points PLAYWRIGHT_BROWSERS_PATH here when
+            # running on this scale set.
+            mountPath: /mnt/playwright-cache
         resources:
           # No cpu *limit* — ARC's own guidance: a CPU limit throttles the
           # runner process itself (unlike a normal service pod) and tends to
@@ -149,7 +166,22 @@ template:
             memory: 4Gi
       - name: dind
         image: docker:dind
-        args: ["dockerd", "--host=unix:///var/run/docker.sock", "--group=$(DOCKER_GROUP_GID)"]
+        # --registry-mirror points Docker Hub pulls at the in-cluster
+        # pull-through cache (registry-mirror.yaml) instead of the internet —
+        # each ephemeral dind sidecar otherwise starts with a cold image
+        # cache and re-pulls pgvector/pgvector, prom/prometheus, etc. from
+        # scratch every run. It's a plain-HTTP service (no TLS), so it also
+        # needs --insecure-registry — this is NOT the shared-data-root risk
+        # documented below (that was dind's own /var/lib/docker; this is a
+        # separate, single-writer proxy dind talks to over the network).
+        args:
+          [
+            "dockerd",
+            "--host=unix:///var/run/docker.sock",
+            "--group=$(DOCKER_GROUP_GID)",
+            "--registry-mirror=http://glyphdex-arc-registry-mirror.arc-runners.svc.cluster.local:5000",
+            "--insecure-registry=glyphdex-arc-registry-mirror.arc-runners.svc.cluster.local:5000",
+          ]
         env:
           - name: DOCKER_GROUP_GID
             value: "123"

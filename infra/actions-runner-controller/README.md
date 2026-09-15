@@ -97,9 +97,14 @@ kubectl create secret generic glyphdex-arc-github-secret \
   --from-literal=github_token="$GH_PAT"
 unset GH_PAT
 
-# 3. Shared pnpm-store PVC — see "Caching" below for why this one's shared
-#    and the Docker cache isn't.
+# 3. Shared pnpm-store + Playwright-cache PVCs — see "Caching" below for why
+#    these are shared and the Docker cache isn't.
 kubectl apply -f infra/actions-runner-controller/pnpm-store-pvc.yaml
+kubectl apply -f infra/actions-runner-controller/playwright-cache-pvc.yaml
+
+# 3.5. Docker Hub pull-through cache (registry mirror) — see "Caching" below.
+kubectl apply -f infra/actions-runner-controller/registry-mirror.yaml
+kubectl -n arc-runners rollout status deployment/glyphdex-arc-registry-mirror
 
 # 4. Runner scale set (one per repo)
 helm upgrade --install glyphdex-runners \
@@ -184,6 +189,32 @@ enough to be worth re-attempting soon.
 - A `fix-pnpm-store-perms` initContainer (`busybox`, `chmod -R 0777`)
   runs before the `runner` container starts — a fresh/first-touch CephFS
   mount is root-owned by default, and the `runner` container isn't root.
+- **`playwright-cache`** (PVC `glyphdex-arc-playwright-cache`, applied
+  separately — see `playwright-cache-pvc.yaml`) — same CephFS
+  `ReadWriteMany` pattern as `pnpm-store`, mounted at
+  `/mnt/playwright-cache`. Safe to share for the same reason: Playwright
+  writes each browser version to its own immutable, version-named
+  subdirectory and skips the download entirely when that directory already
+  exists — no shared mutable state a concurrent writer could corrupt.
+  `ci.yml`'s `node` job points `PLAYWRIGHT_BROWSERS_PATH` there on the
+  self-hosted path, the same way it points pnpm's `store-dir` at
+  `pnpm-store`. A `fix-playwright-cache-perms` initContainer does the same
+  CephFS ownership fix as `fix-pnpm-store-perms`.
+- **Docker Hub pull-through cache** (`registry-mirror.yaml`: a `registry:2`
+  Deployment + Service + a plain `local-path` PVC, one replica) — each
+  ephemeral dind sidecar otherwise starts with a cold image cache and
+  re-pulls the same images (`pgvector/pgvector:pg16` for the testcontainers
+  DB suites, `prom/prometheus` for the `alerts` job) from Docker Hub on
+  every single run. dind's `dockerd` is pointed at it with
+  `--registry-mirror=http://glyphdex-arc-registry-mirror.arc-runners.svc.cluster.local:5000`
+  (+ `--insecure-registry` for the same host, since the mirror is plain
+  HTTP — internal cluster traffic only). This is **not** the shared-data-root
+  risk described above: it's a separate, single-writer proxy service dind
+  talks to over the network, not a second `dockerd` sharing dind's own
+  `/var/lib/docker`. A `registry:2` proxy is built for concurrent reads, so
+  this is safe at `maxRunners: 8` the way the reverted hostPath cache
+  wasn't. One replica is fine — it's a cache, not a source of truth; losing
+  the pod just means the next pull re-populates it from Docker Hub.
 
 **Why this isn't just `containerMode: dind`** — the chart's own shorthand
 (`containerMode: { type: "dind" }`) generates its own fixed `volumes` /
