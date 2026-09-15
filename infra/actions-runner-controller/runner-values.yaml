@@ -99,25 +99,27 @@ template:
     #
     # First tried a weight:100 preferred podAntiAffinity here — it made no
     # measurable difference (6-7 of 8 pods still landed on k3s-04 on the next
-    # run). Its score competes against the other scheduler plugins (notably
-    # resource-fit/balanced-allocation, which favors k3s-04 for having far
-    # more absolute free capacity than k3s-05/06) in one weighted sum, and
-    # apparently lost. Tried topologySpreadConstraints next with
-    # whenUnsatisfiable: ScheduleAnyway (soft) — same result: 2 fresh pods in
-    # one batch both landed on k3s-04 again. ScheduleAnyway still only
-    # contributes a *score* that competes in the same weighted sum as the
-    # resource-fit plugins, so it lost for the same reason. DoNotSchedule
-    # makes it a hard filter instead of a score — a pod literally cannot bind
-    # to a node that would push the skew over 1, which is what actually
-    # produces even spread here. maxRunners:8 over 3 nodes forces some
-    # co-location regardless (a 3/3/2 split, which maxSkew:1 permits) — the
-    # risk of DoNotSchedule is pods sitting transiently Pending if the only
-    # nodes within skew are briefly all full, which self-resolves as earlier
-    # runner pods finish and free up.
+    # run). Then tried topologySpreadConstraints with whenUnsatisfiable:
+    # DoNotSchedule (hard) — this DID force even spread (confirmed live:
+    # 1-1-1 across k3s-04/05/06), but then stalled the 4th+ pods `Pending`
+    # with "Insufficient cpu" on k3s-05/06. Root cause found: k3s-05 and
+    # k3s-06 are already at 89%/82% CPU *requests* from this cluster's other
+    # workloads (Ollama, the app pods, etc.) — they only have ~1.4 spare
+    # cores each, enough for roughly one 2-core runner pod (runner + dind
+    # requests) apiece. k3s-04 (24 cores) holds almost all of this cluster's
+    # actual spare capacity, so most runner pods landing there isn't the
+    # scheduler being dumb — it's correctly reflecting where the room
+    # actually is. Forcing an even 3-way split with DoNotSchedule fights that
+    # reality and stalls jobs instead of just running them on the node that
+    # has space. Back to ScheduleAnyway (soft): let k3s-05/06 take their ~1
+    # pod each when there's room, without blocking the rest from running on
+    # k3s-04 when there isn't. If CI contention on k3s-04 itself is still a
+    # problem, the real lever is maxRunners (fewer concurrent jobs sharing
+    # its 24 cores) or per-job concurrency caps, not node placement.
     topologySpreadConstraints:
       - maxSkew: 1
         topologyKey: kubernetes.io/hostname
-        whenUnsatisfiable: DoNotSchedule
+        whenUnsatisfiable: ScheduleAnyway
         labelSelector:
           matchLabels:
             actions.github.com/scale-set-name: glyphdex-arc-runners
