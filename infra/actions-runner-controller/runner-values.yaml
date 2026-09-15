@@ -102,16 +102,22 @@ template:
     # run). Its score competes against the other scheduler plugins (notably
     # resource-fit/balanced-allocation, which favors k3s-04 for having far
     # more absolute free capacity than k3s-05/06) in one weighted sum, and
-    # apparently lost. topologySpreadConstraints uses a dedicated scheduler
-    # plugin built specifically to minimize skew across a topology domain,
-    # which is a much more direct lever for "spread N pods over 3 nodes" than
-    # asking general-purpose anti-affinity to happen to produce that outcome.
-    # whenUnsatisfiable: ScheduleAnyway keeps it soft — with maxRunners:8 > 3
-    # nodes, some co-location is unavoidable once every node already has one.
+    # apparently lost. Tried topologySpreadConstraints next with
+    # whenUnsatisfiable: ScheduleAnyway (soft) — same result: 2 fresh pods in
+    # one batch both landed on k3s-04 again. ScheduleAnyway still only
+    # contributes a *score* that competes in the same weighted sum as the
+    # resource-fit plugins, so it lost for the same reason. DoNotSchedule
+    # makes it a hard filter instead of a score — a pod literally cannot bind
+    # to a node that would push the skew over 1, which is what actually
+    # produces even spread here. maxRunners:8 over 3 nodes forces some
+    # co-location regardless (a 3/3/2 split, which maxSkew:1 permits) — the
+    # risk of DoNotSchedule is pods sitting transiently Pending if the only
+    # nodes within skew are briefly all full, which self-resolves as earlier
+    # runner pods finish and free up.
     topologySpreadConstraints:
       - maxSkew: 1
         topologyKey: kubernetes.io/hostname
-        whenUnsatisfiable: ScheduleAnyway
+        whenUnsatisfiable: DoNotSchedule
         labelSelector:
           matchLabels:
             actions.github.com/scale-set-name: glyphdex-arc-runners
