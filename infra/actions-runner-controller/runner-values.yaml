@@ -194,3 +194,23 @@ template:
             mountPath: /var/run
           - name: dind-externals
             mountPath: /home/runner/externals
+        resources:
+          # Previously unset entirely — the likely cause of the node job's
+          # `pnpm test` DB suites timing out under concurrency (2026-09-15):
+          # every testcontainers Postgres container each test file spins up
+          # runs inside THIS container's dockerd, not the runner container's.
+          # With no CPU/memory request, the scheduler had no basis to avoid
+          # co-locating several runner pods' dind daemons tightly on the same
+          # node, and no floor on how much CPU each one actually got — under
+          # maxRunners: 8, container startups inside dind were observed
+          # taking a uniform ~165s (suspiciously close to vitest's 180s
+          # hookTimeout) across both passing and failing suites, pointing at
+          # CPU starvation rather than genuine per-test work. Same
+          # no-cpu-limit reasoning as the runner container above: a limit
+          # throttles dockerd itself and makes container startup slower, not
+          # just capped.
+          requests:
+            cpu: "1"
+            memory: 2Gi
+          limits:
+            memory: 4Gi
