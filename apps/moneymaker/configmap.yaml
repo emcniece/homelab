@@ -127,10 +127,23 @@ data:
 
   # ── Universes ──────────────────────────────────────────────────────
   # DYNAMIC_UNIVERSE=true makes the engine ignore the static lists below
-  # and pull today's most-active tickers from MooMoo's get_stock_filter
-  # at session open. Quality gates: price band + 10d cumulative volume
-  # floor (UNIVERSE_MIN_AVG_VOLUME × 10 days). Falls back to the static
-  # union on any failure path — the engine never runs without a list.
+  # and prefer today's most-active tickers over the frozen 25-symbol
+  # WATCHLIST. Quality gates: price band + 10d cumulative volume floor
+  # (UNIVERSE_MIN_AVG_VOLUME × 10 days). Falls back to the static union on
+  # any failure path — the engine never runs without a list.
+  #
+  # Two sources, tried in order at session open:
+  #   1. PREMARKET_SCAN_PATH — written by the moneymaker-premarket-scan
+  #      CronJob (runs ~08:30 ET via `main.py scan --dynamic --out ...`
+  #      onto the shared moneymaker-output PVC). No broker connection
+  #      needed to read it, so this is what actually engages while the
+  #      engine runs with DRY_RUN=true (dry_run engines never instantiate
+  #      a broker — see engine.py `_resolve_universe`).
+  #   2. A direct get_stock_filter call via the engine's own broker — only
+  #      reachable once DRY_RUN=false.
+  # 2026-09-16: added the CronJob → engine handoff (previously the CronJob's
+  # scan was informational-only; DYNAMIC_UNIVERSE had no effect while
+  # DRY_RUN=true, so every paper session silently ran the static list).
   # Local probe before flipping prod:
   #   python main.py universe --top 25 --min-avg-volume 5000000
   DYNAMIC_UNIVERSE: "true"
@@ -138,6 +151,8 @@ data:
   UNIVERSE_MIN_PRICE: "5"
   UNIVERSE_MAX_PRICE: "200"
   UNIVERSE_MIN_AVG_VOLUME: "5000000"   # 5M shares/day — drops marginals
+  PREMARKET_SCAN_PATH: "/app/output/premarket/scan-latest.json"
+  PREMARKET_SCAN_MAX_AGE_HOURS: "8"    # ~08:30 ET scan is stale by next day's open
 
   # Static fallback — used when DYNAMIC_UNIVERSE=false or any dynamic
   # path errors out (screener failure, OpenD reconnect mid-session, ...)

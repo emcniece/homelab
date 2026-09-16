@@ -30,10 +30,14 @@ spec:
               image: ghcr.io/emcniece/moneymaker:latest
               imagePullPolicy: IfNotPresent
               # --dynamic uses build_universe() — the same source the live
-              # engine uses at session boot (DYNAMIC_UNIVERSE=true). Without
-              # it the scan runs against the static WATCHLIST, whose names
-              # rarely overlap with what the engine actually trades.
-              command: ["python", "main.py", "scan", "--dynamic", "--top", "25"]
+              # engine would use at session boot. --out writes the ranked
+              # list to the shared output PVC, where the engine's
+              # load_premarket_scan() picks it up at its own boot (13:30
+              # UTC) via PREMARKET_SCAN_PATH — this is what actually lets
+              # DYNAMIC_UNIVERSE take effect while DRY_RUN=true, since a
+              # dry_run engine has no broker to call build_universe() itself.
+              command: ["python", "main.py", "scan", "--dynamic", "--top", "25",
+                        "--out", "/app/output/premarket/scan-latest.json"]
               envFrom:
                 - configMapRef:
                     name: moneymaker-config
@@ -50,6 +54,21 @@ spec:
                 allowPrivilegeEscalation: false
                 capabilities:
                   drop: ["ALL"]
+              volumeMounts:
+                - name: output
+                  mountPath: /app/output
+          # Same PVC the engine Deployment mounts at /app/output. Both are
+          # RWO, but local-path (the homelab default) binds a PVC to one
+          # node via nodeAffinity rather than one pod — concurrent mounts
+          # from pods on that same node work fine, which is the case here
+          # (single-node-class cluster; see the `maintenance` toleration
+          # below). If this ever moves to a multi-node cluster with a CSI
+          # driver that truly enforces single-pod RWO, switch this handoff
+          # to a ConfigMap written via the k8s API instead.
+          volumes:
+            - name: output
+              persistentVolumeClaim:
+                claimName: moneymaker-output
           tolerations:
             - key: "maintenance"
               operator: "Exists"
