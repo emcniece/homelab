@@ -31,7 +31,7 @@ Two Helm releases:
 A workflow opts in with `runs-on: glyphdex-arc-runners` (the
 `runnerScaleSetName` in `runner-values.yaml`) in place of `ubuntu-latest`.
 
-## Security note — this is a public repo
+## Security note — this is a public repo (Glyphdex)
 
 A self-hosted runner registered against a public repo will execute whatever
 workflow YAML a triggering event brings with it, on your hardware, with
@@ -52,6 +52,14 @@ mitigations in place / to keep in place:
 - The runner pods run a privileged dind (Docker-in-Docker) container for
   Docker builds — privileged pods can affect the node they're scheduled on,
   so don't casually point untrusted workflows at this scale set later.
+
+`emcniece/moneymaker` (the other scale set — see "Add another repo's runner
+scale set" below) is private, so a fork PR isn't possible and a PR in
+general can only come from someone already granted repo access. The same
+push-only mitigation is still applied to `moneymaker-arc-runners` anyway —
+cheap to keep, and it stops mattering only if the repo's access list is
+fully trusted forever, which isn't a bet worth making for a privileged dind
+container.
 
 ## Prerequisites
 
@@ -245,6 +253,52 @@ version is enough:
 + runs-on: glyphdex-arc-runners
 ```
 
+## Add another repo's runner scale set (moneymaker)
+
+Second Helm release on the same controller, following the "repo-scoped, not
+org-scoped" rule in Architecture above. `emcniece/moneymaker` is private
+(unlike Glyphdex — see the Security note), which lowers the untrusted-PR
+risk somewhat, but the same mitigation is applied anyway: only
+`push`-triggered jobs get `runs-on: moneymaker-arc-runners`;
+`pull_request`-triggered ones stay conditional the same way Glyphdex's
+`ci.yml` does.
+
+```sh
+export KUBECONFIG=~/.kube/config-homelab
+CHART_VERSION=0.14.2   # match whatever's installed for the arc controller
+
+# 1. GitHub credential for this repo — a fine-grained PAT scoped to
+#    "Only select repositories" → emcniece/moneymaker, Administration:
+#    read and write. Create at
+#    https://github.com/settings/personal-access-tokens/new
+#    Paste when prompted; it never touches shell history or git this way.
+read -rsp 'GitHub PAT (moneymaker): ' GH_PAT && echo
+kubectl create secret generic moneymaker-arc-github-secret \
+  --namespace arc-runners \
+  --from-literal=github_token="$GH_PAT"
+unset GH_PAT
+
+# 2. Runner scale set
+helm upgrade --install moneymaker-runners \
+  --namespace arc-runners \
+  -f infra/actions-runner-controller/runner-values-moneymaker.yaml \
+  oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set \
+  --version "$CHART_VERSION" --wait
+```
+
+No second controller, no second `pnpm-store`/`playwright-cache`/DNS-patch
+step — those are cluster- or Glyphdex-specific and are either shared
+(controller, registry mirror) or simply not needed (moneymaker has no
+Node/Playwright workloads). `runner-values-moneymaker.yaml`'s own comments
+cover what's trimmed and why.
+
+Verify the same way as the Glyphdex scale set (substitute
+`moneymaker-arc-runners` for `glyphdex-arc-runners` and
+`moneymaker-runners` for `glyphdex-runners` in the Verify/Troubleshooting
+commands below) — both scale sets show up side by side under
+`kubectl -n arc-runners get autoscalingrunnersets` and in each repo's own
+Settings → Actions → Runners page.
+
 ## Verify
 
 ```sh
@@ -315,12 +369,18 @@ repo Settings → Actions → Runners on GitHub.
 ```sh
 helm -n arc-runners uninstall glyphdex-runners
 kubectl -n arc-runners delete secret glyphdex-arc-github-secret
+# moneymaker-runners is a separate release — uninstall independently,
+# doesn't require also removing glyphdex-runners:
+helm -n arc-runners uninstall moneymaker-runners
+kubectl -n arc-runners delete secret moneymaker-arc-github-secret
+# Only tear down the controller once every scale set release is gone —
+# it's shared.
 helm -n arc-systems uninstall arc
 ```
 
-Revert any `runs-on: glyphdex-arc-runners` back to `ubuntu-latest` in
-Glyphdex's workflows first, or pushes will queue with no runner to pick them
-up.
+Revert any `runs-on: glyphdex-arc-runners` / `runs-on: moneymaker-arc-runners`
+back to `ubuntu-latest` in the respective repo's workflows first, or pushes
+will queue with no runner to pick them up.
 
 ## References
 
