@@ -50,7 +50,19 @@ template:
         - name: ndots
           value: "1"
     restartPolicy: Never
-    serviceAccountName: moneymaker-arc-runners-gha-rs-no-permission
+    # No explicit serviceAccountName here, unlike runner-values.yaml —
+    # deliberately. The chart only self-creates the no-permission
+    # ServiceAccount (templates/no_permission_serviceaccount.yaml) when this
+    # field is left unset; glyphdex-arc-runners-gha-rs-no-permission exists
+    # only because it predates runner-values.yaml gaining this field (added
+    # when the dind pod spec was spelled out by hand — see that file's
+    # history). Setting it explicitly on THIS fresh install skipped SA
+    # creation entirely and every runner pod failed with "serviceaccount
+    # ... not found" (found live, 2026-09-17). Leaving it unset lets the
+    # chart both create the SA and wire the pod to it, under its own
+    # default name (gha-runner-scale-set.noPermissionServiceAccountName —
+    # in practice `<runnerScaleSetName>-gha-rs-no-permission`, the same
+    # name we'd have hardcoded anyway).
     # Same soft spread as Glyphdex's scale set — see runner-values.yaml's
     # comment for why ScheduleAnyway (soft) beats DoNotSchedule (hard) on
     # this cluster: k3s-05/06 are already near their CPU-request ceiling

@@ -319,6 +319,27 @@ repo Settings → Actions → Runners on GitHub.
 
 ## Troubleshooting
 
+- **Every EphemeralRunner fails immediately with `pods "..." is forbidden:
+  error looking up service account arc-runners/<name>-gha-rs-no-permission:
+  serviceaccount "..." not found`** (hit live standing up the moneymaker
+  scale set, 2026-09-17): the chart only self-creates that ServiceAccount
+  (`templates/no_permission_serviceaccount.yaml`) when
+  `template.spec.serviceAccountName` is left **unset** in your values file —
+  set it explicitly (as `runner-values.yaml` does, safe only because
+  Glyphdex's SA predates that field being added there) on a *fresh* install
+  and the SA never gets created at all. Fix: remove the explicit
+  `serviceAccountName` line, re-run `helm upgrade`, then force a clean
+  recovery — the stuck `EphemeralRunnerSet` and its `AutoscalingListener`
+  both cache the old (now-wrong) state and won't self-heal just from the SA
+  appearing:
+  ```sh
+  kubectl -n arc-runners delete ephemeralrunnerset <name>-arc-runners-xxxxx
+  kubectl -n arc-systems delete autoscalinglistener <name>-arc-runners-xxxxx-listener
+  ```
+  (only safe once nothing in the set is actually `Running` — same caveat as
+  the stale-EphemeralRunnerSet entry below). The controller recreates both
+  within seconds, and this time the listener's `EphemeralRunnerSetName`
+  reference points at the *new* set instead of the deleted one.
 - **Controller/listener logs show a TLS cert error mentioning `*.traefik.*`
   when calling `api.github.com`**: the ndots DNS hijack above — check the
   fix is actually applied (`kubectl -n arc-systems get deploy
