@@ -379,13 +379,61 @@
       ]
     },
     {
+      "type": "timeseries",
+      "title": "Extractor requests/s by pod",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 47
+      },
+      "targets": [
+        {
+          "expr": "sum by (instance) (rate(glyphdex_extract_requests_total[5m]))",
+          "legendFormat": "{{instance}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Extractor in-flight by pod",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 47
+      },
+      "targets": [
+        {
+          "expr": "glyphdex_extract_in_flight",
+          "legendFormat": "{{instance}}"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Ingest jobs by worker lane (heavy / jumbo / light)",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 55
+      },
+      "targets": [
+        {
+          "expr": "glyphdex_ingest_lane_jobs",
+          "legendFormat": "{{lane}} - {{state}}"
+        }
+      ]
+    },
+    {
       "type": "row",
       "title": "Postgres",
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 47
+        "y": 63
       }
     },
     {
@@ -395,7 +443,7 @@
         "h": 8,
         "w": 8,
         "x": 0,
-        "y": 48
+        "y": 64
       },
       "targets": [
         {
@@ -411,7 +459,7 @@
         "h": 8,
         "w": 8,
         "x": 8,
-        "y": 48
+        "y": 64
       },
       "targets": [
         {
@@ -431,7 +479,7 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 48
+        "y": 64
       },
       "fieldConfig": {
         "defaults": {
