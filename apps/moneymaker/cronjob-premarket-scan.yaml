@@ -23,15 +23,28 @@ spec:
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
+            # Needed for the rsa-key Secret volume to actually be readable
+            # — see its defaultMode comment below. The engine Deployment
+            # already sets this; this CronJob never did.
+            fsGroup: 1000
           imagePullSecrets:
             - name: ghcr-pull
           containers:
             - name: scan
               image: ghcr.io/emcniece/moneymaker:latest
-              imagePullPolicy: IfNotPresent
+              # Was IfNotPresent — caused a real outage: the 9/15-9/17 daily
+              # runs all failed with "unrecognized arguments: --out ..."
+              # because the node had :latest cached from before that flag
+              # existed (main.py#--out landed 9/16; the image publish that
+              # would have picked it up stayed blocked by GitHub billing
+              # until 9/17), and IfNotPresent never re-pulled to check.
+              # engine's own Deployment already uses Always for this exact
+              # reason — matching it here, at daily-job frequency the pull
+              # overhead is negligible.
+              imagePullPolicy: Always
               # --dynamic uses build_universe() — the same source the live
               # engine would use at session boot. --out writes the ranked
-              # list to the shared output PVC, where the engine's
+              # list to the shared premarket-scan PVC, where the engine's
               # load_premarket_scan() picks it up at its own boot (13:30
               # UTC) via PREMARKET_SCAN_PATH — this is what actually lets
               # DYNAMIC_UNIVERSE take effect while DRY_RUN=true, since a
@@ -55,20 +68,45 @@ spec:
                 capabilities:
                   drop: ["ALL"]
               volumeMounts:
-                - name: output
-                  mountPath: /app/output
-          # Same PVC the engine Deployment mounts at /app/output. Both are
-          # RWO, but local-path (the homelab default) binds a PVC to one
-          # node via nodeAffinity rather than one pod — concurrent mounts
-          # from pods on that same node work fine, which is the case here
-          # (single-node-class cluster; see the `maintenance` toleration
-          # below). If this ever moves to a multi-node cluster with a CSI
-          # driver that truly enforces single-pod RWO, switch this handoff
-          # to a ConfigMap written via the k8s API instead.
+                - name: premarket-scan
+                  mountPath: /app/output/premarket
+                - name: rsa-key
+                  mountPath: /etc/moneymaker
+                  readOnly: true
+          # Dedicated RWX (csi-cephfs-sc) PVC, NOT moneymaker-output —
+          # switched 2026-09-17 after moneymaker-output (csi-rbd-sc, real
+          # Ceph RBD block storage) caused every run to fail with
+          # "Multi-Attach error ... already used by pod(s)
+          # moneymaker-engine-..." whenever this Job's pod landed on a
+          # different node than the engine Deployment's pod, which is most
+          # of the time on a multi-node cluster. See pvc.yaml's comment on
+          # moneymaker-premarket-scan for the full story.
+          #
+          # rsa-key: this CronJob never mounted it before — found live,
+          # 2026-09-17, that --dynamic's build_universe() call hangs the
+          # entire job (past even the 600s activeDeadlineSeconds, force-
+          # killed rather than failing cleanly) retrying moomoo's
+          # OpenQuoteContext connect once MOOMOO_RSA_KEY_PATH (from
+          # moneymaker-config, shared with the engine) points at a file
+          # that was never mounted into this pod at all. Same volume the
+          # engine Deployment already mounts, optional: true so a missing
+          # Secret degrades to "encryption off" rather than blocking the Job.
           volumes:
-            - name: output
+            - name: premarket-scan
               persistentVolumeClaim:
-                claimName: moneymaker-output
+                claimName: moneymaker-premarket-scan
+            - name: rsa-key
+              secret:
+                secretName: moneymaker-rsa-key
+                # 0440, not 0400 — see deployment.yaml's rsa-key comment.
+                # 0400 (owner-read only) denies read to any non-root
+                # container regardless of fsGroup; 0440 (owner+group read)
+                # is what actually lets fsGroup (above) do its job. Found
+                # live: PermissionError reading rsa_key.pem even after
+                # mounting the volume and setting fsGroup, until this
+                # changed too.
+                defaultMode: 0440
+                optional: true
           tolerations:
             - key: "maintenance"
               operator: "Exists"

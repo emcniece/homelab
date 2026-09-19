@@ -28,3 +28,30 @@ spec:
     requests:
       storage: 1Gi
   storageClassName: csi-rbd-sc
+---
+# Separate small RWX volume for the premarket-scan → engine handoff
+# (cronjob-premarket-scan.yaml writes, deployment.yaml's engine reads via
+# PREMARKET_SCAN_PATH / universe.load_premarket_scan()). NOT the same PVC
+# as moneymaker-output above — found live, 2026-09-17: moneymaker-output is
+# csi-rbd-sc (Ceph RBD, true block storage — ReadWriteOnce really does mean
+# one NODE at a time), not local-path as originally assumed when this
+# handoff was designed. The CronJob pod and the long-running engine
+# Deployment pod land on different nodes constantly (confirmed: engine on
+# k3s-06, a manual scan test on k3s-04), so every CronJob run after the
+# first hit "Multi-Attach error ... Volume is already used by pod(s)
+# moneymaker-engine-...". csi-cephfs-sc is real ReadWriteMany — the same
+# pattern Glyphdex's ARC pnpm-store/playwright-cache PVCs use for shared
+# concurrent access — so both pods can mount it from different nodes at
+# once with no attach conflict.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: moneymaker-premarket-scan
+  namespace: moneymaker
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Mi
+  storageClassName: csi-cephfs-sc

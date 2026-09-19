@@ -69,6 +69,15 @@ spec:
           volumeMounts:
             - name: output
               mountPath: /app/output
+            # Nested mount shadows /app/output/premarket specifically —
+            # a separate RWX (csi-cephfs-sc) PVC from the RWO `output`
+            # above, written by cronjob-premarket-scan.yaml. Split out
+            # 2026-09-17: sharing the RWO output PVC between this
+            # long-running Deployment pod and the CronJob's short-lived pod
+            # caused Multi-Attach errors whenever they landed on different
+            # nodes — see pvc.yaml's comment on moneymaker-premarket-scan.
+            - name: premarket-scan
+              mountPath: /app/output/premarket
             - name: rsa-key
               mountPath: /etc/moneymaker
               readOnly: true
@@ -110,10 +119,26 @@ spec:
         - name: output
           persistentVolumeClaim:
             claimName: moneymaker-output
+        - name: premarket-scan
+          persistentVolumeClaim:
+            claimName: moneymaker-premarket-scan
         - name: rsa-key
           secret:
             secretName: moneymaker-rsa-key
-            defaultMode: 0400
+            # Was 0400 (owner-read only) — a latent bug, never exercised
+            # because DRY_RUN=true engines never instantiate a broker (see
+            # engine.py `self.broker = MoomooBroker() if not dry_run else
+            # None`), so this code path has never actually run in
+            # production. Found live 2026-09-17 debugging the premarket-
+            # scan CronJob (which DOES call the moomoo SDK unconditionally
+            # via build_universe(), dry_run or not): secret volumes are
+            # owned by root, and fsGroup (1000, above) only changes GROUP
+            # ownership/perms — 0400 grants zero group permissions, so a
+            # non-root container can never read it regardless of fsGroup.
+            # 0440 (owner+group read) is what actually lets fsGroup do its
+            # job. This would have broken live trading outright the moment
+            # DRY_RUN flipped to false, not just this CronJob.
+            defaultMode: 0440
             # Booting before the Secret is created shouldn't crashloop —
             # the broker treats a missing key as "encryption off".
             optional: true
