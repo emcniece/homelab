@@ -1,0 +1,38 @@
+# Managed by https://github.com/emcniece/homelab
+#
+# Local, Ceph/K8s-independent mirror of the Outline wiki. Exports every
+# collection to markdown on a schedule and serves the result over plain
+# HTTP from this Proxmox host's own boot disk, so runbooks/incident docs
+# stay readable even when the Ceph OSDs backing K8s storage are down and
+# Outline itself (which runs in K8s) can't be scheduled. Prompted by the
+# 2026-09-19 Ceph OSD outage, where Outline was unreachable at exactly the
+# moment an incident report needed writing.
+services:
+  outline-docs-sync:
+    container_name: outline-docs-sync
+    image: alpine:3.20
+    restart: unless-stopped
+    environment:
+      OUTLINE_URL: '{{ outline_url }}'
+      OUTLINE_API_TOKEN: '{{ outline_api_token }}'
+      SYNC_INTERVAL: '{{ outline_mirror_sync_interval }}'
+    volumes:
+      - ./sync-outline.sh:/sync-outline.sh:ro
+      - ./data:/data
+    # No custom image build — installs its handful of packages on
+    # container start instead. Fine for a background job that syncs every
+    # few hours; not worth a Dockerfile/registry push for this.
+    entrypoint:
+      - sh
+      - -c
+      - apk add --no-cache curl jq unzip rsync git >/dev/null && exec sh /sync-outline.sh
+
+  outline-docs-server:
+    container_name: outline-docs-server
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - '{{ outline_mirror_http_port }}:80'
+    volumes:
+      - ./data/docs:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro

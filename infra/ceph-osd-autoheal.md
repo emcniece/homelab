@@ -1,6 +1,9 @@
 # Ceph OSD Auto-Heal — Design
 
-Status: **design / not yet built**
+Status: **built and live on pve2/pve3** (2026-09-20). Deployed in `DRY_RUN`
+mode first, verified via a manual induced-failure test (`osd.2` on pve2 —
+full ladder, circuit breaker, and Pushbullet escalation all behaved
+correctly), then flipped to `DRY_RUN=0` the same day.
 Companion runbook: [`ceph-osd-recovery.md`](./ceph-osd-recovery.md)
 
 ## Why
@@ -47,7 +50,7 @@ Two cooperating systemd units per host, plus a shared script and a per-host inve
 
 ```
 /usr/local/sbin/ceph-osd-autoheal            # the script (bash or python3-stdlib)
-/etc/ceph-osd-autoheal/config.env            # tunables + ntfy topic
+/etc/ceph-osd-autoheal/config.env            # tunables + Pushbullet token
 /etc/ceph-osd-autoheal/inventory.yaml        # per-host OSD <-> disk identity map
 /etc/ceph-osd-autoheal/pause                 # touch to disable all action (maintenance)
 /var/lib/ceph-osd-autoheal/state.json        # per-OSD attempt counters / circuit-breaker
@@ -163,30 +166,37 @@ Known map for pve2 (from the 2026-09-10 incident): phy4→osd.0 `6PGDV9VU`, phy5
 
 ---
 
-## Notifications — ntfy.sh
+## Notifications — Pushbullet
 
-- Topic: a long random string, e.g. `ceph-emc2-<random>`. Stored in `config.env` (`NTFY_TOPIC=`), and the file is `chmod 600` — the topic is the only access control on ntfy.sh.
-- Subscribe on phone: ntfy app → add `ntfy.sh/ceph-emc2-<random>`.
+**Updated 2026-09-20:** built using Pushbullet instead of ntfy.sh (user
+preference) — access-token auth rather than an obscurity-only topic string.
+
+- Access token: Pushbullet → Settings → Account → Create Access Token.
+  Stored in `config.env` (`PUSHBULLET_TOKEN=`), file `chmod 600`.
+- Install the Pushbullet app / browser extension to receive pushes.
 - One `curl` per event:
 
 ```sh
 curl -s \
-  -H "Title: $TITLE" \
-  -H "Priority: $PRIORITY" \
-  -H "Tags: $TAGS" \
-  -d "$BODY" \
-  "https://ntfy.sh/$NTFY_TOPIC" >/dev/null
+  -H "Access-Token: $PUSHBULLET_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"type\":\"note\",\"title\":\"$TITLE\",\"body\":\"$BODY\"}" \
+  "https://api.pushbullet.com/v2/pushes" >/dev/null
 ```
+
+Pushbullet has no priority/tags concept — the implementation folds priority
+into an emoji title prefix (🚨 for `urgent`, ⚠️ for `high`, none for
+`default`) instead.
 
 ### Event types
 
-| Event | Priority | Tags | Example body |
-|---|---|---|---|
-| boot: all disks present | `default` | `white_check_mark` | `pve3: 4/4 OSD disks present 42s after boot` |
-| healer: auto-recovered | `default` | `arrows_counterclockwise` | `pve3: osd.7 was down, rescan+activate fixed it. 8/8 OSDs up.` |
-| **escalation: reseat required** | `urgent` | `rotating_light,wrench` | see below |
-| escalation cleared | `high` | `white_check_mark` | `pve3: osd.3 back up after reseat. Cluster HEALTH_OK.` |
-| healer error / can't reach mon | `high` | `warning` | `pve3: autoheal cannot query ceph (mon unreachable), retrying` |
+| Event | Priority | Example body |
+|---|---|---|
+| boot: all disks present | `default` | `pve3: 4/4 OSD disks present 42s after boot` |
+| healer: auto-recovered | `default` | `pve3: osd.7 was down, rescan+activate fixed it. 8/8 OSDs up.` |
+| **escalation: reseat required** | `urgent` | see below |
+| escalation cleared | `high` | `pve3: osd.3 back up after reseat. Cluster HEALTH_OK.` |
+| healer error / can't reach mon | `high` | `pve3: autoheal cannot query ceph (mon unreachable), retrying` |
 
 ### Escalation body
 
@@ -218,7 +228,7 @@ ansible/roles/ceph-osd-autoheal/
   defaults/main.yml        # tunables (timeouts, MAX_RESTARTS_PER_HOUR, RESPECT_MAINT_FLAGS…)
   files/ceph-osd-autoheal  # the script
   templates/
-    config.env.j2          # NTFY_TOPIC from vault, tunables
+    config.env.j2          # PUSHBULLET_TOKEN from vault, tunables
     inventory.yaml.j2      # from host_vars (or generated on first run then committed)
     ceph-osd-disk-wait.service.j2
     ceph-osd-autoheal.service.j2
@@ -228,7 +238,7 @@ ansible/roles/ceph-osd-autoheal/
   tasks/main.yml
 ```
 
-- `NTFY_TOPIC` lives in `ansible/group_vars/proxmox/vault.yml` (ansible-vault, `.vault_password` already gitignored).
+- `PUSHBULLET_TOKEN` lives in `ansible/group_vars/proxmox/vault.yml` (ansible-vault, `.vault_password` already gitignored).
 - Playbook: `ansible/playbooks/proxmox/provision-ceph-autoheal.yml`, limit `pve2,pve3`.
 - Package deps: `sg3-utils` (`sg_start`, `sg_ses`), `lsscsi`, `rescan-scsi-bus.sh` (in `sg3-utils` or `scsitools`) — all already present on the nodes.
 
@@ -243,7 +253,7 @@ ansible/roles/ceph-osd-autoheal/
 
 ## Secondary layer — Prometheus alerts (after monitoring is back)
 
-You already scrape `ceph-mgr` (`infra/monitoring/ceph-mgr-*.yaml`). Add rules → route to the same ntfy topic via Alertmanager (or a webhook receiver). Catches what the node-local healer can't: whole node down, mon quorum loss, slow-but-not-down OSDs.
+You already scrape `ceph-mgr` (`infra/monitoring/ceph-mgr-*.yaml`). Add rules → route to the same Pushbullet token via Alertmanager (or a webhook receiver). Catches what the node-local healer can't: whole node down, mon quorum loss, slow-but-not-down OSDs.
 
 ```yaml
 - alert: CephOSDDown

@@ -1,0 +1,8 @@
+# Managed by https://github.com/emcniece/homelab
+#
+# Drop-in on the package-provided ceph-osd@.service (which lives under
+# /usr/lib/systemd/system/ — this file goes under /etc/systemd/system/ and
+# does not touch or conflict with it). Reacts immediately when a specific
+# OSD's unit fails, instead of waiting for the next timer tick.
+[Unit]
+OnFailure=ceph-osd-autoheal.service

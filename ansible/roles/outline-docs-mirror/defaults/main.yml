@@ -1,0 +1,7 @@
+---
+outline_mirror_dir: "/home/{{ runtime_user }}/apps/outline-docs-mirror"
+# Plain interval (Xh/Xm/Xs), not cron syntax — the sync container runs a
+# simple sleep loop rather than a cron daemon (see files/sync-outline.sh).
+outline_mirror_sync_interval: "6h"
+outline_mirror_http_port: 8091
+outline_url: "https://docs.emc2.build"

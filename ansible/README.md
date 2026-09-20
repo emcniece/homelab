@@ -43,6 +43,29 @@ ansible-playbook playbooks/proxmox/provision-scrutiny.yml
 ansible-playbook playbooks/proxmox/provision-scrutiny.yml --tags scrutiny
 ```
 
+This also installs a local mirror of the Outline wiki (`docs.emc2.build`),
+exported to markdown and served over plain HTTP directly from each host's
+boot disk — readable even when Ceph OSDs are down and K8s (where Outline
+runs) can't schedule pods. Set `outline_api_token` in `secrets.yml` first
+(Outline > Settings > API Tokens). See
+`roles/outline-docs-mirror/README.md`.
+
+```sh
+ansible-playbook playbooks/proxmox/provision-outline-mirror.yml -e "@secrets.yml"
+```
+
+Also installs a self-healing service on pve2/pve3 (the two Ceph OSD hosts)
+that waits for OSD disks to enumerate before Ceph starts, and auto-heals any
+OSD that goes down after a power event — the same failure this repo's
+`infra/ceph-osd-autoheal.md` was written to fix, after it recurred a third
+time. Deploys in dry-run mode by default; see
+`roles/ceph-osd-autoheal/README.md` for the rollout steps before trusting it
+to act for real.
+
+```sh
+ansible-playbook playbooks/proxmox/provision-ceph-autoheal.yml
+```
+
 ### UDM Pro
 
 Installs the `/data/on_boot.d/` scripts that re-provision the cloudflared

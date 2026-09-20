@@ -1,0 +1,34 @@
+# Managed by https://github.com/emcniece/homelab
+#
+# Plain directory listing over the exported markdown — deliberately no
+# rendering/JS dependency, so it works from `curl`, a text browser, or a
+# browser with no internet access to fetch a CDN asset. The whole point of
+# this service is to be readable when everything else (K8s, Ceph, Outline
+# itself) is down.
+server {
+    listen 80;
+    server_name _;
+    root /usr/share/nginx/html;
+
+    autoindex on;
+    autoindex_exact_size off;
+    autoindex_localtime on;
+
+    # nginx has no built-in MIME type for .md, so it falls back to
+    # application/octet-stream and browsers download it instead of
+    # displaying it. Serve it as plain text instead — still no
+    # rendering/JS dependency, just readable inline as raw markdown.
+    location ~* \.md$ {
+        default_type "text/plain; charset=utf-8";
+    }
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    # The docroot is also a git working copy (see sync-outline.sh) — don't
+    # serve its internals.
+    location ~ /\.git {
+        deny all;
+    }
+}

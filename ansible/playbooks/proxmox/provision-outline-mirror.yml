@@ -1,0 +1,16 @@
+- name: Provision Outline docs mirror on Proxmox hosts
+  hosts: proxmox
+  remote_user: root
+  gather_facts: no
+
+  vars:
+    runtime_user: emc
+
+  tasks:
+    - import_role:
+        name: docker
+      tags: [os]
+
+    - import_role:
+        name: outline-docs-mirror
+      tags: [outline-mirror]

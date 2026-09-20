@@ -4,3 +4,34 @@
 # "collector error" notification email on every scan.
 scrutiny_ignore_devices:
   - sdf
+
+# For roles/ceph-osd-autoheal. hba_phy from /sys/class/sas_device/*/phy_identifier
+# (2026-09-19). front_bay_label confirmed by physically reseating during
+# the 2026-09-19 incident where noted; "?" is unconfirmed — see
+# infra/ceph-osd-recovery.md's LED method to fill these in on the next
+# maintenance window.
+ceph_autoheal_osds:
+  - id: 0
+    fsid: 816ba170-e794-42f4-aeab-e21afba03b20
+    disk_model: "WDC WUH721818AL4200"
+    disk_serial: "6PGDV9VU"
+    hba_phy: 4
+    front_bay_label: "?"
+  - id: 2
+    fsid: 1d519423-f9a1-424a-a2f6-47c30ec88e38
+    disk_model: "WDC WUH721818AL4201"
+    disk_serial: "4EG4DY6U"
+    hba_phy: 7
+    front_bay_label: "?"
+  - id: 4
+    fsid: 51bb82b9-d50c-4ce9-9f84-a724afa37545
+    disk_model: "WDC WUH721818AL4200"
+    disk_serial: "5DKLYN5R"
+    hba_phy: 6
+    front_bay_label: "1"  # confirmed 2026-09-19
+  - id: 5
+    fsid: a845e54c-40d3-4219-afcd-75a428b286af
+    disk_model: "WDC WUH721818AL4200"
+    disk_serial: "6PGDM27U"
+    hba_phy: 5
+    front_bay_label: "2"  # confirmed 2026-09-19

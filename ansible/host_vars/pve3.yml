@@ -1,0 +1,31 @@
+---
+# For roles/ceph-osd-autoheal. hba_phy confirmed via `ceph osd metadata`
+# device_paths for osd.7 only (2026-09-19); "?" is unconfirmed for the
+# others — see infra/ceph-osd-recovery.md's LED method. front_bay_label
+# confirmed by physically reseating during the 2026-09-19 incident where
+# noted.
+ceph_autoheal_osds:
+  - id: 1
+    fsid: a090331d-318f-4fe6-b2a1-fb6a19810919
+    disk_model: "WDC WUH721818AL4201"
+    disk_serial: "3WGMA65J"
+    hba_phy: "?"
+    front_bay_label: "3"  # confirmed 2026-09-19
+  - id: 3
+    fsid: 855efe8b-7640-4885-bd64-837390caa980
+    disk_model: "WDC WUH721818AL4201"
+    disk_serial: "3GHKRJJK"
+    hba_phy: "?"
+    front_bay_label: "?"
+  - id: 6
+    fsid: 3e4d99c4-5e01-4938-98de-6400fbd7464c
+    disk_model: "WDC WUH721818AL4201"
+    disk_serial: "3MGH9WYU"
+    hba_phy: "?"
+    front_bay_label: "?"
+  - id: 7
+    fsid: 75d8d5ed-50c9-48b4-9ec3-e1d3b3c423d6
+    disk_model: "WDC WUH721818AL4201"
+    disk_serial: "3WHD7E7J"
+    hba_phy: 5
+    front_bay_label: "2"  # confirmed 2026-09-19

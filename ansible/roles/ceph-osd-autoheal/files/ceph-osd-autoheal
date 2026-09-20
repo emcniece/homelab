@@ -1,0 +1,625 @@
+#!/usr/bin/env python3
+"""
+Managed by https://github.com/emcniece/homelab
+
+Per-node Ceph OSD auto-heal for pve2/pve3. Design: infra/ceph-osd-autoheal.md
+in the repo root. Three jobs, one script:
+
+  (no args)        the healer — run by ceph-osd-autoheal.timer and by the
+                    OnFailure= drop-in on ceph-osd@.service
+  --disk-wait       the boot-time gate — run by ceph-osd-disk-wait.service,
+                    blocks (up to DISK_WAIT_TIMEOUT) until every disk in
+                    inventory.yaml is present
+  --dump-inventory  correlates ceph-volume/ceph/sysfs/dmesg into a starting
+                    inventory.yaml for this host
+  --retry osd.N     force one heal-ladder pass for osd.N, clearing its
+                    circuit-breaker state first
+
+Hard safety rail: run_allowed() is the *only* way this script invokes a
+subprocess. It is structurally incapable of running anything destructive to
+Ceph or a disk (see ALLOWED — no `ceph osd out/in/purge/destroy/rm/lost/crush`,
+no wipefs/sgdisk/mkfs*/dd/blkdiscard, no ceph-volume zap/batch/create).
+"""
+import fcntl
+import glob
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+CONFIG_DIR = Path("/etc/ceph-osd-autoheal")
+INVENTORY_PATH = CONFIG_DIR / "inventory.yaml"
+PAUSE_PATH = CONFIG_DIR / "pause"
+STATE_DIR = Path("/var/lib/ceph-osd-autoheal")
+STATE_PATH = STATE_DIR / "state.json"
+LOCK_PATH = Path("/run/ceph-osd-autoheal.lock")
+LOG_PATH = Path("/var/log/ceph-osd-autoheal.log")
+
+DRY_RUN = os.environ.get("DRY_RUN", "1") == "1"
+ENABLE_PHY_RESET = os.environ.get("ENABLE_PHY_RESET", "0") == "1"
+RESPECT_MAINT_FLAGS = os.environ.get("RESPECT_MAINT_FLAGS", "1") == "1"
+SETTLE_AFTER_BOOT = int(os.environ.get("SETTLE_AFTER_BOOT", "90"))
+DISK_WAIT_TIMEOUT = int(os.environ.get("DISK_WAIT_TIMEOUT", "600"))
+MAX_RESTARTS_PER_HOUR = int(os.environ.get("MAX_RESTARTS_PER_HOUR", "3"))
+BACKOFF_SECONDS = int(os.environ.get("BACKOFF_SECONDS", "3600"))
+USE_NOOUT_DURING_HEAL = os.environ.get("USE_NOOUT_DURING_HEAL", "1") == "1"
+NOOUT_DURATION = int(os.environ.get("NOOUT_DURATION", "900"))
+PUSHBULLET_TOKEN = os.environ.get("PUSHBULLET_TOKEN", "")
+
+# ---------------------------------------------------------------------------
+# Safety: the only way any subprocess gets run.
+# ---------------------------------------------------------------------------
+
+ALLOWED_PREFIXES = [
+    ["rescan-scsi-bus.sh"],
+    ["sg_start"],
+    ["sg_ses"],
+    ["ceph-volume", "lvm", "list"],
+    ["ceph-volume", "lvm", "activate"],
+    ["systemctl", "is-active"],
+    ["systemctl", "reset-failed"],
+    ["systemctl", "restart"],
+    ["systemctl", "status"],
+    ["ceph", "osd", "tree"],
+    ["ceph", "osd", "dump"],
+    ["ceph", "osd", "metadata"],
+    ["ceph", "osd", "set", "noout"],
+    ["ceph", "osd", "unset", "noout"],
+    ["ceph", "health"],
+    ["ceph", "pg"],
+    ["ceph", "-s"],
+    ["lsblk"],
+    ["smartctl"],
+    ["curl"],
+]
+
+# Subset of the above that never changes anything — safe to actually run
+# even under DRY_RUN, so dry-run mode can still report real cluster/disk
+# state. Notably excludes "ceph osd set/unset noout" and the write actions
+# in the heal ladder (activate, restart, rescan, sg_start, phy toggle).
+READ_ONLY_PREFIXES = [
+    ["ceph", "osd", "tree"],
+    ["ceph", "osd", "dump"],
+    ["ceph", "osd", "metadata"],
+    ["ceph", "-s"],
+    ["ceph", "health"],
+    ["ceph", "pg"],
+    ["ceph-volume", "lvm", "list"],
+    ["lsblk"],
+    ["smartctl"],
+    ["systemctl", "is-active"],
+    ["systemctl", "status"],
+]
+
+
+def is_read_only(argv):
+    return any(argv[: len(p)] == p for p in READ_ONLY_PREFIXES)
+
+
+class DisallowedCommand(Exception):
+    pass
+
+
+def run_allowed(argv, timeout=60, check=False):
+    for prefix in ALLOWED_PREFIXES:
+        if argv[: len(prefix)] == prefix:
+            break
+    else:
+        raise DisallowedCommand(f"refusing to run: {argv!r}")
+
+    # systemctl/ceph-volume calls that carry an OSD id must target one this
+    # host actually owns (belt-and-braces on top of the allowlist above —
+    # argv is built internally, never from external input, but keep this
+    # discipline anyway per the design doc's "structurally incapable" goal).
+    if argv[0] == "systemctl" and len(argv) >= 3:
+        m = re.match(r"^ceph-osd@(\d+)$", argv[2])
+        if m and int(m.group(1)) not in _owned_osd_ids_cache:
+            raise DisallowedCommand(f"osd not owned by this host: {argv!r}")
+
+    if DRY_RUN and argv[0] != "curl" and not is_read_only(argv):
+        log(f"DRY_RUN: would run {' '.join(argv)}")
+        return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+
+    return subprocess.run(
+        argv, timeout=timeout, check=check, capture_output=True, text=True
+    )
+
+
+_owned_osd_ids_cache = set()
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
+
+def log(msg):
+    line = f"[{time.strftime('%Y-%m-%dT%H:%M:%S%z')}] {msg}"
+    print(line, flush=True)
+    try:
+        with open(LOG_PATH, "a") as f:
+            f.write(line + "\n")
+    except OSError:
+        pass
+
+
+# ---------------------------------------------------------------------------
+# Notifications
+# ---------------------------------------------------------------------------
+
+
+# Pushbullet has no priority/tags concept — folded into an emoji title
+# prefix instead, so the urgency signal ntfy's Priority/Tags headers gave
+# is still glanceable in the push notification itself.
+PRIORITY_EMOJI = {
+    "urgent": "\U0001F6A8 ",  # rotating light
+    "high": "⚠️ ",  # warning
+    "default": "",
+}
+
+
+def notify(title, body, priority="default", tags=""):  # tags: unused, kept for call-site compat
+    if not PUSHBULLET_TOKEN:
+        log(f"NOTIFY (no PUSHBULLET_TOKEN configured) [{priority}] {title}: {body}")
+        return
+    payload = json.dumps(
+        {
+            "type": "note",
+            "title": PRIORITY_EMOJI.get(priority, "") + title,
+            "body": body,
+        }
+    )
+    argv = [
+        "curl", "-s",
+        "-H", f"Access-Token: {PUSHBULLET_TOKEN}",
+        "-H", "Content-Type: application/json",
+        "-d", payload,
+        "https://api.pushbullet.com/v2/pushes",
+    ]
+    try:
+        run_allowed(argv, timeout=15)
+    except Exception as e:  # noqa: BLE001 - notification failures must never crash the healer
+        log(f"notify() failed: {e}")
+
+
+# ---------------------------------------------------------------------------
+# Inventory / config
+# ---------------------------------------------------------------------------
+
+
+def load_inventory():
+    import yaml
+
+    if not INVENTORY_PATH.exists():
+        log(f"ERROR: {INVENTORY_PATH} does not exist")
+        return None
+    with open(INVENTORY_PATH) as f:
+        inv = yaml.safe_load(f)
+    global _owned_osd_ids_cache
+    _owned_osd_ids_cache = {o["id"] for o in inv.get("osds", [])}
+    return inv
+
+
+def load_state():
+    if STATE_PATH.exists():
+        try:
+            return json.loads(STATE_PATH.read_text())
+        except (json.JSONDecodeError, OSError):
+            pass
+    return {}
+
+
+def save_state(state):
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    STATE_PATH.write_text(json.dumps(state, indent=2))
+
+
+# ---------------------------------------------------------------------------
+# Cluster / disk queries
+# ---------------------------------------------------------------------------
+
+
+def uptime_seconds():
+    with open("/proc/uptime") as f:
+        return float(f.read().split()[0])
+
+
+def maintenance_flags_set():
+    try:
+        r = run_allowed(["ceph", "osd", "dump", "-f", "json"], timeout=20)
+        dump = json.loads(r.stdout)
+        flags = dump.get("flags_set", []) or dump.get("flags", "").split(",")
+        return any(f in flags for f in ("noout", "norecover", "nodown"))
+    except Exception as e:  # noqa: BLE001
+        log(f"could not check maintenance flags: {e}")
+        return False
+
+
+def osd_status_from_mon(osd_id):
+    try:
+        r = run_allowed(["ceph", "osd", "tree", "-f", "json"], timeout=20)
+        tree = json.loads(r.stdout)
+        for node in tree.get("nodes", []):
+            if node.get("type") == "osd" and node.get("id") == osd_id:
+                return node.get("status")  # "up" or "down"
+    except Exception as e:  # noqa: BLE001
+        log(f"mon unreachable for osd.{osd_id}: {e}")
+    return None
+
+
+def osd_status_local(osd_id):
+    r = run_allowed(["systemctl", "is-active", f"ceph-osd@{osd_id}"], timeout=10)
+    return "up" if r.stdout.strip() == "active" else "down"
+
+
+def osd_status(osd_id):
+    status = osd_status_from_mon(osd_id)
+    return status if status is not None else osd_status_local(osd_id)
+
+
+def _blockdev_for_serial(serial):
+    """/dev/sdX (or None) for a given disk serial, via lsblk.
+
+    Deliberately not /dev/disk/by-id/*<serial>* — those symlinks are named
+    by WWN hex (scsi-3<wwn>), not the plain serial, so that substring never
+    matches. Confirmed: an earlier version of this function used that glob
+    and caused ceph-osd-disk-wait.service to never see any disk as present,
+    looping until DISK_WAIT_TIMEOUT and escalating a false "disks missing"
+    alert on every host, every boot.
+    """
+    if not serial:
+        return None
+    try:
+        r = run_allowed(["lsblk", "-o", "NAME,SERIAL", "-J"], timeout=10)
+        data = json.loads(r.stdout)
+        for dev in data.get("blockdevices", []):
+            if dev.get("serial") == serial:
+                return f"/dev/{dev['name']}"
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
+def disk_present(osd):
+    return _blockdev_for_serial(osd.get("disk_serial")) is not None
+
+
+def sg_device_for_osd(osd):
+    """Best-effort /dev/sgN for this OSD's disk, via lsblk + serial match."""
+    return _blockdev_for_serial(osd.get("disk_serial"))
+
+
+# ---------------------------------------------------------------------------
+# noout guard
+# ---------------------------------------------------------------------------
+
+
+def set_noout():
+    if not USE_NOOUT_DURING_HEAL:
+        return
+    run_allowed(["ceph", "osd", "set", "noout"], timeout=15)
+    log("set noout")
+
+
+def unset_noout():
+    if not USE_NOOUT_DURING_HEAL:
+        return
+    run_allowed(["ceph", "osd", "unset", "noout"], timeout=15)
+    log("unset noout")
+
+
+# ---------------------------------------------------------------------------
+# Heal ladder
+# ---------------------------------------------------------------------------
+
+
+def rescan_scsi_bus():
+    run_allowed(["rescan-scsi-bus.sh", "-a"], timeout=120)
+    time.sleep(45)
+
+
+def try_sg_start(osd):
+    dev = sg_device_for_osd(osd)
+    if dev:
+        run_allowed(["sg_start", "--start", dev], timeout=30)
+
+
+def try_phy_reset(osd):
+    phy = osd.get("hba_phy")
+    if phy is None or not str(phy).isdigit():
+        log(f"osd.{osd['id']}: no known hba_phy, skipping phy reset")
+        return
+    path = f"/sys/class/sas_phy/phy-2:{phy}/enable"
+    if not os.path.exists(path):
+        return
+    if DRY_RUN:
+        log(f"DRY_RUN: would toggle {path}")
+        return
+    with open(path, "w") as f:
+        f.write("0")
+    time.sleep(3)
+    with open(path, "w") as f:
+        f.write("1")
+    run_allowed(["rescan-scsi-bus.sh", "-a"], timeout=120)
+    time.sleep(30)
+
+
+def activate_and_restart(osd):
+    run_allowed(["ceph-volume", "lvm", "activate", str(osd["id"]), osd["fsid"]], timeout=60)
+    run_allowed(["systemctl", "reset-failed", f"ceph-osd@{osd['id']}"], timeout=15)
+    run_allowed(["systemctl", "restart", f"ceph-osd@{osd['id']}"], timeout=30)
+
+
+def cluster_impact_summary():
+    try:
+        r = run_allowed(["ceph", "health", "detail"], timeout=15)
+        return r.stdout.strip().splitlines()[0] if r.stdout else "unknown"
+    except Exception:  # noqa: BLE001
+        return "could not query cluster health"
+
+
+def escalate(osd, reason):
+    body = (
+        f"{os.uname().nodename} — osd.{osd['id']} DOWN, {reason}.\n\n"
+        f"RESEAT THIS DRIVE:\n"
+        f"  {osd.get('disk_model', 'unknown model')}  serial {osd.get('disk_serial', '?')}\n"
+        f"  front bay: {osd.get('front_bay_label', '?')}   "
+        f"(HBA phy {osd.get('hba_phy', '?')}, enclosure slot {osd.get('enclosure_slot', '?')})\n\n"
+        f"After reseating it rejoins automatically (ceph-osd-disk-wait picks it up),\n"
+        f"or force it: ceph-osd-autoheal --retry osd.{osd['id']}\n\n"
+        f"Cluster impact right now: {cluster_impact_summary()}"
+    )
+    notify(
+        f"{os.uname().nodename}: osd.{osd['id']} needs a reseat",
+        body,
+        priority="urgent",
+        tags="rotating_light,wrench",
+    )
+    log(f"ESCALATED osd.{osd['id']}: {reason}")
+
+
+def heal_one(osd, state):
+    osd_id = osd["id"]
+    key = str(osd_id)
+    entry = state.setdefault(key, {"attempts_this_hour": 0, "first_attempt_ts": 0, "escalated": False})
+
+    now = time.time()
+    if entry["escalated"]:
+        log(f"osd.{osd_id}: already escalated, only watching for recovery")
+        return
+
+    if entry["first_attempt_ts"] and now - entry["first_attempt_ts"] > 3600:
+        entry["attempts_this_hour"] = 0
+        entry["first_attempt_ts"] = 0
+
+    if entry["attempts_this_hour"] >= MAX_RESTARTS_PER_HOUR:
+        if now - entry["first_attempt_ts"] < BACKOFF_SECONDS:
+            log(f"osd.{osd_id}: circuit breaker open, backing off")
+            return
+        entry["attempts_this_hour"] = 0
+        entry["first_attempt_ts"] = 0
+
+    log(f"osd.{osd_id}: down, starting heal ladder")
+    noout_set = False
+    if osd_status(osd_id) != "up":
+        set_noout()
+        noout_set = True
+
+    try:
+        # Step 1: always rescan.
+        rescan_scsi_bus()
+        if osd_status(osd_id) == "up":
+            recovered(osd, state)
+            return
+
+        # Step 2: sg_start if the disk shows up but is standby.
+        try_sg_start(osd)
+        if osd_status(osd_id) == "up":
+            recovered(osd, state)
+            return
+
+        # Step 3: phy reset, opt-in only.
+        if ENABLE_PHY_RESET and not disk_present(osd):
+            try_phy_reset(osd)
+
+        # Step 4: activate + restart, up to twice total for this call.
+        if disk_present(osd) or DRY_RUN:
+            entry["attempts_this_hour"] += 1
+            entry["first_attempt_ts"] = entry["first_attempt_ts"] or now
+            activate_and_restart(osd)
+            for _ in range(24):  # up to ~240s
+                time.sleep(10)
+                if osd_status(osd_id) == "up":
+                    recovered(osd, state)
+                    return
+
+        # Step 5: escalate.
+        reason = (
+            "disk not detected after rescan"
+            if not disk_present(osd)
+            else "restart did not bring it up"
+        )
+        entry["escalated"] = True
+        escalate(osd, reason)
+    finally:
+        if noout_set:
+            unset_noout()
+        state[key] = entry
+
+
+def recovered(osd, state):
+    key = str(osd["id"])
+    was_escalated = state.get(key, {}).get("escalated", False)
+    state[key] = {"attempts_this_hour": 0, "first_attempt_ts": 0, "escalated": False}
+    log(f"osd.{osd['id']}: recovered")
+    if was_escalated:
+        notify(
+            f"{os.uname().nodename}: osd.{osd['id']} back up",
+            f"osd.{osd['id']} back up after reseat. Cluster: {cluster_impact_summary()}",
+            priority="high",
+            tags="white_check_mark",
+        )
+    else:
+        notify(
+            f"{os.uname().nodename}: osd.{osd['id']} auto-recovered",
+            f"osd.{osd['id']} was down, healer fixed it automatically.",
+            priority="default",
+            tags="arrows_counterclockwise",
+        )
+
+
+# ---------------------------------------------------------------------------
+# Modes
+# ---------------------------------------------------------------------------
+
+
+def mode_heal(retry_id=None):
+    if not retry_id:
+        if PAUSE_PATH.exists():
+            log("paused, exiting")
+            return
+        if uptime_seconds() < SETTLE_AFTER_BOOT:
+            log("still settling after boot, exiting")
+            return
+        if RESPECT_MAINT_FLAGS and maintenance_flags_set():
+            log("maintenance flags set on cluster, notify-only")
+            notify(
+                f"{os.uname().nodename}: autoheal paused",
+                "Cluster has noout/norecover/nodown set — assuming admin maintenance, not acting.",
+                priority="default",
+                tags="pause_button",
+            )
+            return
+
+    inv = load_inventory()
+    if inv is None:
+        return
+    state = load_state()
+
+    osds = inv.get("osds", [])
+    if retry_id is not None:
+        osds = [o for o in osds if o["id"] == retry_id]
+        if osds:
+            state[str(retry_id)] = {"attempts_this_hour": 0, "first_attempt_ts": 0, "escalated": False}
+
+    for osd in osds:
+        if osd_status(osd["id"]) != "up":
+            heal_one(osd, state)
+
+    save_state(state)
+
+
+def mode_disk_wait():
+    inv = load_inventory()
+    if inv is None:
+        return
+    start = time.time()
+    host = os.uname().nodename
+    while time.time() - start < DISK_WAIT_TIMEOUT:
+        missing = [o for o in inv["osds"] if not disk_present(o)]
+        if not missing:
+            elapsed = int(time.time() - start)
+            log(f"all {len(inv['osds'])} OSD disks present after {elapsed}s")
+            notify(
+                f"{host}: boot disk check",
+                f"{host}: {len(inv['osds'])}/{len(inv['osds'])} OSD disks present {elapsed}s after boot",
+                tags="white_check_mark",
+            )
+            return
+        rescan_scsi_bus()
+        for osd in missing:
+            try_sg_start(osd)
+            if ENABLE_PHY_RESET:
+                try_phy_reset(osd)
+
+    missing = [o for o in inv["osds"] if not disk_present(o)]
+    present = len(inv["osds"]) - len(missing)
+    names = ", ".join(f"osd.{o['id']} (SN {o.get('disk_serial', '?')})" for o in missing)
+    log(f"disk-wait timed out: {present}/{len(inv['osds'])} present, missing: {names}")
+    notify(
+        f"{host}: boot disk check — timeout",
+        f"{host}: {present}/{len(inv['osds'])} disks after {DISK_WAIT_TIMEOUT}s — {names} missing, escalating",
+        priority="high",
+        tags="warning",
+    )
+    # Exit 0 regardless — never block boot indefinitely. The healer picks
+    # up whatever's still down once Ceph itself has started.
+
+
+def mode_dump_inventory():
+    """Best-effort starting point for inventory.yaml — always review by hand."""
+    import yaml
+
+    host = os.uname().nodename
+    osds = []
+    try:
+        r = run_allowed(["ceph", "osd", "tree", "-f", "json"], timeout=20)
+        tree = json.loads(r.stdout)
+        host_node = next(
+            (n for n in tree["nodes"] if n.get("type") == "host" and n.get("name") == host),
+            None,
+        )
+        my_osd_ids = host_node["children"] if host_node else []
+    except Exception as e:  # noqa: BLE001
+        print(f"# WARNING: could not query mon ({e}); run this on a host that can reach it", file=sys.stderr)
+        my_osd_ids = []
+
+    for osd_id in my_osd_ids:
+        entry = {"id": osd_id}
+        try:
+            r = run_allowed(["ceph", "osd", "metadata", str(osd_id)], timeout=15)
+            meta = json.loads(r.stdout)
+            dev_ids = meta.get("device_ids", "")
+            m = re.search(r"=([A-Za-z0-9_]+?)(?:$|,)", dev_ids)
+            if m:
+                entry["disk_serial"] = m.group(1)
+            entry["disk_model"] = meta.get("bluestore_bdev_devices", "")
+        except Exception:  # noqa: BLE001
+            pass
+        # Correlating a serial to its /sys/class/sas_device/*/phy_identifier
+        # needs a smartctl -i per sas_device entry to match serials — left
+        # for hand-filling rather than guessed here (see the recovery
+        # runbook's method: cross-reference smartctl output per /dev/sgN).
+        entry.setdefault("hba_phy", "?")
+        entry.setdefault("enclosure_slot", "?")
+        entry.setdefault("front_bay_label", "?")
+        osds.append(entry)
+
+    print(f"# Generated by `ceph-osd-autoheal --dump-inventory` on {host} — review and hand-fill\n"
+          f"# front_bay_label before committing to ansible/host_vars/{host}.yml's ceph_autoheal_osds.")
+    print(yaml.safe_dump({"host": host, "osds": osds}, sort_keys=False))
+
+
+def main():
+    LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
+    lock_fd = open(LOCK_PATH, "w")
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        log("another instance is running, exiting")
+        return 0
+
+    args = sys.argv[1:]
+    if "--disk-wait" in args:
+        mode_disk_wait()
+    elif "--dump-inventory" in args:
+        mode_dump_inventory()
+    elif "--retry" in args:
+        idx = args.index("--retry")
+        target = args[idx + 1]
+        m = re.match(r"^osd\.(\d+)$", target)
+        if not m:
+            print(f"expected osd.N, got {target!r}", file=sys.stderr)
+            return 1
+        load_inventory()
+        mode_heal(retry_id=int(m.group(1)))
+    else:
+        load_inventory()
+        mode_heal()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

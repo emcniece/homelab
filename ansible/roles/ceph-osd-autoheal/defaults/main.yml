@@ -1,0 +1,37 @@
+---
+# Live as of 2026-09-19, after a manual induced-failure test on pve2/osd.2
+# confirmed the full ladder, circuit breaker, and Pushbullet escalation all
+# behave correctly. See roles/ceph-osd-autoheal/README.md and the incident
+# report for that test's results before flipping this back to true.
+ceph_autoheal_dry_run: false
+
+# Toggling a SAS phy off/on briefly drops a working link. Off by default —
+# rescan-scsi-bus.sh/sg_start alone have been enough to recover every OSD
+# seen so far (2026-01-22, 2026-09-10, 2026-09-19 incidents).
+ceph_autoheal_enable_phy_reset: false
+
+# Skip all action if the cluster has noout/norecover/nodown set — an admin
+# is doing maintenance.
+ceph_autoheal_respect_maint_flags: true
+
+# No action in the first N seconds of uptime — let the boot-time disk-wait
+# unit and Ceph's own startup finish first.
+ceph_autoheal_settle_after_boot: 90
+
+# ceph-osd-disk-wait.service gives up waiting for disks after this long
+# (but still exits 0 — never blocks boot indefinitely).
+ceph_autoheal_disk_wait_timeout: 600
+
+# Circuit breaker: after this many restart attempts on one OSD within an
+# hour, stop retrying and escalate instead of looping.
+ceph_autoheal_max_restarts_per_hour: 3
+ceph_autoheal_backoff_seconds: 3600
+
+# `ceph osd set noout` for up to this long while working a down OSD, to
+# stop premature rebalancing — self-clears even if the script crashes
+# mid-run (see the script's noout safety check).
+ceph_autoheal_use_noout_during_heal: true
+ceph_autoheal_noout_duration: 900
+
+ceph_autoheal_dir: /etc/ceph-osd-autoheal
+ceph_autoheal_state_dir: /var/lib/ceph-osd-autoheal

@@ -1,0 +1,55 @@
+---
+- name: Fail if outline_api_token isn't set
+  fail:
+    msg: >-
+      outline_api_token is required (Outline > Settings > API Tokens) — set
+      it in secrets.yml and re-run with -e "@secrets.yml".
+  when: outline_api_token is not defined or outline_api_token == 'REPLACE_ME'
+
+- name: Ensure apps directory exists
+  file:
+    path: '{{ outline_mirror_dir }}'
+    state: directory
+    owner: '{{ runtime_user }}'
+    mode: '0755'
+
+- name: Ensure docs data directory exists
+  file:
+    path: '{{ outline_mirror_dir }}/data'
+    state: directory
+    owner: '{{ runtime_user }}'
+    mode: '0755'
+
+- name: Template docker-compose.yml to ~/apps/outline-docs-mirror/
+  template:
+    src: ../files/docker-compose.yml.j2
+    dest: '{{ outline_mirror_dir }}/docker-compose.yml'
+    mode: '0644'
+
+- name: Template nginx.conf to ~/apps/outline-docs-mirror/
+  template:
+    src: ../files/nginx.conf.j2
+    dest: '{{ outline_mirror_dir }}/nginx.conf'
+    mode: '0644'
+
+- name: Copy sync-outline.sh to ~/apps/outline-docs-mirror/
+  copy:
+    src: ../files/sync-outline.sh
+    dest: '{{ outline_mirror_dir }}/sync-outline.sh'
+    mode: '0755'
+
+- name: Pull latest images
+  command:
+    cmd: docker compose pull
+    chdir: '{{ outline_mirror_dir }}'
+  changed_when: false
+
+- name: Create and start outline docs mirror
+  command:
+    cmd: docker compose up -d --remove-orphans
+    chdir: '{{ outline_mirror_dir }}'
+  register: output
+  changed_when: >-
+    'Started' in (output.stdout + output.stderr)
+    or 'Created' in (output.stdout + output.stderr)
+    or 'Recreate' in (output.stdout + output.stderr)

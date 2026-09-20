@@ -1,0 +1,15 @@
+# Managed by https://github.com/emcniece/homelab
+#
+# One healer run. Triggered by ceph-osd-autoheal.timer on a schedule, and
+# by the OnFailure= drop-in on ceph-osd@.service for an immediate reaction
+# to a unit failure. flock inside the script itself makes concurrent
+# invocations (timer + OnFailure firing close together) safe — the second
+# just exits.
+[Unit]
+Description=Ceph OSD auto-heal — one run
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile={{ ceph_autoheal_dir }}/config.env
+ExecStart=/usr/local/sbin/ceph-osd-autoheal

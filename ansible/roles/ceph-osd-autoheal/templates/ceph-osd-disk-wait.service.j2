@@ -1,0 +1,21 @@
+# Managed by https://github.com/emcniece/homelab
+#
+# Boot-time gate: waits for every OSD disk in inventory.yaml to enumerate
+# on the SAS bus before Ceph tries to start its OSDs. Exits 0 even on
+# timeout — never blocks boot indefinitely; the healer (ceph-osd-autoheal)
+# picks up whatever's still missing once the system is fully up.
+[Unit]
+Description=Wait for Ceph OSD disks to enumerate before starting OSDs
+DefaultDependencies=no
+After=sysinit.target systemd-udev-settle.service
+Before=ceph-osd.target
+Wants=systemd-udev-settle.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile={{ ceph_autoheal_dir }}/config.env
+ExecStart=/usr/local/sbin/ceph-osd-autoheal --disk-wait
+
+[Install]
+WantedBy=ceph-osd.target

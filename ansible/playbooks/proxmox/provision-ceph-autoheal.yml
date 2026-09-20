@@ -1,0 +1,9 @@
+- name: Provision Ceph OSD auto-heal on the OSD hosts
+  hosts: pve2:pve3
+  remote_user: root
+  gather_facts: no
+
+  tasks:
+    - import_role:
+        name: ceph-osd-autoheal
+      tags: [ceph-autoheal]

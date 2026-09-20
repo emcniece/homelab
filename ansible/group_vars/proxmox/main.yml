@@ -1,0 +1,4 @@
+---
+# Standard ansible-vault indirection: the secret itself lives in vault.yml
+# (encrypted), this file just exposes it under the plain name roles use.
+pushbullet_token: "{{ vault_pushbullet_token }}"

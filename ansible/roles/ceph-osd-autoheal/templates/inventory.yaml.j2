@@ -1,0 +1,17 @@
+# Managed by https://github.com/emcniece/homelab
+#
+# OSD identity for this host, sourced from ansible/host_vars/{{ inventory_hostname }}.yml's
+# ceph_autoheal_osds. Regenerate a starting point with
+# `ceph-osd-autoheal --dump-inventory` after adding/removing an OSD, then
+# hand-fill front_bay_label and commit back to host_vars.
+host: {{ inventory_hostname }}
+osds:
+{% for osd in ceph_autoheal_osds %}
+  - id: {{ osd.id }}
+    fsid: {{ osd.fsid }}
+    disk_model: "{{ osd.disk_model | default('') }}"
+    disk_serial: "{{ osd.disk_serial }}"
+    hba_phy: "{{ osd.hba_phy | default('?') }}"
+    enclosure_slot: "{{ osd.enclosure_slot | default('?') }}"
+    front_bay_label: "{{ osd.front_bay_label | default('?') }}"
+{% endfor %}

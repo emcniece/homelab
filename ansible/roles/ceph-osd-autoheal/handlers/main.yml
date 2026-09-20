@@ -1,0 +1,19 @@
+---
+- name: daemon-reload
+  systemd:
+    daemon_reload: true
+
+- name: enable and restart ceph-osd-disk-wait
+  # It's WantedBy=ceph-osd.target, not a long-running service — "enabled"
+  # is what makes it fire on the next boot. Running it now (mid-uptime,
+  # disks already present) is harmless and confirms the unit itself works.
+  systemd:
+    name: ceph-osd-disk-wait.service
+    enabled: true
+    state: restarted
+
+- name: enable and restart ceph-osd-autoheal.timer
+  systemd:
+    name: ceph-osd-autoheal.timer
+    enabled: true
+    state: restarted

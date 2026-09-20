@@ -1,0 +1,86 @@
+---
+- name: Fail if ceph_autoheal_osds isn't set for this host
+  fail:
+    msg: >-
+      ceph_autoheal_osds is required — define it in
+      host_vars/{{ inventory_hostname }}.yml (see
+      roles/ceph-osd-autoheal/README.md).
+  when: ceph_autoheal_osds is not defined or ceph_autoheal_osds | length == 0
+
+- name: Fail if pushbullet_token isn't set
+  fail:
+    msg: >-
+      pushbullet_token is required (see group_vars/proxmox/vault.yml) — the
+      healer would otherwise only log escalations locally with no push
+      notification.
+  when: pushbullet_token is not defined or pushbullet_token == ''
+
+- name: Ensure python3-yaml is installed
+  apt:
+    name: python3-yaml
+    state: present
+
+- name: Ensure config/state directories exist
+  file:
+    path: '{{ item }}'
+    state: directory
+    mode: '0755'
+  loop:
+    - '{{ ceph_autoheal_dir }}'
+    - '{{ ceph_autoheal_state_dir }}'
+
+- name: Install ceph-osd-autoheal script
+  copy:
+    src: ceph-osd-autoheal
+    dest: /usr/local/sbin/ceph-osd-autoheal
+    mode: '0755'
+
+- name: Template config.env
+  template:
+    src: config.env.j2
+    dest: '{{ ceph_autoheal_dir }}/config.env'
+    mode: '0600'
+  notify:
+    - enable and restart ceph-osd-autoheal.timer
+
+- name: Template inventory.yaml
+  template:
+    src: inventory.yaml.j2
+    dest: '{{ ceph_autoheal_dir }}/inventory.yaml'
+    mode: '0644'
+
+- name: Ensure pause file is absent (autoheal active by default)
+  file:
+    path: '{{ ceph_autoheal_dir }}/pause'
+    state: absent
+
+- name: Template systemd units
+  template:
+    src: '{{ item }}.j2'
+    dest: /etc/systemd/system/{{ item }}
+    mode: '0644'
+  loop:
+    - ceph-osd-disk-wait.service
+    - ceph-osd-autoheal.service
+    - ceph-osd-autoheal.timer
+  notify:
+    - daemon-reload
+    - enable and restart ceph-osd-disk-wait
+    - enable and restart ceph-osd-autoheal.timer
+
+- name: Ensure ceph-osd@.service.d drop-in directory exists
+  file:
+    path: /etc/systemd/system/ceph-osd@.service.d
+    state: directory
+    mode: '0755'
+
+- name: Template OnFailure= drop-in
+  template:
+    src: autoheal.conf.j2
+    dest: /etc/systemd/system/ceph-osd@.service.d/autoheal.conf
+    mode: '0644'
+  notify:
+    - daemon-reload
+
+- name: Flush handlers now so units are active before this play ends
+  meta: flush_handlers
