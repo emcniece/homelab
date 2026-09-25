@@ -3,7 +3,8 @@
 Team knowledge base / wiki, published at **https://docs.emc2.build**.
 
 - **App:** [Outline](https://www.getoutline.com/) (`outlinewiki/outline`)
-- **Auth:** Google OAuth (only sign-in method configured)
+- **Auth:** OIDC via [Pocket ID](../pocket-id/README.md) at `id.emc2.build`
+  (passkeys). Was Google OIDC until 2026-09.
 - **DB:** in-namespace Postgres 16 (`csi-rbd-sc`, 5Gi)
 - **Cache/queue:** in-namespace Redis 7 (ephemeral)
 - **File storage:** Backblaze B2 (S3-compatible API). Outline's browser
@@ -22,17 +23,15 @@ Team knowledge base / wiki, published at **https://docs.emc2.build**.
 
 ## First-time setup
 
-### 1. Google OAuth credentials
+### 1. OIDC client (Pocket ID)
 
-Google Cloud Console → **APIs & Services → Credentials → Create credentials →
-OAuth client ID**:
+Deploy and set up [Pocket ID](../pocket-id/README.md) first. Then in Pocket
+ID: **Settings → Admin → OIDC Clients → Add OIDC Client**:
 
-- Application type: **Web application**
-- Authorized JavaScript origin: `https://docs.emc2.build`
-- Authorized redirect URI: `https://docs.emc2.build/auth/google.callback`
+- Name: `Outline`
+- Callback URL: `https://docs.emc2.build/auth/oidc.callback`
 
-Configure the OAuth consent screen (External; add your email as a test user or
-publish). Copy the client ID and secret.
+Copy the client ID and secret.
 
 ### 2. Backblaze B2 bucket
 
@@ -57,7 +56,7 @@ cp apps/outline/01-secret.example.yaml apps/outline/01-secret.yaml
 # fill in:
 #   POSTGRES_PASSWORD                       openssl rand -hex 20
 #   SECRET_KEY, UTILS_SECRET                openssl rand -hex 32
-#   GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET from step 1
+#   OIDC_CLIENT_ID / OIDC_CLIENT_SECRET     from step 1
 #   AWS_ACCESS_KEY_ID                       B2 keyID
 #   AWS_SECRET_ACCESS_KEY                   B2 applicationKey
 #   AWS_REGION                              e.g. us-west-004
@@ -67,7 +66,7 @@ cp apps/outline/01-secret.example.yaml apps/outline/01-secret.yaml
 
 `01-secret.yaml` is gitignored (this repo is public). In the initial commit it
 already has the random `SECRET_KEY` / `UTILS_SECRET` / `POSTGRES_PASSWORD`
-filled; the `GOOGLE_*` and B2 values are `REPLACE_ME`.
+filled; the `OIDC_*` and B2 values are `REPLACE_ME`.
 
 ### 4. DNS
 
@@ -91,12 +90,31 @@ kubectl -n outline get pods -w
 
 ### 6. First login
 
-The first user to sign in via Google becomes the admin. Restrict who else can
+The first user to sign in via Pocket ID becomes the admin. Restrict who else can
 join under **Settings → Security** (allowed domains / invite-only).
 
 First boot runs ~10 years of DB migrations (~3 min) before the app listens;
 the `startupProbe` covers this. `kubectl -n outline logs -f deploy/outline`
 to watch.
+
+### Migrating from Google (already-running instance)
+
+Outline 1.10+ handles this itself: on the first Pocket ID sign-in it moves
+the existing `oidc` auth provider from `accounts.google.com` to
+`id.emc2.build`, and links each user to their existing account **by email**,
+as long as Pocket ID sends `email_verified: true` (see Pocket ID setup steps 2–3).
+If it doesn't, sign-in fails with "Your email address has not been verified".
+
+1. Back up Postgres (below).
+2. Put the Pocket ID client ID/secret into `01-secret.yaml` as
+   `OIDC_CLIENT_ID` / `OIDC_CLIENT_SECRET`, then
+   `kubectl apply -f apps/outline/01-secret.yaml -f apps/outline/40-outline.yaml`
+   and `kubectl -n outline rollout restart deploy/outline`.
+3. Sign in as the admin first and check your documents and admin role are
+   there. Then the others.
+4. Optional: in Outline **Settings → Security**, enable passkeys as a
+   second way to sign in.
+5. Delete the old Google OAuth client in Google Cloud Console.
 
 ## Operations
 

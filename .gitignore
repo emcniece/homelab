@@ -3,4 +3,5 @@ secrets.yml
 **/secret.yaml
 **/opend-secret.yaml
 apps/outline/01-secret.yaml
+apps/pocket-id/01-secret.yaml
 .DS_Store

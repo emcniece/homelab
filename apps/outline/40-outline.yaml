@@ -20,8 +20,8 @@ spec:
     spec:
       # The node search domain includes lab.emc2.build, which has a wildcard
       # record. With the default ndots:5, external hostnames like
-      # accounts.google.com get resolved as *.lab.emc2.build first and hijacked
-      # to the ingress - which breaks Outline's server-side Google OAuth token
+      # id.emc2.build get resolved as *.lab.emc2.build first and hijacked
+      # to the ingress - which breaks Outline's server-side OIDC token
       # exchange. ndots:2 makes short public names resolve absolute first.
       # (Same workaround as apps/planka.)
       dnsConfig:
@@ -77,14 +77,16 @@ spec:
               value: en_US
             - name: RATE_LIMITER_ENABLED
               value: "false"
-            # --- auth: Google via the generic OIDC plugin ---
+            # --- auth: Pocket ID (apps/pocket-id) via the generic OIDC plugin ---
             # OIDC_CLIENT_ID / OIDC_CLIENT_SECRET come from outline-secret.
-            # Using OIDC rather than the Google plugin because the latter
-            # rejects personal @gmail.com accounts when creating the team.
+            # Previously Google (issuer accounts.google.com). Outline moves the
+            # existing OIDC auth provider to the new issuer on first sign-in and
+            # links existing users by email - which requires Pocket ID to send
+            # email_verified=true (see apps/pocket-id/README.md).
             - name: OIDC_ISSUER_URL
-              value: https://accounts.google.com
+              value: https://id.emc2.build
             - name: OIDC_DISPLAY_NAME
-              value: Google
+              value: Pocket ID
             - name: OIDC_USERNAME_CLAIM
               value: email
             # --- database ---
