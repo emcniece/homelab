@@ -333,9 +333,11 @@ helm upgrade --install trailwave-runners \
   --version "$CHART_VERSION" --wait
 ```
 
-Own pnpm-store/playwright-cache PVCs (`trailwave-caches-pvc.yaml`, same
-pattern as Glyphdex's; see "Caching" above), a 2-CPU runner request, and
-Glyphdex's registry mirror. setup-node's GitHub Actions cache is disabled on
+Own playwright-cache PVC (`trailwave-caches-pvc.yaml`, same pattern as
+Glyphdex's; see "Caching" above), a 2-CPU runner request, `maxRunners: 6`,
+and Glyphdex's registry mirror. The pnpm-store PVC in that file is mounted
+but unused: warm installs from it (191s) were slower than a cold download
+(76s), since pnpm must copy rather than hardlink out of CephFS. setup-node's GitHub Actions cache is disabled on
 these runners: without zstd in the runner image it gzips the 1.6 GB pnpm
 store single-threaded, which ran for hours. Its deploy workflows reach the API server at
 `https://kubernetes.default.svc` from inside the runner pod, same as

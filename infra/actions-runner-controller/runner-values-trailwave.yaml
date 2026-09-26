@@ -27,12 +27,12 @@ githubConfigSecret: trailwave-arc-github-secret
 # workflows reference this as `runs-on: trailwave-arc-runners`.
 runnerScaleSetName: trailwave-arc-runners
 
-# A push to main queues ci.yml (1) + e2e.yml (1) + docker-publish.yml (2,
-# matrix) at once; deploy-dev.yml follows via workflow_run once
-# docker-publish finishes, so it doesn't overlap with it. 4 lets a full push
-# run without queuing.
+# A push to main queues ci.yml (1) + docker-publish.yml (2, matrix);
+# deploy-dev.yml follows once docker-publish finishes. An open PR adds ci.yml
+# + e2e.yml (2). Raised 4 -> 6 (2026-09-26) after a main image build sat
+# queued for 25 min behind PR checks. k3s-04 has the spare CPU.
 minRunners: 0
-maxRunners: 4
+maxRunners: 6
 
 # Same ndots:1 DNS fix as runner-values.yaml — the lab.emc2.build wildcard
 # hijacks short external hostnames (github.com, ghcr.io) under the default
@@ -117,8 +117,11 @@ template:
             mountPath: /home/runner/_work
           - name: dind-sock
             mountPath: /var/run
-          # ci.yml / e2e.yml point pnpm's store-dir and
-          # PLAYWRIGHT_BROWSERS_PATH here when running self-hosted.
+          # e2e.yml points PLAYWRIGHT_BROWSERS_PATH here when self-hosted.
+          # pnpm-store is mounted but unused: the workflows stopped using it
+          # (2026-09-26) because copying ~1.4 GB of small files out of CephFS
+          # (no cross-filesystem hardlinks) made warm installs 191s vs 76s
+          # cold. Remove it along with its PVC if nothing picks it up.
           - name: pnpm-store
             mountPath: /mnt/pnpm-store
           - name: playwright-cache
