@@ -305,8 +305,10 @@ Third release on the same controller — `emcniece/trailwave` (private), added
 2026-09-26 when the account ran out of Actions minutes. Same repo-scoped,
 push-only pattern as moneymaker: push/tag/`workflow_run`/`release`/
 `workflow_dispatch` jobs use `runs-on: trailwave-arc-runners` outright;
-the two `pull_request`-triggered workflows (`ci.yml`, `e2e.yml`) pick it
-only when `github.event_name != 'pull_request'`.
+the two `pull_request`-triggered workflows (`ci.yml`, `e2e.yml`) also use
+it for same-repo PRs (`head.repo.full_name == github.repository` — the
+author already has push access, and pushes run here anyway); fork PRs stay
+on `ubuntu-latest`.
 
 ```sh
 export KUBECONFIG=~/.kube/config-homelab
