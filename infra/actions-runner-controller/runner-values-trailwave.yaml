@@ -1,0 +1,142 @@
+# gha-runner-scale-set Helm values for emcniece/trailwave — third runner
+# scale set on the same cluster/controller as runner-values.yaml
+# (emcniece/Glyphdex) and runner-values-moneymaker.yaml. Same rationale
+# (GitHub-hosted minutes are billed, self-hosted are free — added 2026-09-26
+# after the account ran out of Actions minutes again) and same repo-scoped
+# pattern — see README.md's "Architecture" section.
+#
+# Based on runner-values-moneymaker.yaml, not the Glyphdex one: no
+# pnpm-store/playwright-cache PVCs. trailwave's workflows keep using
+# setup-node's `cache: pnpm` (the GitHub Actions cache service works the same
+# from a self-hosted runner and isn't billed as minutes). Add the shared-PVC
+# caches later only if install/browser-download time actually shows up as a
+# problem.
+#
+# Needs dind for: docker-publish.yml / release-publish.yml (image builds) and
+# e2e.yml (its `services: postgres` container runs inside dind's dockerd —
+# service ports publish into the pod's shared network namespace, so the
+# job's `localhost:5432` still reaches it).
+
+githubConfigUrl: "https://github.com/emcniece/trailwave"
+
+# Referenced by name only — created directly via kubectl, never committed.
+# See README.md "Add another repo's runner scale set" for the command.
+githubConfigSecret: trailwave-arc-github-secret
+
+# workflows reference this as `runs-on: trailwave-arc-runners`.
+runnerScaleSetName: trailwave-arc-runners
+
+# A push to main queues ci.yml (1) + e2e.yml (1) + docker-publish.yml (2,
+# matrix) at once; deploy-dev.yml follows via workflow_run once
+# docker-publish finishes, so it doesn't overlap with it. 4 lets a full push
+# run without queuing.
+minRunners: 0
+maxRunners: 4
+
+# Same ndots:1 DNS fix as runner-values.yaml — the lab.emc2.build wildcard
+# hijacks short external hostnames (github.com, ghcr.io) under the default
+# ndots:5/2. See README.md "DNS" section; needed on both the listener and the
+# runner/dind pod.
+listenerTemplate:
+  spec:
+    dnsConfig:
+      nameservers: ["8.8.8.8", "1.1.1.1"]
+      options:
+        - name: ndots
+          value: "1"
+    containers:
+      - name: listener
+
+template:
+  spec:
+    dnsConfig:
+      nameservers: ["8.8.8.8", "1.1.1.1"]
+      options:
+        - name: ndots
+          value: "1"
+    restartPolicy: Never
+    # No explicit serviceAccountName — leave it unset so the chart creates
+    # the no-permission SA itself on this fresh install. See the comment in
+    # runner-values-moneymaker.yaml / README.md Troubleshooting.
+    # Same soft spread as the other scale sets — see runner-values.yaml for
+    # why ScheduleAnyway beats DoNotSchedule on this cluster.
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            actions.github.com/scale-set-name: trailwave-arc-runners
+    volumes:
+      # dind mode's own 3 volumes, spelled out by hand for the same reason as
+      # runner-values.yaml (containerMode: dind's shorthand silently drops
+      # additions under its auto-generated volumes/initContainers keys).
+      - name: work
+        emptyDir: {}
+      - name: dind-sock
+        emptyDir: {}
+      - name: dind-externals
+        emptyDir: {}
+    initContainers:
+      - name: init-dind-externals
+        image: ghcr.io/actions/actions-runner:latest
+        command: ["cp"]
+        args: ["-r", "/home/runner/externals/.", "/home/runner/tmpDir/"]
+        volumeMounts:
+          - name: dind-externals
+            mountPath: /home/runner/tmpDir
+    containers:
+      - name: runner
+        image: ghcr.io/actions/actions-runner:latest
+        command: ["/home/runner/run.sh"]
+        env:
+          - name: DOCKER_HOST
+            value: unix:///var/run/docker.sock
+          - name: RUNNER_WAIT_FOR_DOCKER_IN_SECONDS
+            value: "120"
+        volumeMounts:
+          - name: work
+            mountPath: /home/runner/_work
+          - name: dind-sock
+            mountPath: /var/run
+        resources:
+          # No cpu limit — see runner-values.yaml. `next build` in ci.yml /
+          # e2e.yml is the heaviest step here; 4Gi matches Glyphdex's runner.
+          requests:
+            cpu: "1"
+            memory: 2Gi
+          limits:
+            memory: 4Gi
+      - name: dind
+        image: docker:dind
+        # Shares Glyphdex's Docker Hub pull-through cache (registry-mirror.yaml)
+        # — saves re-pulling postgis/postgis for e2e.yml's service container
+        # and the node base images for the Docker builds on every run.
+        args:
+          [
+            "dockerd",
+            "--host=unix:///var/run/docker.sock",
+            "--group=$(DOCKER_GROUP_GID)",
+            "--registry-mirror=http://glyphdex-arc-registry-mirror.arc-runners.svc.cluster.local:5000",
+            "--insecure-registry=glyphdex-arc-registry-mirror.arc-runners.svc.cluster.local:5000",
+          ]
+        env:
+          - name: DOCKER_GROUP_GID
+            value: "123"
+        securityContext:
+          privileged: true
+        volumeMounts:
+          - name: work
+            mountPath: /home/runner/_work
+          - name: dind-sock
+            mountPath: /var/run
+          - name: dind-externals
+            mountPath: /home/runner/externals
+        resources:
+          # Hosts e2e.yml's PostGIS service container and the BuildKit
+          # builder for image builds.
+          requests:
+            cpu: "500m"
+            memory: 1Gi
+          limits:
+            memory: 3Gi

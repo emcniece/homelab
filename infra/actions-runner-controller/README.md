@@ -299,6 +299,42 @@ commands below) — both scale sets show up side by side under
 `kubectl -n arc-runners get autoscalingrunnersets` and in each repo's own
 Settings → Actions → Runners page.
 
+## Add another repo's runner scale set (trailwave)
+
+Third release on the same controller — `emcniece/trailwave` (private), added
+2026-09-26 when the account ran out of Actions minutes. Same repo-scoped,
+push-only pattern as moneymaker: push/tag/`workflow_run`/`release`/
+`workflow_dispatch` jobs use `runs-on: trailwave-arc-runners` outright;
+the two `pull_request`-triggered workflows (`ci.yml`, `e2e.yml`) pick it
+only when `github.event_name != 'pull_request'`.
+
+```sh
+export KUBECONFIG=~/.kube/config-homelab
+CHART_VERSION=0.14.2   # match whatever's installed for the arc controller
+
+# 1. GitHub credential — fine-grained PAT, "Only select repositories" →
+#    emcniece/trailwave, Administration: read and write.
+read -rsp 'GitHub PAT (trailwave): ' GH_PAT && echo
+kubectl create secret generic trailwave-arc-github-secret \
+  --namespace arc-runners \
+  --from-literal=github_token="$GH_PAT"
+unset GH_PAT
+
+# 2. Runner scale set
+helm upgrade --install trailwave-runners \
+  --namespace arc-runners \
+  -f infra/actions-runner-controller/runner-values-trailwave.yaml \
+  oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set \
+  --version "$CHART_VERSION" --wait
+```
+
+Trimmed like moneymaker's: no pnpm-store/playwright-cache PVCs (trailwave's
+workflows keep setup-node's `cache: pnpm`); reuses Glyphdex's registry
+mirror. Its deploy workflows reach the API server at
+`https://kubernetes.default.svc` from inside the runner pod, same as
+Glyphdex's release.yml — the Tailscale hop they used on `ubuntu-latest` is
+gone.
+
 ## Verify
 
 ```sh
@@ -394,6 +430,8 @@ kubectl -n arc-runners delete secret glyphdex-arc-github-secret
 # doesn't require also removing glyphdex-runners:
 helm -n arc-runners uninstall moneymaker-runners
 kubectl -n arc-runners delete secret moneymaker-arc-github-secret
+helm -n arc-runners uninstall trailwave-runners
+kubectl -n arc-runners delete secret trailwave-arc-github-secret
 # Only tear down the controller once every scale set release is gone —
 # it's shared.
 helm -n arc-systems uninstall arc
