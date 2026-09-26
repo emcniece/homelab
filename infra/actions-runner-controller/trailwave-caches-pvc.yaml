@@ -1,0 +1,34 @@
+# Shared caches for the trailwave-arc-runners scale set — same pattern and
+# concurrency reasoning as Glyphdex's pnpm-store-pvc.yaml /
+# playwright-cache-pvc.yaml: pnpm's store is content-addressed with its own
+# write locking, and Playwright writes each browser version to its own
+# immutable directory, so concurrent runner pods can share both. CephFS
+# (ReadWriteMany) so pods on different nodes can mount them at once.
+#
+# Separate from Glyphdex's PVCs so one repo's store growth or cleanup never
+# touches the other's. Not managed by the gha-runner-scale-set chart —
+# applied once, referenced by name from runner-values-trailwave.yaml.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: trailwave-arc-pnpm-store
+  namespace: arc-runners
+spec:
+  accessModes: ["ReadWriteMany"]
+  storageClassName: csi-cephfs-sc
+  resources:
+    requests:
+      # The store was ~1.6 GB on first install; room for lockfile churn.
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: trailwave-arc-playwright-cache
+  namespace: arc-runners
+spec:
+  accessModes: ["ReadWriteMany"]
+  storageClassName: csi-cephfs-sc
+  resources:
+    requests:
+      storage: 5Gi

@@ -5,12 +5,13 @@
 # after the account ran out of Actions minutes again) and same repo-scoped
 # pattern — see README.md's "Architecture" section.
 #
-# Based on runner-values-moneymaker.yaml, not the Glyphdex one: no
-# pnpm-store/playwright-cache PVCs. trailwave's workflows keep using
-# setup-node's `cache: pnpm` (the GitHub Actions cache service works the same
-# from a self-hosted runner and isn't billed as minutes). Add the shared-PVC
-# caches later only if install/browser-download time actually shows up as a
-# problem.
+# Started from runner-values-moneymaker.yaml, then (2026-09-26) gained
+# Glyphdex's shared pnpm-store + playwright-cache PVCs
+# (trailwave-caches-pvc.yaml) after the first runs showed cold installs
+# costing ~5 min per e2e job: `pnpm install` 163s vs 10s and Playwright's
+# browser download 132s vs 26s on ubuntu-latest. setup-node's GitHub Actions
+# cache isn't an option here: saving the 1.6 GB store with single-threaded
+# gzip (no zstd in the runner image) ran for hours.
 #
 # Needs dind for: docker-publish.yml / release-publish.yml (image builds) and
 # e2e.yml (its `services: postgres` container runs inside dind's dockerd —
@@ -77,6 +78,13 @@ template:
         emptyDir: {}
       - name: dind-externals
         emptyDir: {}
+      # Shared caches (trailwave-caches-pvc.yaml) — see header comment.
+      - name: pnpm-store
+        persistentVolumeClaim:
+          claimName: trailwave-arc-pnpm-store
+      - name: playwright-cache
+        persistentVolumeClaim:
+          claimName: trailwave-arc-playwright-cache
     initContainers:
       - name: init-dind-externals
         image: ghcr.io/actions/actions-runner:latest
@@ -85,6 +93,16 @@ template:
         volumeMounts:
           - name: dind-externals
             mountPath: /home/runner/tmpDir
+      # A fresh CephFS mount is root-owned and the runner container isn't
+      # root — same fix as Glyphdex's fix-*-perms initContainers.
+      - name: fix-cache-perms
+        image: busybox:1.36
+        command: ["sh", "-c", "chmod -R 0777 /pnpm-store /playwright-cache"]
+        volumeMounts:
+          - name: pnpm-store
+            mountPath: /pnpm-store
+          - name: playwright-cache
+            mountPath: /playwright-cache
     containers:
       - name: runner
         image: ghcr.io/actions/actions-runner:latest
@@ -99,11 +117,19 @@ template:
             mountPath: /home/runner/_work
           - name: dind-sock
             mountPath: /var/run
+          # ci.yml / e2e.yml point pnpm's store-dir and
+          # PLAYWRIGHT_BROWSERS_PATH here when running self-hosted.
+          - name: pnpm-store
+            mountPath: /mnt/pnpm-store
+          - name: playwright-cache
+            mountPath: /mnt/playwright-cache
         resources:
-          # No cpu limit — see runner-values.yaml. `next build` in ci.yml /
-          # e2e.yml is the heaviest step here; 4Gi matches Glyphdex's runner.
+          # No cpu limit — see runner-values.yaml. Request raised 1 -> 2
+          # (2026-09-26): with 1 CPU, `next build` took 278s vs 103s and the
+          # Playwright suite 334s vs 191s on ubuntu-latest (4 vCPU). 4Gi
+          # memory matches Glyphdex's runner.
           requests:
-            cpu: "1"
+            cpu: "2"
             memory: 2Gi
           limits:
             memory: 4Gi

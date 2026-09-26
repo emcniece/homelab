@@ -322,7 +322,10 @@ kubectl create secret generic trailwave-arc-github-secret \
   --from-literal=github_token="$GH_PAT"
 unset GH_PAT
 
-# 2. Runner scale set
+# 2. Shared pnpm-store + Playwright-cache PVCs (CephFS RWX)
+kubectl apply -f infra/actions-runner-controller/trailwave-caches-pvc.yaml
+
+# 3. Runner scale set
 helm upgrade --install trailwave-runners \
   --namespace arc-runners \
   -f infra/actions-runner-controller/runner-values-trailwave.yaml \
@@ -330,9 +333,11 @@ helm upgrade --install trailwave-runners \
   --version "$CHART_VERSION" --wait
 ```
 
-Trimmed like moneymaker's: no pnpm-store/playwright-cache PVCs (trailwave's
-workflows keep setup-node's `cache: pnpm`); reuses Glyphdex's registry
-mirror. Its deploy workflows reach the API server at
+Own pnpm-store/playwright-cache PVCs (`trailwave-caches-pvc.yaml`, same
+pattern as Glyphdex's; see "Caching" above), a 2-CPU runner request, and
+Glyphdex's registry mirror. setup-node's GitHub Actions cache is disabled on
+these runners: without zstd in the runner image it gzips the 1.6 GB pnpm
+store single-threaded, which ran for hours. Its deploy workflows reach the API server at
 `https://kubernetes.default.svc` from inside the runner pod, same as
 Glyphdex's release.yml — the Tailscale hop they used on `ubuntu-latest` is
 gone.
