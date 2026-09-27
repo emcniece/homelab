@@ -348,7 +348,9 @@ gone.
 
 A second trailwave scale set, `trailwave-arc-runners-e2e`, runs only
 `e2e.yml`. It uses the same values plus `runner-values-trailwave-e2e.yaml`,
-which sets a 4-CPU runner, 1-CPU dind and `maxRunners: 2`. e2e (next build,
+which sets a 4-CPU runner, 1-CPU dind, `maxRunners: 2`, and RAM-backed
+(tmpfs) volumes for the runner's work dir and dind's `/var/lib/docker`,
+because k3s-04's node disk was the real bottleneck (e2e 20m34s -> 13m23s). e2e (next build,
 PostGIS, the Next server and Playwright in one job) took 17-23 min against a
 30-min timeout on the 2-CPU runners. A 4-CPU request also keeps it on k3s-04,
 since k3s-05/06 don't have 4 CPUs of unrequested capacity. It reuses

@@ -16,9 +16,22 @@
 # 4 CPUs free. The base pool's soft topology spread was landing runners on
 # k3s-06, which runs at ~84% actual CPU use.
 #
-# Helm replaces lists wholesale, so `containers` and
-# `topologySpreadConstraints` are restated in full here. Keep `containers` in
-# sync with runner-values-trailwave.yaml apart from `resources`.
+# RAM-backed scratch (2026-09-27): the 4-CPU request alone barely helped
+# (22m55s -> 20m34s; `next build` 279s -> 289s). k3s-04's node disk is the
+# bottleneck: 61.7 MB/s sequential with fsync, ~1.6 ms per small file, and
+# pnpm install, next build, setup-node and tsx all touch thousands of small
+# files. So the runner's work dir (checkout, node_modules, pnpm store, tool
+# cache, .next) and dind's /var/lib/docker (PostGIS image + data files) are
+# tmpfs. tmpfs pages count against the writing container's memory limit,
+# hence the larger memory requests/limits below. k3s-04 has 63 GiB
+# allocatable and ~19 GiB requested; 2 runners x 18 GiB limits fits.
+# First run: 1234s -> 803s (setup-node 180s -> 16s, pnpm install 187s ->
+# 34s, PostGIS start 84s -> 38s). Peak memory: runner 4.9 GiB, dind 0.9 GiB.
+#
+# Helm replaces lists wholesale, so `volumes`, `containers` and
+# `topologySpreadConstraints` are restated in full here. Keep them in sync
+# with runner-values-trailwave.yaml apart from the tmpfs volumes, the
+# docker-lib mount and `resources`.
 
 runnerScaleSetName: trailwave-arc-runners-e2e
 
@@ -35,6 +48,28 @@ template:
         labelSelector:
           matchLabels:
             actions.github.com/scale-set-name: trailwave-arc-runners-e2e
+    volumes:
+      - name: work
+        emptyDir:
+          medium: Memory
+          # Checkout + node_modules + pnpm store (hardlinked, same fs) +
+          # .next + Node tool cache is ~4-5 GB.
+          sizeLimit: 8Gi
+      - name: docker-lib
+        emptyDir:
+          medium: Memory
+          # PostGIS image layers + database files for the e2e service.
+          sizeLimit: 5Gi
+      - name: dind-sock
+        emptyDir: {}
+      - name: dind-externals
+        emptyDir: {}
+      - name: pnpm-store
+        persistentVolumeClaim:
+          claimName: trailwave-arc-pnpm-store
+      - name: playwright-cache
+        persistentVolumeClaim:
+          claimName: trailwave-arc-playwright-cache
     containers:
       - name: runner
         image: ghcr.io/actions/actions-runner:latest
@@ -55,12 +90,13 @@ template:
             mountPath: /mnt/playwright-cache
         resources:
           # No cpu limit (see runner-values.yaml). Runs next build, the Next
-          # server and Playwright's browsers.
+          # server and Playwright's browsers; memory also covers the tmpfs
+          # `work` volume it writes (up to 8Gi).
           requests:
             cpu: "4"
-            memory: 4Gi
-          limits:
             memory: 6Gi
+          limits:
+            memory: 12Gi
       - name: dind
         image: docker:dind
         args:
@@ -83,10 +119,13 @@ template:
             mountPath: /var/run
           - name: dind-externals
             mountPath: /home/runner/externals
+          - name: docker-lib
+            mountPath: /var/lib/docker
         resources:
-          # Hosts e2e.yml's PostGIS service container.
+          # Hosts e2e.yml's PostGIS service container; memory also covers the
+          # tmpfs docker-lib volume (up to 5Gi).
           requests:
             cpu: "1"
-            memory: 1Gi
+            memory: 2Gi
           limits:
-            memory: 3Gi
+            memory: 6Gi
