@@ -344,6 +344,31 @@ store single-threaded, which ran for hours. Its deploy workflows reach the API s
 Glyphdex's release.yml — the Tailscale hop they used on `ubuntu-latest` is
 gone.
 
+### trailwave e2e pool
+
+A second trailwave scale set, `trailwave-arc-runners-e2e`, runs only
+`e2e.yml`. It uses the same values plus `runner-values-trailwave-e2e.yaml`,
+which sets a 4-CPU runner, 1-CPU dind and `maxRunners: 2`. e2e (next build,
+PostGIS, the Next server and Playwright in one job) took 17-23 min against a
+30-min timeout on the 2-CPU runners. A 4-CPU request also keeps it on k3s-04,
+since k3s-05/06 don't have 4 CPUs of unrequested capacity. It reuses
+`trailwave-arc-github-secret`.
+
+```sh
+helm upgrade --install trailwave-runners-e2e \
+  --namespace arc-runners \
+  -f infra/actions-runner-controller/runner-values-trailwave.yaml \
+  -f infra/actions-runner-controller/runner-values-trailwave-e2e.yaml \
+  oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set \
+  --version "$CHART_VERSION" --wait
+```
+
+On first install (2026-09-27) the listener crash-looped with `could not
+patch ephemeral runner set , patch JSON: ...`: it pointed at an
+EphemeralRunnerSet name that was never created. The stale-reference fix in
+Troubleshooting below (delete the EphemeralRunnerSet and the
+AutoscalingListener, and let the controller recreate both) cleared it.
+
 ## Verify
 
 ```sh
@@ -439,6 +464,7 @@ kubectl -n arc-runners delete secret glyphdex-arc-github-secret
 # doesn't require also removing glyphdex-runners:
 helm -n arc-runners uninstall moneymaker-runners
 kubectl -n arc-runners delete secret moneymaker-arc-github-secret
+helm -n arc-runners uninstall trailwave-runners-e2e
 helm -n arc-runners uninstall trailwave-runners
 kubectl -n arc-runners delete secret trailwave-arc-github-secret
 # Only tear down the controller once every scale set release is gone —

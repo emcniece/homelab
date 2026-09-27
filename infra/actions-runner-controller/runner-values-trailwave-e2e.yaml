@@ -1,0 +1,92 @@
+# Override for a second trailwave scale set dedicated to e2e.yml. Layered on
+# top of runner-values-trailwave.yaml (same repo, GitHub secret, DNS fix,
+# volumes and initContainers):
+#
+#   helm upgrade --install trailwave-runners-e2e ... \
+#     -f runner-values-trailwave.yaml -f runner-values-trailwave-e2e.yaml
+#
+# Why a separate pool (2026-09-27): e2e runs `next build`, a PostGIS service
+# container, the Next server and Playwright in one job. It took 17-23 min
+# against a 30-min timeout on the 2-CPU runners, vs ~7 min on ubuntu-latest.
+# Only e2e needs the bigger request; raising it for every trailwave runner
+# (maxRunners 6) would ask for more CPU than the cluster has free.
+#
+# A 4-CPU request also steers these pods onto k3s-04 (24 cores, ~half its
+# CPU unrequested): k3s-06 is ~98% requested and k3s-05 ~79%, so neither has
+# 4 CPUs free. The base pool's soft topology spread was landing runners on
+# k3s-06, which runs at ~84% actual CPU use.
+#
+# Helm replaces lists wholesale, so `containers` and
+# `topologySpreadConstraints` are restated in full here. Keep `containers` in
+# sync with runner-values-trailwave.yaml apart from `resources`.
+
+runnerScaleSetName: trailwave-arc-runners-e2e
+
+# One e2e job per open PR push; two lets back-to-back PRs overlap.
+minRunners: 0
+maxRunners: 2
+
+template:
+  spec:
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            actions.github.com/scale-set-name: trailwave-arc-runners-e2e
+    containers:
+      - name: runner
+        image: ghcr.io/actions/actions-runner:latest
+        command: ["/home/runner/run.sh"]
+        env:
+          - name: DOCKER_HOST
+            value: unix:///var/run/docker.sock
+          - name: RUNNER_WAIT_FOR_DOCKER_IN_SECONDS
+            value: "120"
+        volumeMounts:
+          - name: work
+            mountPath: /home/runner/_work
+          - name: dind-sock
+            mountPath: /var/run
+          - name: pnpm-store
+            mountPath: /mnt/pnpm-store
+          - name: playwright-cache
+            mountPath: /mnt/playwright-cache
+        resources:
+          # No cpu limit (see runner-values.yaml). Runs next build, the Next
+          # server and Playwright's browsers.
+          requests:
+            cpu: "4"
+            memory: 4Gi
+          limits:
+            memory: 6Gi
+      - name: dind
+        image: docker:dind
+        args:
+          [
+            "dockerd",
+            "--host=unix:///var/run/docker.sock",
+            "--group=$(DOCKER_GROUP_GID)",
+            "--registry-mirror=http://glyphdex-arc-registry-mirror.arc-runners.svc.cluster.local:5000",
+            "--insecure-registry=glyphdex-arc-registry-mirror.arc-runners.svc.cluster.local:5000",
+          ]
+        env:
+          - name: DOCKER_GROUP_GID
+            value: "123"
+        securityContext:
+          privileged: true
+        volumeMounts:
+          - name: work
+            mountPath: /home/runner/_work
+          - name: dind-sock
+            mountPath: /var/run
+          - name: dind-externals
+            mountPath: /home/runner/externals
+        resources:
+          # Hosts e2e.yml's PostGIS service container.
+          requests:
+            cpu: "1"
+            memory: 1Gi
+          limits:
+            memory: 3Gi
