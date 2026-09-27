@@ -1,0 +1,51 @@
+# infra/tailscale/kustomization.yaml
+#
+# Apply with: kubectl apply -k infra/tailscale
+#
+# The operator image and its CRDs come from the same upstream tag. Upgrade by
+# bumping BOTH the manifest URL and newTag below to the same version, never by
+# using :stable — a floating image outran the vendored CRDs on 2026-09-27 (the
+# operator crashlooped waiting for the missing PeerRelay CRD).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - https://raw.githubusercontent.com/tailscale/tailscale/v1.102.4/cmd/k8s-operator/deploy/manifests/operator.yaml
+  - proxyclass-dns.yaml
+  - connector.yaml
+
+images:
+  - name: tailscale/k8s-operator
+    newTag: v1.102.4
+
+patches:
+  # Upstream ships a placeholder operator-oauth Secret with empty credentials;
+  # applying it would wipe the real one. The real Secret lives in secret.yaml
+  # (gitignored) and is applied separately.
+  - target:
+      kind: Secret
+      name: operator-oauth
+    patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: operator-oauth
+        namespace: tailscale
+  - target:
+      kind: Deployment
+      name: operator
+    patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: operator
+        namespace: tailscale
+      spec:
+        template:
+          spec:
+            dnsConfig:
+              nameservers: ["8.8.8.8", "1.1.1.1"]
+              options:
+                - name: ndots
+                  value: "2"
