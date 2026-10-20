@@ -25,6 +25,8 @@ https://github.com/emcniece/Glyphdex (`deploy/k8s/glyphdex` Helm chart,
 - `https://gspr.emc2.build` — dashboard
 - `https://mcp.gspr.emc2.build/mcp` — MCP streamable-HTTP endpoint (per-key
   `gsk_…` auth)
+- `glyphdex-db.emc2.build` — read-only Postgres for trusted devs, via a
+  Cloudflare Tunnel + Access (TCP, not HTTP) — see [`db-tunnel/`](db-tunnel/README.md)
 
 No DNS record was needed — both hosts resolve via the existing `*.emc2.build`
 wildcard CNAME straight to the home public IP (same as `stegastamp.emc2.build`),

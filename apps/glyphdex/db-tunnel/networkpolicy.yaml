@@ -1,0 +1,71 @@
+# The glyphdex namespace is default-deny (Helm's glyphdex-default-deny), and
+# glyphdex-postgres only admits web/mcp-server/worker/migrate. NetworkPolicy
+# allows are additive, so these two open exactly the tunnel path without
+# editing the Helm-owned policies.
+---
+# cloudflared: DNS, Postgres, and the Cloudflare edge (7844 TCP+UDP for the
+# tunnel itself, 443 for the API). Nothing else on the LAN or in-cluster.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: glyphdex-db-tunnel
+  namespace: glyphdex
+  labels:
+    app.kubernetes.io/name: glyphdex-db-tunnel
+    app.kubernetes.io/component: db-tunnel
+    app.kubernetes.io/part-of: glyphdex
+    app.kubernetes.io/managed-by: kubectl
+  annotations:
+    emc2.build/source: github.com/emcniece/homelab/apps/glyphdex/db-tunnel
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: glyphdex-db-tunnel
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - { port: 53, protocol: UDP }
+        - { port: 53, protocol: TCP }
+    - to:
+        - podSelector:
+            matchLabels:
+              cnpg.io/cluster: glyphdex-pg
+      ports:
+        - { port: 5432, protocol: TCP }
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 100.64.0.0/10]
+      ports:
+        - { port: 7844, protocol: TCP }
+        - { port: 7844, protocol: UDP }
+        - { port: 443, protocol: TCP }
+---
+# Postgres: admit the tunnel connector on 5432.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: glyphdex-postgres-from-db-tunnel
+  namespace: glyphdex
+  labels:
+    app.kubernetes.io/name: glyphdex-db-tunnel
+    app.kubernetes.io/component: db-tunnel
+    app.kubernetes.io/part-of: glyphdex
+    app.kubernetes.io/managed-by: kubectl
+  annotations:
+    emc2.build/source: github.com/emcniece/homelab/apps/glyphdex/db-tunnel
+spec:
+  podSelector:
+    matchLabels:
+      cnpg.io/cluster: glyphdex-pg
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: glyphdex-db-tunnel
+      ports:
+        - { port: 5432, protocol: TCP }
