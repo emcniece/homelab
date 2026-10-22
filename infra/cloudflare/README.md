@@ -131,10 +131,6 @@ Cloudflare's 2h default applies. An edited page can be stale for up to 2h
 unless you purge it. emc2.build's Cloudflare plugin purges on edit; for the
 others, purge from the dashboard (Caching → Configuration).
 
-kamloopsdentalsociety.com is in a different Cloudflare account, so it isn't
-in `wordpress_cache_zones`. Make its rule by hand there, or give this module
-a second provider for that account.
-
 If a zone already has cache rules from the dashboard, Cloudflare refuses a
 second entry-point ruleset. Import the existing one first:
 
