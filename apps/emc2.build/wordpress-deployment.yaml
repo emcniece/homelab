@@ -82,10 +82,14 @@ spec:
               name: redis    
       # Every page render makes hundreds of DB round-trips; cross-node (and
       # onto a busy node) they measured 2-3ms each vs 0.7ms co-located.
+      # Weighted below the ollama anti-affinity: on a rollout the new pod is
+      # scheduled while MySQL may still sit on ollama's node, and equal
+      # weights cancel out there (and the scheduler applies this term
+      # symmetrically when MySQL reschedules), so both ended up on it.
       affinity:
         podAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
+          - weight: 50
             podAffinityTerm:
               topologyKey: kubernetes.io/hostname
               labelSelector:
