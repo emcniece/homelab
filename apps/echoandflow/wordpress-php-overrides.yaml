@@ -1,0 +1,19 @@
+---
+# PHP runtime overrides for the WordPress container, mounted into
+# /usr/local/etc/php/conf.d/. Same opcache settings as
+# apps/emc2.build/wordpress-php-overrides.yaml: the image default (128M,
+# 4000 files) is tight for Divi + plugins, and every opcache miss means
+# recompiling from HDD-backed CephFS. revalidate_freq=60 cuts the
+# per-include stat() calls to CephFS; edited PHP files are picked up within
+# a minute.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wordpress-php-overrides
+  namespace: echoandflow
+data:
+  zz-overrides.ini: |
+    opcache.memory_consumption = 256
+    opcache.interned_strings_buffer = 32
+    opcache.max_accelerated_files = 20000
+    opcache.revalidate_freq = 60

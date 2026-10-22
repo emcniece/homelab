@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: wordpress-cron
+  namespace: createsleeprepeat
+spec:
+  schedule: "* * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 120
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: wp-cron
+              image: curlimages/curl:latest
+              command:
+                - curl
+                - -sS
+                - --max-time
+                - "110"
+                - http://wordpress-service/wp-cron.php

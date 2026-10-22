@@ -5,6 +5,12 @@
 # ~20k+ plugin files without OOM. max_execution_time=0 lets BackWPup run
 # without PHP killing long-running chunks (BackWPup self-limits via
 # jobmaxexecutiontime, set to 300s in the DB).
+#
+# opcache: the image default (128M, 4000 files) filled up on this site
+# (Divi 5 + WooCommerce + Jetpack; ~19.6k PHP files on disk), so scripts
+# that didn't fit were recompiled from HDD-backed CephFS on every request.
+# revalidate_freq=60 cuts the per-include stat() calls to CephFS; edited
+# PHP files (plugin updates etc.) are picked up within a minute.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -17,3 +23,7 @@ data:
     max_input_time = 600
     upload_max_filesize = 64M
     post_max_size = 64M
+    opcache.memory_consumption = 256
+    opcache.interned_strings_buffer = 32
+    opcache.max_accelerated_files = 20000
+    opcache.revalidate_freq = 60
