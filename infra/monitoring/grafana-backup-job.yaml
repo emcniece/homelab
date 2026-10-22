@@ -14,6 +14,16 @@ spec:
         app.kubernetes.io/component: backup
     spec:
       restartPolicy: OnFailure
+      # Same as grafana-backup-cronjob.yaml: grafana-storage is RWO, so this
+      # pod must land on grafana's node to mount it.
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: grafana
+                  app.kubernetes.io/component: server
+              topologyKey: kubernetes.io/hostname
       containers:
         - name: backup
           image: alpine:latest
@@ -22,37 +32,46 @@ spec:
             - -c
             - |
               set -e
-              
+
               echo "Starting manual Grafana backup at $(date)"
-              
-              # Create backup directory with timestamp
+
               BACKUP_DATE=$(date +%Y%m%d-%H%M%S)
-              BACKUP_DIR="/backups/grafana-backup-${BACKUP_DATE}"
-              mkdir -p "${BACKUP_DIR}"
-              
-              # Backup Grafana data directory
+              NAME="grafana-backup-${BACKUP_DATE}"
+              ARCHIVE="/backups/${NAME}.tar.gz"
+
+              # Stage the copy on the pod's scratch volume, never on /backups, and
+              # write the archive under a .partial name until it's complete. A failed
+              # run used to leave its uncompressed staging dir in /backups, which the
+              # *.tar.gz rotation never removed; they piled up until the volume filled
+              # (2026-10-19) and every later run failed on mkdir.
+              trap 'rm -rf "/staging/${NAME}" "${ARCHIVE}.partial"' EXIT
+              rm -f /backups/*.partial
+
               echo "Backing up Grafana data..."
-              cp -a /var/lib/grafana/. "${BACKUP_DIR}/"
-              
-              # Create a compressed archive
-              cd /backups
-              tar -czf "grafana-backup-${BACKUP_DATE}.tar.gz" "grafana-backup-${BACKUP_DATE}"
-              rm -rf "grafana-backup-${BACKUP_DATE}"
-              
-              echo "Backup completed: grafana-backup-${BACKUP_DATE}.tar.gz"
-              echo "Backup size:"
-              ls -lh "/backups/grafana-backup-${BACKUP_DATE}.tar.gz"
-              
-              echo "All backups:"
-              ls -lh /backups/grafana-backup-*.tar.gz 2>/dev/null || echo "No other backups found"
-              
-              echo "Manual backup process completed successfully at $(date)"
+              mkdir -p "/staging/${NAME}"
+              cp -a /var/lib/grafana/. "/staging/${NAME}/"
+
+              # Same archive layout as before (single top-level ${NAME}/ dir), which
+              # grafana-restore-job.yaml expects.
+              tar -czf "${ARCHIVE}.partial" -C /staging "${NAME}"
+              mv "${ARCHIVE}.partial" "${ARCHIVE}"
+
+              echo "Backup completed: ${NAME}.tar.gz"
+              ls -lh "${ARCHIVE}"
+
+              echo "Current backups:"
+              ls -lh /backups/grafana-backup-*.tar.gz 2>/dev/null || echo "No backups found"
+              df -h /backups | tail -1
+
+              echo "Backup process completed successfully at $(date)"
           volumeMounts:
             - name: grafana-storage
               mountPath: /var/lib/grafana
               readOnly: true
             - name: backup-storage
               mountPath: /backups
+            - name: staging
+              mountPath: /staging
           resources:
             requests:
               cpu: 100m
@@ -67,3 +86,6 @@ spec:
         - name: backup-storage
           persistentVolumeClaim:
             claimName: grafana-backup-storage
+        - name: staging
+          emptyDir:
+            sizeLimit: 2Gi
