@@ -1,0 +1,21 @@
+# Per-source-IP rate limit, attached to the main emc2-build Ingress
+# (wordpress-deployment.yaml). Was applied by hand and only existed live;
+# recorded here as-is so applying the Ingress doesn't reference a Middleware
+# that isn't in the repo.
+#
+# NOTE: emc2.build is proxied through Cloudflare, so with depth 0 the
+# "source IP" is the Cloudflare edge, not the visitor; every visitor routed
+# through the same Cloudflare PoP shares one bucket.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: ratelimit
+  namespace: emc2-build
+spec:
+  rateLimit:
+    average: 30
+    burst: 60
+    period: 1s
+    sourceCriterion:
+      ipStrategy:
+        depth: 0

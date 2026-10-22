@@ -1,8 +1,12 @@
 # Cloudflare (Terraform)
 
-Terraform for Cloudflare resources in the `emc2.build` account. Currently
-manages only the **glyphdex DB tunnel** (`glyphdex-db.tf`): the tunnel, its
-TCP route to Postgres, the DNS record, and the Access application + policy.
+Terraform for Cloudflare resources in the `emc2.build` account. Manages:
+
+- The **glyphdex DB tunnel** (`glyphdex-db.tf`): the tunnel, its TCP route to
+  Postgres, the DNS record, and the Access application + policy.
+- The **WordPress page cache** (`wordpress-cache.tf`): a cache rule on each
+  zone in `wordpress_cache_zones` that caches anonymous HTML at the edge.
+
 The UDM's tunnel and the existing DNS records are still managed by hand.
 `terraform import` can bring them in later if wanted.
 
@@ -68,6 +72,8 @@ Create the token under My Profile → API Tokens → Create Custom Token, with:
 - Account → Access: Apps and Policies: Edit
 - Zone → DNS: Edit (Zone Resources: Include → Specific zone → emc2.build)
 - Zone → Zone: Read (same zone, for the zone-ID lookup)
+- Zone → Cache Rules: Edit and Zone → Zone: Read (Zone Resources: each zone
+  in `wordpress_cache_zones`: emc2.build, createsleeprepeat.ca, echoandflow.ca)
 
 To rotate it: roll it in the dashboard and replace the value in
 `secrets.auto.tfvars`.
@@ -113,3 +119,25 @@ their current session right away, go to Zero Trust → Access → Users → revo
 To rotate the tunnel token: `terraform apply -replace=cloudflare_zero_trust_tunnel_cloudflared.glyphdex_db`,
 then re-run the secret command above. Replacing the tunnel gives it a new ID,
 and Terraform updates the CNAME and route to match.
+
+### WordPress page cache
+
+`wordpress-cache.tf` adds one cache rule per zone. It caches every request
+except those with a query string, under `/wp-admin`, `/wp-login.php`,
+`/wp-json`, `/cart`, `/checkout` or `/my-account`, or carrying a
+logged-in, password-post, commenter or WooCommerce cookie. Edge TTL follows
+the origin. WordPress sends no `Cache-Control` on public pages, so
+Cloudflare's 2h default applies. An edited page can be stale for up to 2h
+unless you purge it. emc2.build's Cloudflare plugin purges on edit; for the
+others, purge from the dashboard (Caching → Configuration).
+
+If a zone already has cache rules from the dashboard, Cloudflare refuses a
+second entry-point ruleset. Import the existing one first:
+
+```sh
+terraform import 'cloudflare_ruleset.wordpress_cache["echoandflow.ca"]' zones/<zone_id>/<ruleset_id>
+```
+
+Check that it works with `curl -sI https://<site>/ | grep cf-cache-status`.
+The second request should say `HIT`. Logged-in requests should say `DYNAMIC`
+or `BYPASS`.

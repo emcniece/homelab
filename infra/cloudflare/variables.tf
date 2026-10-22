@@ -27,6 +27,18 @@ variable "glyphdex_db_dev_emails" {
   default     = []
 }
 
+variable "wordpress_cache_zones" {
+  description = "Zones serving the apps/ WordPress sites; each gets the page-cache rule in wordpress-cache.tf."
+  type        = list(string)
+  # kamloopsdentalsociety.com isn't listed: its nameservers differ from the
+  # others, suggesting it lives in another Cloudflare account.
+  default = [
+    "emc2.build",
+    "createsleeprepeat.ca",
+    "echoandflow.ca",
+  ]
+}
+
 variable "glyphdex_db_session_duration" {
   description = "How long an Access login lasts before the dev must re-authenticate."
   type        = string
