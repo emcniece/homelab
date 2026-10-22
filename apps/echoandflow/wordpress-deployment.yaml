@@ -84,35 +84,23 @@ spec:
           ports:
             - containerPort: 6379
               name: redis    
-      # Every page render makes hundreds of DB round-trips; cross-node (and
-      # onto a busy node) they measured 2-3ms each vs 0.7ms co-located.
-      # Weighted below the ollama anti-affinity: on a rollout the new pod is
-      # scheduled while MySQL may still sit on ollama's node, and equal
-      # weights cancel out there (and the scheduler applies this term
-      # symmetrically when MySQL reschedules), so both ended up on it.
+      # Prefer the pve1 VM (k3s-04): its E5-2696 v2 runs PHP ~2x faster
+      # single-threaded than the X5650 hosts (pve2/pve3) under k3s-05/06, and
+      # renders here are CPU-bound (~1.5s CPU for an emc2.build page). MySQL
+      # carries the same preference, which keeps the pair on one node. Only a
+      # node preference: pod-affinity terms are scored by a separate plugin,
+      # and the scheduler normalises each plugin to the same 0-100 range, so
+      # mixing the two made "follow MySQL" tie with "pick the fast node".
+      # Preferred, not required: if k3s-04 is down they run elsewhere.
       affinity:
-        podAffinity:
+        nodeAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 50
-            podAffinityTerm:
-              topologyKey: kubernetes.io/hostname
-              labelSelector:
-                matchLabels:
-                  app: mysql
-        podAntiAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          # glyphdex-ollama runs CPU inference pinned at its 6-core limit; keep
-          # latency-sensitive pods off its node.
           - weight: 100
-            podAffinityTerm:
-              topologyKey: kubernetes.io/hostname
-              namespaceSelector:
-                matchLabels:
-                  kubernetes.io/metadata.name: glyphdex
-              labelSelector:
-                matchLabels:
-                  app.kubernetes.io/name: glyphdex
-                  app.kubernetes.io/component: ollama
+            preference:
+              matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values: [pve1]
       tolerations:
       - key: "maintenance"
         operator: "Exists"

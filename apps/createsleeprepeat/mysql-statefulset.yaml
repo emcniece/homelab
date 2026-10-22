@@ -44,23 +44,23 @@ spec:
         volumeMounts:
         - name: mysql-data
           mountPath: /var/lib/mysql
-      # WordPress follows this pod (see wordpress-deployment.yaml), so this
-      # decides where the whole site lands.
+      # Prefer the pve1 VM (k3s-04): its E5-2696 v2 runs PHP ~2x faster
+      # single-threaded than the X5650 hosts (pve2/pve3) under k3s-05/06, and
+      # renders here are CPU-bound (~1.5s CPU for an emc2.build page). WordPress
+      # carries the same preference, which keeps the pair on one node. Only a
+      # node preference: pod-affinity terms are scored by a separate plugin,
+      # and the scheduler normalises each plugin to the same 0-100 range, so
+      # mixing the two made "follow MySQL" tie with "pick the fast node".
+      # Preferred, not required: if k3s-04 is down they run elsewhere.
       affinity:
-        podAntiAffinity:
+        nodeAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
-          # glyphdex-ollama runs CPU inference pinned at its 6-core limit; keep
-          # latency-sensitive pods off its node.
           - weight: 100
-            podAffinityTerm:
-              topologyKey: kubernetes.io/hostname
-              namespaceSelector:
-                matchLabels:
-                  kubernetes.io/metadata.name: glyphdex
-              labelSelector:
-                matchLabels:
-                  app.kubernetes.io/name: glyphdex
-                  app.kubernetes.io/component: ollama
+            preference:
+              matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values: [pve1]
       tolerations:
       - key: "maintenance"
         operator: "Exists"
