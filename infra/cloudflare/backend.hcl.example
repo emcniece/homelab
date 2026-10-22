@@ -1,0 +1,28 @@
+# Copy to backend.hcl (gitignored), fill in, then:
+#   terraform init -backend-config=backend.hcl
+#
+# B2 bucket: private, default encryption (SSE-B2) on, lifecycle "keep all
+# versions" so any past state can be recovered.
+bucket = "REPLACE_WITH_B2_BUCKET_NAME"
+key    = "cloudflare/terraform.tfstate"
+
+# AWS profile holding the B2 key scoped to this bucket. Pinned here so a
+# missing AWS_PROFILE can't fall back to [default] (an AWS key B2 rejects).
+profile = "b2-tfstate"
+
+# The bucket's S3 endpoint (B2 -> Buckets -> Endpoint). Region = the part
+# after "s3.", e.g. us-west-004.
+region    = "us-west-004"
+endpoints = { s3 = "https://s3.us-west-004.backblazeb2.com" }
+
+# B2 is S3-compatible, not AWS: skip the AWS-only checks.
+skip_credentials_validation = true
+skip_region_validation      = true
+skip_requesting_account_id  = true
+skip_metadata_api_check     = true
+skip_s3_checksum            = true
+
+# No state locking: B2 doesn't support S3 conditional writes (a PUT with
+# If-None-Match drops the connection; tested 2026-10-20), so `use_lockfile`
+# would break every plan/apply. Fine for a single operator: don't run two
+# applies at once.

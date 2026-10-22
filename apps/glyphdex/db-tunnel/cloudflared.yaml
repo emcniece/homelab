@@ -1,0 +1,97 @@
+# Remotely-managed cloudflared connector for the glyphdex-db tunnel. Its only
+# route (configured in the Zero Trust dashboard, not here) is
+#   glyphdex-db.emc2.build -> tcp://glyphdex-pg-rw.glyphdex.svc.cluster.local:5432
+# Deliberately not Helm-managed: lives alongside the glyphdex release so a
+# chart upgrade never touches it.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: glyphdex-db-tunnel
+  namespace: glyphdex
+  labels:
+    app.kubernetes.io/name: glyphdex-db-tunnel
+    app.kubernetes.io/component: db-tunnel
+    app.kubernetes.io/part-of: glyphdex
+    app.kubernetes.io/managed-by: kubectl
+  annotations:
+    emc2.build/source: github.com/emcniece/homelab/apps/glyphdex/db-tunnel
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: glyphdex-db-tunnel
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: glyphdex-db-tunnel
+        app.kubernetes.io/component: db-tunnel
+        app.kubernetes.io/part-of: glyphdex
+    spec:
+      automountServiceAccountToken: false
+      # The nodes hand pods a `lab.emc2.build` search domain, and
+      # *.lab.emc2.build is a wildcard (-> 192.168.10.91). With the default
+      # ndots:5, the tunnel's origin `glyphdex-pg-rw.glyphdex.svc.cluster.local`
+      # (4 dots) is tried against the search list first and the wildcard
+      # answers before the real name is ever looked up. ndots:1 resolves any
+      # dotted name as-is first.
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: glyphdex-db-tunnel
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: cloudflared
+          image: cloudflare/cloudflared:2026.10.2
+          args:
+            - tunnel
+            - --no-autoupdate
+            - --metrics
+            - 0.0.0.0:2000
+            - run
+          env:
+            - name: TUNNEL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: glyphdex-db-tunnel
+                  key: TUNNEL_TOKEN
+          ports:
+            - name: metrics
+              containerPort: 2000
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: metrics
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: metrics
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi

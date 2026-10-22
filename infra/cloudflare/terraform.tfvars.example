@@ -1,0 +1,6 @@
+# Copy to terraform.tfvars (gitignored — this repo is public).
+account_id = "REPLACE_WITH_CLOUDFLARE_ACCOUNT_ID"
+
+glyphdex_db_dev_emails = [
+  "dev@example.com",
+]
