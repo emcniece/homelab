@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: database
-        image: mysql:5.7
+        image: mariadb:10.11
         resources:
           requests:
             cpu: 100m
@@ -28,6 +28,7 @@ spec:
             memory: 768Mi
         args:
           - "--ignore-db-dir=lost+found"
+          - "--skip-ssl"
         envFrom:
           - secretRef:
               name: mysql-secret
@@ -66,4 +67,6 @@ spec:
       volumes:
           - name: mysql-data
             persistentVolumeClaim:
-              claimName: kdds-mysql
+              # MariaDB data. Converted from MySQL 5.7 (kdds-mysql) by dump and
+              # restore on 2026-10-23 to match the other sites.
+              claimName: kdds-mariadb
