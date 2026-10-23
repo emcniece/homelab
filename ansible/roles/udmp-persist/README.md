@@ -17,8 +17,15 @@ Pro. Background and rationale: https://docs.emc2.build/doc/udm-pro-persisting-co
   script downloads it from GitHub the first time it runs if
   `/data/cloudflared/cloudflared` doesn't already exist, and reuses the
   persisted copy on every boot after that.
+- The service runs `/data/cloudflared/cloudflared` directly (`/usr/bin/cloudflared`
+  is just a symlink) with cloudflared's built-in autoupdate on, so it upgrades
+  itself daily and the new version survives firmware updates. No manual
+  upgrades needed.
+- The token is read with `--token-file /data/cloudflared/token`, so it never
+  appears on the command line or in the unit file.
 - To rotate the tunnel token, update `cloudflare_tunnel_token` in
-  `secrets.yml` and rerun the playbook.
+  `secrets.yml` and rerun the playbook (it restarts cloudflared when the token
+  changes).
 - To add/remove an SSH key, update `udmp_authorized_keys` and rerun the
   playbook — don't edit `/root/.ssh/authorized_keys` directly, it won't
   survive the next firmware update.

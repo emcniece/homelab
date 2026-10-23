@@ -1,7 +1,23 @@
+# Old MySQL 5.7 data, no longer mounted: kept as the rollback for the
+# 2026-10-23 conversion to MariaDB (kdds-mariadb below). Delete once the
+# MariaDB copy has proven itself.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: kdds-mysql
+  namespace: kdds
+spec:
+  storageClassName: csi-cephfs-sc
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kdds-mariadb
   namespace: kdds
 spec:
   storageClassName: csi-cephfs-sc

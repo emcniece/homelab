@@ -35,12 +35,35 @@ spec:
           ports:
             - containerPort: 80
               name: wordpress
+          # A static file, so the probe needs a free Apache worker but no PHP:
+          # it fails when every worker is stuck, which is the hang to catch.
+          # Liveness is lenient (~2 min) so a busy-but-working pod isn't
+          # restarted mid-burst; readiness pulls a hung pod out of rotation
+          # sooner, so Traefik answers 503 instead of hanging the request.
+          readinessProbe:
+            httpGet:
+              path: /wp-includes/images/blank.gif
+              port: 80
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /wp-includes/images/blank.gif
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 10
+            failureThreshold: 6
           volumeMounts:
             - name: wordpress-data
               mountPath: /var/www/html
             - name: php-overrides
               mountPath: /usr/local/etc/php/conf.d/zz-emc2-overrides.ini
               subPath: zz-emc2-overrides.ini
+            - name: apache-mpm
+              mountPath: /etc/apache2/mods-available/mpm_prefork.conf
+              subPath: mpm_prefork.conf
           env:
             - name: WORDPRESS_DB_HOST
               value: mysql-service
@@ -116,6 +139,9 @@ spec:
         - name: php-overrides
           configMap:
             name: wordpress-php-overrides
+        - name: apache-mpm
+          configMap:
+            name: wordpress-apache-mpm
 ---
 kind: Service
 apiVersion: v1

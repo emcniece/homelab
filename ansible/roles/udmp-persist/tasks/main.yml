@@ -62,3 +62,12 @@
   ansible.builtin.command: /data/on_boot.d/15-cloudflared.sh
   when: on_boot_scripts.changed or cloudflared_token_persisted.changed
   changed_when: true
+
+# The script's `enable --now` leaves an already-running service alone, and the
+# unit reads the token via --token-file, so a new token or script only takes
+# effect after a restart.
+- name: Restart cloudflared
+  ansible.builtin.systemd:
+    name: cloudflared
+    state: restarted
+  when: on_boot_scripts.changed or cloudflared_token_persisted.changed
