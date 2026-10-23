@@ -37,13 +37,15 @@ for site_info in "${sites[@]}"; do
     echo "📁 Creating mu-plugins directory..."
     kubectl exec -n $namespace $POD_NAME -- mkdir -p /var/www/html/wp-content/mu-plugins
     
-    # Create disable-redirects.php mu-plugin
+    # Create disable-redirects.php mu-plugin. Only canonical redirects are
+    # disabled: filtering wp_redirect to false also swallows auth_redirect(),
+    # so a logged-out /wp-admin/ (and the post-login redirect) rendered a blank
+    # 200 page on kdds until 2026-10-23.
     echo "🔧 Creating disable-redirects.php mu-plugin..."
     kubectl exec -n $namespace $POD_NAME -- sh -c 'cat > /var/www/html/wp-content/mu-plugins/disable-redirects.php << "EOF"
 <?php
-// Disable WordPress redirects when behind reverse proxy
+// Disable WordPress canonical redirects when behind reverse proxy
 add_filter("redirect_canonical", "__return_false");
-add_filter("wp_redirect", "__return_false");
 EOF'
     
     # Clear WordPress caches
@@ -57,7 +59,7 @@ done
 echo "🎉 All WordPress sites have been fixed for redirect issues!"
 echo ""
 echo "📝 Changes made to all sites:"
-echo "   - Created mu-plugin to disable WordPress redirects"
+echo "   - Created mu-plugin to disable WordPress canonical redirects"
 echo "   - WordPress now serves HTTP content without redirecting"
 echo "   - HTTPS URLs are preserved in content"
 echo "   - Cleared WordPress caches"
