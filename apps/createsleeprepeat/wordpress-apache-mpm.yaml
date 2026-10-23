@@ -1,0 +1,24 @@
+# Apache prefork limits for the WordPress container, mounted over
+# /etc/apache2/mods-available/mpm_prefork.conf. The image default of 150
+# workers can't fit in the 1Gi container limit: a PHP worker can grow to
+# memory_limit (128M) during a render, so a scanner burst spawned dozens of
+# workers, thrashed the cgroup at its memory ceiling and hung every request
+# without ever restarting the pod (createsleeprepeat, 2026-10-23). Requests
+# beyond MaxRequestWorkers wait in the listen backlog instead. Renders are
+# CPU-bound, so extra workers past a few per core buy nothing.
+# MaxConnectionsPerChild recycles workers so leaked PHP memory is returned.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wordpress-apache-mpm
+  namespace: createsleeprepeat
+data:
+  mpm_prefork.conf: |
+    <IfModule mpm_prefork_module>
+    	StartServers            3
+    	MinSpareServers         2
+    	MaxSpareServers         5
+    	ServerLimit             10
+    	MaxRequestWorkers       10
+    	MaxConnectionsPerChild  500
+    </IfModule>
