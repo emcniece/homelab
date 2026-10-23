@@ -11,8 +11,9 @@ if [ ! -f "$TOKEN_FILE" ]; then
   exit 0
 fi
 
-# The binary living under /usr/bin gets wiped by UniFi OS firmware updates,
-# but /data survives them, so keep the real copy here and (re)install it.
+# /usr/bin gets wiped by UniFi OS firmware updates but /data survives them,
+# so the service runs the binary straight from /data. cloudflared's built-in
+# autoupdate replaces this file in place, so updates persist too.
 if [ ! -x "$CF_BIN" ]; then
   ARCH=$(uname -m)
   case "$ARCH" in
@@ -20,13 +21,13 @@ if [ ! -x "$CF_BIN" ]; then
     x86_64)  CF_ARCH=amd64 ;;
     *) echo "cloudflared on_boot.d: unsupported arch $ARCH" >&2; exit 1 ;;
   esac
-  curl -fsSL -o "$CF_BIN" "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$CF_ARCH"
-  chmod +x "$CF_BIN"
+  curl -fsSL -o "$CF_BIN.tmp" "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-$CF_ARCH"
+  chmod +x "$CF_BIN.tmp"
+  mv "$CF_BIN.tmp" "$CF_BIN"
 fi
 
-install -m 755 "$CF_BIN" /usr/bin/cloudflared
-
-TOKEN=$(cat "$TOKEN_FILE")
+# Convenience only: keep `cloudflared` on PATH pointing at the live binary.
+ln -sfn "$CF_BIN" /usr/bin/cloudflared
 
 # /etc/systemd/system also gets wiped on firmware update, so rewrite the unit
 # every boot rather than assuming it's still there.
@@ -39,7 +40,7 @@ Wants=network-online.target
 [Service]
 TimeoutStartSec=15
 Type=notify
-ExecStart=/usr/bin/cloudflared --no-autoupdate tunnel run --token $TOKEN
+ExecStart=$CF_BIN tunnel run --token-file $TOKEN_FILE
 Restart=on-failure
 RestartSec=5s
 
