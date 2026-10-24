@@ -32,7 +32,7 @@ spec:
         - name: ghcr-pull
       containers:
         - name: opend
-          image: ghcr.io/emcniece/moneymaker-opend:10.5.6508
+          image: ghcr.io/emcniece/moneymaker-opend:10.11.7108
           imagePullPolicy: IfNotPresent
           ports:
             - name: api
