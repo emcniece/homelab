@@ -33,7 +33,14 @@ spec:
       containers:
         - name: opend
           image: ghcr.io/emcniece/moneymaker-opend:10.11.7108
-          imagePullPolicy: IfNotPresent
+          # Was IfNotPresent — this exact version tag has already been
+          # overwritten twice during the OpenD 10.11 migration (same
+          # staleness class as the premarket-scan CronJob fix earlier):
+          # IfNotPresent only checks whether the tag string exists
+          # locally, not whether its digest changed, so a node that
+          # already pulled this tag once silently keeps running the old
+          # content forever. Always until this version tag stops moving.
+          imagePullPolicy: Always
           ports:
             - name: api
               containerPort: 11111
