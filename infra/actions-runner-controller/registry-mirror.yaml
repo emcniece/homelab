@@ -39,13 +39,11 @@ spec:
       labels:
         app: glyphdex-arc-registry-mirror
     spec:
-      # Same lab.emc2.build ndots hijack as everything else that talks to a
-      # real external host from this cluster (see README.md "DNS") — without
-      # this, registry-1.docker.io resolves via the wildcard record into
-      # Traefik's ingress instead of the real internet host, and the proxy
-      # panics on the resulting cert mismatch.
+      # Resolve registry-1.docker.io directly rather than via the
+      # lab.emc2.build search domain. Before the *.lab wildcard was removed
+      # (2026-10-25) that search hit Traefik and the proxy panicked on the
+      # cert mismatch. See README.md "DNS".
       dnsConfig:
-        nameservers: ["8.8.8.8", "1.1.1.1"]
         options:
           - name: ndots
             value: "1"

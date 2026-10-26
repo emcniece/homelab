@@ -93,7 +93,7 @@ helm upgrade --install arc \
 #      (it patches the live Deployment; a Helm upgrade re-renders the
 #      full spec and drops it).
 kubectl -n arc-systems patch deployment arc-gha-rs-controller --type=merge -p \
-  '{"spec":{"template":{"spec":{"dnsConfig":{"nameservers":["8.8.8.8","1.1.1.1"],"options":[{"name":"ndots","value":"2"}]}}}}}'
+  '{"spec":{"template":{"spec":{"dnsConfig":{"options":[{"name":"ndots","value":"2"}]}}}}}'
 kubectl -n arc-systems rollout status deployment/arc-gha-rs-controller
 
 # 2. GitHub credential — created directly, never written to a file or git.
@@ -123,6 +123,12 @@ helm upgrade --install glyphdex-runners \
 ```
 
 ## DNS: the lab.emc2.build ndots hijack
+
+> **Resolved at the source 2026-10-25.** The `*.lab.emc2.build` wildcard was
+> replaced by explicit records (`infra/cloudflare/lab-dns.tf`), so the
+> hijack below can't happen any more. The `ndots:1` settings stay to skip
+> the search list for external names. The public `nameservers` that used
+> to accompany them were removed: they can't resolve cluster Services.
 
 Hit live during the first install (2026-09-14): the controller and listener
 pods' calls to `api.github.com` came back with a **Traefik** certificate

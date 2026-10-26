@@ -76,6 +76,6 @@ release notes first — Pocket ID refuses to downgrade the DB schema.
   off within a couple of minutes. If they persist, move the DB to Postgres
   (`DB_CONNECTION_STRING=postgres://...`).
 - SMTP (Application Configuration → Email) uses the same relay as Scrutiny:
-  `mail.hostedemail.com:587`, STARTTLS. Needs the `ndots:2` dnsConfig in
-  `10-pocket-id.yaml` — without it the pod resolves external names via the
-  `*.lab.emc2.build` wildcard and SMTP times out.
+  `mail.hostedemail.com:587`, STARTTLS. `10-pocket-id.yaml` sets
+  `ndots:2`; before the `*.lab.emc2.build` wildcard was removed
+  (2026-10-25) external names resolved via it and SMTP timed out.

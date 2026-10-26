@@ -1,0 +1,23 @@
+# Extra CoreDNS server blocks. k3s's bundled CoreDNS imports every
+# `*.server` key of this (optional) ConfigMap; k3s itself never writes it,
+# so it survives k3s upgrades.
+#
+# lab.emc2.build goes to Cloudflare, not the nodes' resolver (the UDM).
+# Every node has `search lab.emc2.build` (Proxmox cloud-init), so pods try
+# names like github.com.lab.emc2.build first. The UDM answers anything under
+# lab.emc2.build with Traefik's IP, which hijacked outbound calls
+# cluster-wide. Cloudflare holds only explicit records
+# (infra/cloudflare/lab-dns.tf), so unknown names are NXDOMAIN there and the
+# lookup falls through to the real host.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-custom
+  namespace: kube-system
+data:
+  lab.server: |
+    lab.emc2.build:53 {
+        errors
+        cache 30
+        forward . 1.1.1.1 1.0.0.1
+    }

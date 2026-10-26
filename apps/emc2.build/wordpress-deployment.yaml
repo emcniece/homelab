@@ -125,10 +125,10 @@ spec:
         operator: "Exists"
         effect: "NoExecute"
         tolerationSeconds: 30
-      # This DNS config modifies /etc/resolv.conf. Needed so that external domains can resolve outside of the cluster,
-      # and not get trapped in the wildcard that leads back to lab.emc2.build.
+      # ndots:2 resolves external names directly instead of walking the
+      # node's lab.emc2.build search domain first. No public nameservers:
+      # they can't resolve cluster Services (homelab docs: DNS Model).
       dnsConfig:
-        nameservers: ["8.8.8.8", "1.1.1.1"]
         options:
           - name: ndots
             value: "2"

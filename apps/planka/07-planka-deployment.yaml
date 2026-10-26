@@ -108,7 +108,6 @@ spec:
         effect: "NoExecute"
         tolerationSeconds: 30
       dnsConfig:
-        nameservers: ["8.8.8.8", "1.1.1.1"]
         options:
           - name: ndots
             value: "2"

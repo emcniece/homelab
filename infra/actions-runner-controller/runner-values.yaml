@@ -39,10 +39,11 @@ maxRunners: 8
 # buildkit-in-k8s and is more setup for no benefit at this scale.
 # Requires privileged pods for the dind container (see README security note).
 
-# The node search domain includes lab.emc2.build, which has a wildcard
-# record. With the default ndots:5, short external hostnames get resolved
-# as *.lab.emc2.build first and hijacked to the ingress (Traefik's cert,
-# not the real host's) instead of the real internet host. ndots:1 makes any
+# The node search domain includes lab.emc2.build. Until 2026-10-25 it had a
+# wildcard record, so with the default ndots:5 short external hostnames got
+# resolved as *.lab.emc2.build first and hijacked to the ingress (Traefik's
+# cert, not the real host's). The wildcard is gone (README.md "DNS"); this
+# stays to skip the search list for external names. ndots:1 makes any
 # name with a dot resolve absolute first — ndots:2 (apps/outline's/
 # apps/planka's value, which have no bare single-label-plus-TLD lookups)
 # isn't low enough here: plain `github.com` (1 dot, from a bare git clone
@@ -52,7 +53,6 @@ maxRunners: 8
 listenerTemplate:
   spec:
     dnsConfig:
-      nameservers: ["8.8.8.8", "1.1.1.1"]
       options:
         - name: ndots
           value: "1"
@@ -62,7 +62,6 @@ listenerTemplate:
 template:
   spec:
     dnsConfig:
-      nameservers: ["8.8.8.8", "1.1.1.1"]
       options:
         - name: ndots
           value: "1"

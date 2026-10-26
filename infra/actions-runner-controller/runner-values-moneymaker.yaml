@@ -28,14 +28,12 @@ runnerScaleSetName: moneymaker-arc-runners
 minRunners: 0
 maxRunners: 4
 
-# Same ndots:1 DNS fix as runner-values.yaml — the lab.emc2.build wildcard
-# hijacks short external hostnames (github.com, ghcr.io) under the default
-# ndots:5/2. See that file's comment / README.md "DNS" section for the full
+# Same ndots:1 DNS setting as runner-values.yaml — skips the lab.emc2.build
+# search domain for external names (github.com, ghcr.io). See that file's comment / README.md "DNS" section for the full
 # story; needed on both the listener and the runner/dind pod.
 listenerTemplate:
   spec:
     dnsConfig:
-      nameservers: ["8.8.8.8", "1.1.1.1"]
       options:
         - name: ndots
           value: "1"
@@ -45,7 +43,6 @@ listenerTemplate:
 template:
   spec:
     dnsConfig:
-      nameservers: ["8.8.8.8", "1.1.1.1"]
       options:
         - name: ndots
           value: "1"

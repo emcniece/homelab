@@ -108,10 +108,9 @@ spec:
           operator: "Exists"
           effect: "NoExecute"
           tolerationSeconds: 60
-      # Avoid the cluster wildcard trapping external lookups
-      # (api.anthropic.com, query2.finance.yahoo.com) back into lab.emc2.build.
+      # Resolve external names (api.anthropic.com, query2.finance.yahoo.com)
+      # directly instead of walking the lab.emc2.build search domain first.
       dnsConfig:
-        nameservers: ["8.8.8.8", "1.1.1.1"]
         options:
           - name: ndots
             value: "2"

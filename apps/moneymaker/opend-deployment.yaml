@@ -116,8 +116,9 @@ spec:
       # problem, a request going to the wrong host entirely. Same fix as
       # homelab's ARC runner work needed for bare `github.com`: ndots:1,
       # so any name with at least one dot resolves absolute first.
+      # (The *.lab.emc2.build wildcard was removed 2026-10-25, so this is
+      # now belt and braces; the public nameservers went with it.)
       dnsConfig:
-        nameservers: ["8.8.8.8", "1.1.1.1"]
         options:
           - name: ndots
             value: "1"
