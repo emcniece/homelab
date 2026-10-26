@@ -41,6 +41,27 @@ spec:
           # already pulled this tag once silently keeps running the old
           # content forever. Always until this version tag stops moving.
           imagePullPolicy: Always
+          # TEMPORARY bootstrap mode — see login-bootstrap.sh's header.
+          # Revert `command` to the default (remove this line entirely, or
+          # set it back to ["/docker-entrypoint.sh"]) and drop the LOGIN_PWD
+          # env var the moment a session is established on opend-state;
+          # switch to the documented headless args instead:
+          #   args: ["-login_account=$(LOGIN_ACCOUNT)", "-login_by_remember=1"]
+          # LOGIN_PWD must never be left wired in longer than this one
+          # bootstrap run — it's the plaintext password, unlike
+          # LOGIN_PWD_MD5 which is safe to keep around.
+          command: ["/login-bootstrap.sh"]
+          env:
+            - name: LOGIN_ACCOUNT
+              valueFrom:
+                secretKeyRef:
+                  name: opend-config
+                  key: LOGIN_ACCOUNT
+            - name: LOGIN_PWD
+              valueFrom:
+                secretKeyRef:
+                  name: opend-config
+                  key: LOGIN_PWD
           ports:
             - name: api
               containerPort: 11111
@@ -84,14 +105,22 @@ spec:
           effect: "NoExecute"
           tolerationSeconds: 60
       # The cluster default resolv.conf has ndots:5 + a `lab.emc2.build`
-      # search domain backed by a wildcard. Without this, external lookups
-      # (api.moomoo.com, openapi.moomoo.com) match the wildcard first and
-      # OpenD's login attempts hit the cluster ingress instead of moomoo.
+      # search domain backed by a wildcard. ndots:2 was NOT low enough —
+      # confirmed live 2026-10-25: api.moomoo.com/openapi.moomoo.com (2
+      # dots) resolved fine, but moomoo.com/futunn.com/futu.com (1 dot —
+      # exactly the kind of short root-domain hostname an account-login
+      # backend plausibly calls) all silently hijacked to the cluster's
+      # own ingress IP instead of moomoo's real servers. This was the
+      # actual cause of the OpenD login flow hanging indefinitely at the
+      # password step — not a credentials or general network-quality
+      # problem, a request going to the wrong host entirely. Same fix as
+      # homelab's ARC runner work needed for bare `github.com`: ndots:1,
+      # so any name with at least one dot resolves absolute first.
       dnsConfig:
         nameservers: ["8.8.8.8", "1.1.1.1"]
         options:
           - name: ndots
-            value: "2"
+            value: "1"
       volumes:
         - name: opend-config
           secret:
