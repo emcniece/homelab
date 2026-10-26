@@ -371,6 +371,45 @@ EphemeralRunnerSet name that was never created. The stale-reference fix in
 Troubleshooting below (delete the EphemeralRunnerSet and the
 AutoscalingListener, and let the controller recreate both) cleared it.
 
+## Add another repo's runner scale set (belay)
+
+`emcniece/belay` (private): a Next.js app with Postgres-backed integration
+and Playwright end-to-end tests. Same push-only rule as the others: only
+`push`-triggered jobs use `runs-on: belay-arc-runners`; pull requests run on
+`ubuntu-latest`. Its CI calls its release workflow only after every check
+passes.
+
+`runner-values-belay.yaml` starts from moneymaker's trimmed values with
+glyphdex's resource sizes: `pnpm install` was OOM-killed at moneymaker's
+2Gi limits. Two things learned on the first runs:
+
+- The runner image has no `docker compose` plugin. Belay's CI uses GitHub
+  Actions `services:` for Postgres and Mailpit instead, as trailwave's e2e
+  job does.
+- `setup-node`'s pnpm cache is skipped on self-hosted runners
+  (`runner.environment == 'github-hosted'`), per trailwave's finding that it
+  can take hours here.
+
+```sh
+export KUBECONFIG=~/.kube/config-homelab
+CHART_VERSION=0.14.2
+
+# Fine-grained PAT for emcniece/belay, Administration: read and write.
+read -rsp 'GitHub PAT (belay): ' GH_PAT && echo
+kubectl create secret generic belay-arc-github-secret \
+  --namespace arc-runners \
+  --from-literal=github_token="$GH_PAT"
+unset GH_PAT
+
+helm upgrade --install belay-runners \
+  --namespace arc-runners \
+  -f infra/actions-runner-controller/runner-values-belay.yaml \
+  oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set \
+  --version "$CHART_VERSION" --wait
+```
+
+Installed 2026-10-25 (revision 2 raised the resource limits).
+
 ## Verify
 
 ```sh

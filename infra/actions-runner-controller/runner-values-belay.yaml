@@ -1,0 +1,104 @@
+# gha-runner-scale-set Helm values for emcniece/belay: its own runner scale
+# set on the homelab ARC controller, repo-scoped like glyphdex's and
+# moneymaker's.
+#
+# Based on runner-values-moneymaker.yaml (the trimmed variant: dind for image
+# builds and CI service containers, no shared pnpm-store or Playwright-cache
+# PVCs), with glyphdex's resource sizes. Moneymaker's 2Gi limits suit a Python
+# repo; pnpm install was OOM-killed at 2Gi here. If CI time matters later, add
+# trailwave's playwright-cache volume (trailwave's e2e workflow explains why
+# not a shared pnpm-store).
+#
+# Assumes the GitHub repo is emcniece/belay; change githubConfigUrl if not.
+githubConfigUrl: "https://github.com/emcniece/belay"
+githubConfigSecret: belay-arc-github-secret
+runnerScaleSetName: belay-arc-runners
+minRunners: 0
+maxRunners: 4
+listenerTemplate:
+  spec:
+    dnsConfig:
+      nameservers: ["8.8.8.8", "1.1.1.1"]
+      options:
+        - name: ndots
+          value: "1"
+    containers:
+      - name: listener
+template:
+  spec:
+    dnsConfig:
+      nameservers: ["8.8.8.8", "1.1.1.1"]
+      options:
+        - name: ndots
+          value: "1"
+    restartPolicy: Never
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            actions.github.com/scale-set-name: belay-arc-runners
+    volumes:
+      - name: work
+        emptyDir: {}
+      - name: dind-sock
+        emptyDir: {}
+      - name: dind-externals
+        emptyDir: {}
+    initContainers:
+      - name: init-dind-externals
+        image: ghcr.io/actions/actions-runner:latest
+        command: ["cp"]
+        args: ["-r", "/home/runner/externals/.", "/home/runner/tmpDir/"]
+        volumeMounts:
+          - name: dind-externals
+            mountPath: /home/runner/tmpDir
+    containers:
+      - name: runner
+        image: ghcr.io/actions/actions-runner:latest
+        command: ["/home/runner/run.sh"]
+        env:
+          - name: DOCKER_HOST
+            value: unix:///var/run/docker.sock
+          - name: RUNNER_WAIT_FOR_DOCKER_IN_SECONDS
+            value: "120"
+        volumeMounts:
+          - name: work
+            mountPath: /home/runner/_work
+          - name: dind-sock
+            mountPath: /var/run
+        resources:
+          requests:
+            cpu: "1"
+            memory: 2Gi
+          limits:
+            memory: 4Gi
+      - name: dind
+        image: docker:dind
+        args:
+          [
+            "dockerd",
+            "--host=unix:///var/run/docker.sock",
+            "--group=$(DOCKER_GROUP_GID)",
+            "--registry-mirror=http://glyphdex-arc-registry-mirror.arc-runners.svc.cluster.local:5000",
+            "--insecure-registry=glyphdex-arc-registry-mirror.arc-runners.svc.cluster.local:5000",
+          ]
+        env:
+          - name: DOCKER_GROUP_GID
+            value: "123"
+        securityContext:
+          privileged: true
+        volumeMounts:
+          - name: work
+            mountPath: /home/runner/_work
+          - name: dind-sock
+            mountPath: /var/run
+          - name: dind-externals
+            mountPath: /home/runner/externals
+        resources:
+          requests:
+            cpu: "1"
+            memory: 2Gi
+          limits:
+            memory: 4Gi

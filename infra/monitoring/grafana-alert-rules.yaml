@@ -336,3 +336,245 @@ data:
               component: ceph
               alert_type: storage
             isPaused: false
+  belay-alerts.yaml: |
+    apiVersion: 1
+    groups:
+    - orgId: 1
+      name: Belay
+      folder: Belay
+      interval: 1m
+      rules:
+      - uid: belay_wal_archiving_failing
+        title: Belay WAL archiving failing
+        condition: C
+        data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: prometheus
+          model:
+            expr: max(cnpg_pg_stat_archiver_last_failed_time{job="belay-postgres"}) > bool max(cnpg_pg_stat_archiver_last_archived_time{job="belay-postgres"})
+            intervalMs: 1000
+            maxDataPoints: 43200
+            refId: A
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0
+                type: gt
+              operator:
+                type: and
+              query:
+                params:
+                - B
+              reducer:
+                params: []
+                type: last
+              type: query
+            datasource:
+              type: __expr__
+              uid: __expr__
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+        - refId: C
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0
+                - 0
+                type: gt
+              operator:
+                type: and
+              query:
+                params:
+                - C
+              reducer:
+                params: []
+                type: last
+              type: query
+            datasource:
+              type: __expr__
+              uid: __expr__
+            expression: B
+            refId: C
+            type: threshold
+        noDataState: OK
+        execErrState: Alerting
+        for: 10m
+        annotations:
+          summary: Belay's Postgres can't archive WAL to B2
+          description: The newest WAL archive attempt for belay-pg failed (last failure is more recent than last success). Point-in-time recovery is degraded until it's fixed. Check `kubectl -n belay logs belay-pg-1 -c postgres | grep barman`.
+          runbook_url: https://github.com/emcniece/belay/blob/main/docs/RESTORE.md
+        labels:
+          severity: critical
+          component: belay
+      - uid: belay_backup_stale
+        title: Belay backup older than 26h
+        condition: C
+        data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: prometheus
+          model:
+            expr: time() - max(cnpg_collector_last_available_backup_timestamp{job="belay-postgres"}) > bool 93600
+            intervalMs: 1000
+            maxDataPoints: 43200
+            refId: A
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0
+                type: gt
+              operator:
+                type: and
+              query:
+                params:
+                - B
+              reducer:
+                params: []
+                type: last
+              type: query
+            datasource:
+              type: __expr__
+              uid: __expr__
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+        - refId: C
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0
+                - 0
+                type: gt
+              operator:
+                type: and
+              query:
+                params:
+                - C
+              reducer:
+                params: []
+                type: last
+              type: query
+            datasource:
+              type: __expr__
+              uid: __expr__
+            expression: B
+            refId: C
+            type: threshold
+        noDataState: Alerting
+        execErrState: Alerting
+        for: 30m
+        annotations:
+          summary: No successful Belay base backup in 26 hours
+          description: The nightly belay-pg backup (03:00 UTC) hasn't completed. Check `kubectl -n belay get backups`.
+          runbook_url: https://github.com/emcniece/belay/blob/main/docs/RESTORE.md
+        labels:
+          severity: warning
+          component: belay
+      - uid: belay_app_down
+        title: Belay app down
+        condition: C
+        data:
+        - refId: A
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: prometheus
+          model:
+            expr: (sum(up{job="belay"}) or vector(0)) < bool 1
+            intervalMs: 1000
+            maxDataPoints: 43200
+            refId: A
+        - refId: B
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0
+                type: gt
+              operator:
+                type: and
+              query:
+                params:
+                - B
+              reducer:
+                params: []
+                type: last
+              type: query
+            datasource:
+              type: __expr__
+              uid: __expr__
+            expression: A
+            reducer: last
+            refId: B
+            type: reduce
+        - refId: C
+          relativeTimeRange:
+            from: 600
+            to: 0
+          datasourceUid: __expr__
+          model:
+            conditions:
+            - evaluator:
+                params:
+                - 0
+                - 0
+                type: gt
+              operator:
+                type: and
+              query:
+                params:
+                - C
+              reducer:
+                params: []
+                type: last
+              type: query
+            datasource:
+              type: __expr__
+              uid: __expr__
+            expression: B
+            refId: C
+            type: threshold
+        noDataState: OK
+        execErrState: Alerting
+        for: 5m
+        annotations:
+          summary: Prometheus can't scrape Belay
+          description: No healthy belay-web pod has answered /api/metrics for 5 minutes. Check `kubectl -n belay get pods`.
+          runbook_url: https://github.com/emcniece/belay/blob/main/docs/RESTORE.md
+        labels:
+          severity: critical
+          component: belay
