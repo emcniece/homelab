@@ -6,6 +6,8 @@ namespace: monitoring
 resources:
   - namespace.yaml
   - prometheus-configmap.yaml
+  - prometheus-rules.yaml
+  - alertmanager.yaml
   - prometheus-serviceaccount.yaml
   - prometheus-pvc.yaml
   - prometheus-deployment.yaml

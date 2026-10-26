@@ -1,0 +1,53 @@
+# Prometheus alerting rules, mounted at /etc/prometheus-rules and loaded via
+# rule_files in prometheus-configmap.yaml. Alerts go to Alertmanager.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+  namespace: monitoring
+data:
+  belay.yml: |
+    groups:
+      - name: belay
+        rules:
+          # The newest WAL archive attempt failed. A quiet database can go a
+          # long time without archiving anything, so staleness alone isn't a
+          # failure signal; archiving failed silently for ~10 minutes when
+          # backups were first enabled (DNS sent the B2 endpoint to Traefik).
+          - alert: BelayWalArchivingFailing
+            expr: max(cnpg_pg_stat_archiver_last_failed_time{job="belay-postgres"}) > max(cnpg_pg_stat_archiver_last_archived_time{job="belay-postgres"})
+            for: 10m
+            labels:
+              severity: critical
+            annotations:
+              title: Belay's Postgres can't archive WAL to B2
+              description: The newest WAL archive attempt for belay-pg failed. Point-in-time recovery is degraded until it's fixed. `kubectl -n belay logs belay-pg-1 -c postgres | grep barman`
+
+          - alert: BelayBackupStale
+            expr: time() - max(cnpg_collector_last_available_backup_timestamp{job="belay-postgres"}) > 26 * 3600
+            for: 30m
+            labels:
+              severity: warning
+            annotations:
+              title: No Belay base backup in 26 hours
+              description: The nightly belay-pg backup (03:00 UTC) hasn't completed. `kubectl -n belay get backups`
+
+          # Without this, a broken scrape would make the two rules above
+          # silently never fire.
+          - alert: BelayBackupMetricsMissing
+            expr: absent(cnpg_collector_last_available_backup_timestamp{job="belay-postgres"})
+            for: 30m
+            labels:
+              severity: warning
+            annotations:
+              title: Belay backup metrics are missing
+              description: Prometheus has no backup metrics from belay-pg, so backup alerts can't fire. Check the belay-postgres scrape job.
+
+          - alert: BelayDown
+            expr: absent(up{job="belay"} == 1)
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              title: Belay is down
+              description: No healthy belay-web pod has answered /api/metrics for 5 minutes. `kubectl -n belay get pods`

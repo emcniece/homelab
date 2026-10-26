@@ -45,6 +45,8 @@ spec:
               mountPath: /etc/prometheus
             - name: prometheus-storage
               mountPath: /prometheus
+            - name: prometheus-rules
+              mountPath: /etc/prometheus-rules
           resources:
             requests:
               cpu: 100m
@@ -71,3 +73,6 @@ spec:
         - name: prometheus-storage
           persistentVolumeClaim:
             claimName: prometheus-storage
+        - name: prometheus-rules
+          configMap:
+            name: prometheus-rules

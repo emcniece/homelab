@@ -63,6 +63,49 @@ kubectl apply -f node-exporter-*.yaml
 kubectl apply -f kube-state-metrics-*.yaml
 ```
 
+## Alertmanager
+
+`alertmanager.yaml` runs Alertmanager at `alertmanager:9093`, where Prometheus sends alerts. Every alert goes to:
+
+- **Slack** `#prometheus-alerts` (the same webhook as the media cluster's kube-prometheus-stack)
+- **Email** to emcniece@gmail.com, sent through Cloudflare Email Service from `alerts@alerts.emc2.build` (`smtp.mx.cloudflare.net:465`, implicit TLS; `smtp_require_tls: false` because a 465 server never offers STARTTLS)
+
+Credentials live in the `alertmanager-secrets` Secret, created by hand, never committed:
+
+```sh
+kubectl -n monitoring create secret generic alertmanager-secrets \
+  --from-literal=slack_api_url='https://hooks.slack.com/services/...' \
+  --from-literal=smtp_password='<Cloudflare API token with Email Sending permission>'
+```
+
+The SMTP username is the literal `api_token`. `alerts.emc2.build` was onboarded for sending through the Cloudflare API (Email Sending → subdomains), which created its SPF, DKIM, bounce MX and DMARC records.
+
+The pod sets `ndots: 1`: `hooks.slack.com` would otherwise resolve to Traefik through the `lab.emc2.build` search domain.
+
+Send a test alert:
+
+```sh
+kubectl -n monitoring exec deploy/alertmanager -- wget -qO- --header='Content-Type: application/json' \
+  --post-data='[{"labels":{"alertname":"Test","severity":"info"},"annotations":{"title":"Test","description":"Test alert"}}]' \
+  http://localhost:9093/api/v2/alerts
+```
+
+### Alert rules
+
+Prometheus rules live in `prometheus-rules.yaml` (mounted at `/etc/prometheus-rules`). Test them with `tests/run.sh`, which runs `promtool test rules` against `tests/*.test.yml`.
+
+Grafana's own alert rules (`grafana-alert-rules.yaml`, Ceph) are separate and don't go through Alertmanager.
+
+### Applying changes here
+
+`kubectl apply -k .` currently fails: `ceph-mgr-service.yaml` asks for dual-stack, which the cluster doesn't support. Apply the resources you changed from the rendered kustomization instead, so the kustomize labels stay:
+
+```sh
+kubectl kustomize . | yq 'select(.metadata.name == "alertmanager-config")' | kubectl apply -f -
+```
+
+After a `prometheus-config` change, reload: `kubectl -n monitoring exec deploy/prometheus -- wget -qO- --post-data='' http://localhost:9090/-/reload`
+
 ## Access
 
 - **Grafana**: https://grafana.lab.emc2.build (admin/admin)

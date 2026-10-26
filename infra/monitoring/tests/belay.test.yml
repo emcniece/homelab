@@ -1,0 +1,61 @@
+rule_files: [belay.yml]
+evaluation_interval: 1m
+tests:
+  # Archiving failed once, then succeeded: no alert.
+  - interval: 1m
+    input_series:
+      - series: 'cnpg_pg_stat_archiver_last_failed_time{job="belay-postgres",instance="belay-pg-1"}'
+        values: '100x30'
+      - series: 'cnpg_pg_stat_archiver_last_archived_time{job="belay-postgres",instance="belay-pg-1"}'
+        values: '200x30'
+      - series: 'cnpg_collector_last_available_backup_timestamp{job="belay-postgres",instance="belay-pg-1"}'
+        values: '0x30'
+      - series: 'up{job="belay",instance="a"}'
+        values: '1x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: BelayWalArchivingFailing
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: BelayDown
+        exp_alerts: []
+  # Newest attempt failed for 15 minutes: alert.
+  - interval: 1m
+    input_series:
+      - series: 'cnpg_pg_stat_archiver_last_failed_time{job="belay-postgres",instance="belay-pg-1"}'
+        values: '300x30'
+      - series: 'cnpg_pg_stat_archiver_last_archived_time{job="belay-postgres",instance="belay-pg-1"}'
+        values: '200x30'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: BelayWalArchivingFailing
+        exp_alerts:
+          - exp_labels: { severity: critical }
+            exp_annotations:
+              title: Belay's Postgres can't archive WAL to B2
+              description: The newest WAL archive attempt for belay-pg failed. Point-in-time recovery is degraded until it's fixed. `kubectl -n belay logs belay-pg-1 -c postgres | grep barman`
+  # Last backup at t=0; by 27h it's stale. App scrape failing: down.
+  - interval: 1m
+    input_series:
+      - series: 'cnpg_collector_last_available_backup_timestamp{job="belay-postgres",instance="belay-pg-1"}'
+        values: '0x1700'
+      - series: 'up{job="belay",instance="a"}'
+        values: '0x1700'
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: BelayBackupStale
+        exp_alerts: []
+      - eval_time: 28h
+        alertname: BelayBackupStale
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              title: No Belay base backup in 26 hours
+              description: The nightly belay-pg backup (03:00 UTC) hasn't completed. `kubectl -n belay get backups`
+      - eval_time: 2h
+        alertname: BelayDown
+        exp_alerts:
+          - exp_labels: { severity: critical }
+            exp_annotations:
+              title: Belay is down
+              description: No healthy belay-web pod has answered /api/metrics for 5 minutes. `kubectl -n belay get pods`

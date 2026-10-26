@@ -1,0 +1,133 @@
+# Alertmanager: Prometheus alerts to Slack (#prometheus-alerts) and email
+# (emcniece@gmail.com, sent through Cloudflare Email Service from
+# alerts.emc2.build). Prometheus already points at alertmanager:9093.
+#
+# Credentials stay out of git, in a Secret created by hand (see README,
+# "Alertmanager"): slack_api_url and smtp_password.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: monitoring
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+      slack_api_url_file: /etc/alertmanager/secrets/slack_api_url
+      # Port 465: Alertmanager uses implicit TLS (Cloudflare offers no 587),
+      # so the session is encrypted from the first byte. require_tls only
+      # governs the STARTTLS upgrade, which a 465 server never advertises;
+      # leaving it on makes every send fail.
+      smtp_smarthost: smtp.mx.cloudflare.net:465
+      smtp_require_tls: false
+      smtp_from: Homelab alerts <alerts@alerts.emc2.build>
+      smtp_auth_username: api_token
+      smtp_auth_password_file: /etc/alertmanager/secrets/smtp_password
+
+    route:
+      receiver: slack-and-email
+      group_by: [alertname, job]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+
+    inhibit_rules:
+      - source_matchers: [severity="critical"]
+        target_matchers: [severity="warning"]
+        equal: [alertname, job]
+
+    receivers:
+      - name: slack-and-email
+        slack_configs:
+          - channel: '#prometheus-alerts'
+            send_resolved: true
+            title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}'
+            text: |-
+              {{ range .Alerts -}}
+              *{{ .Annotations.title }}*{{ if .Labels.severity }} `{{ .Labels.severity }}`{{ end }}
+              {{ .Annotations.description }}
+              {{ range .Labels.SortedPairs }} • {{ .Name }}: `{{ .Value }}`
+              {{ end }}
+              {{ end }}
+        email_configs:
+          - to: emcniece@gmail.com
+            send_resolved: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+  namespace: monitoring
+  labels:
+    app: alertmanager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager
+  template:
+    metadata:
+      labels:
+        app: alertmanager
+      annotations:
+        # Bump to roll the pod after editing alertmanager.yml.
+        config-version: "2"
+    spec:
+      # hooks.slack.com has 2 dots: at the default ndots:5 the lab.emc2.build
+      # search domain would resolve it to Traefik (see infra/actions-runner-
+      # controller/README.md, "DNS: the lab.emc2.build ndots hijack").
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
+      containers:
+        - name: alertmanager
+          image: prom/alertmanager:v0.27.0
+          args:
+            - --config.file=/etc/alertmanager/alertmanager.yml
+            - --storage.path=/alertmanager
+          ports:
+            - name: http
+              containerPort: 9093
+          readinessProbe:
+            httpGet: { path: /-/ready, port: http }
+          livenessProbe:
+            httpGet: { path: /-/healthy, port: http }
+          resources:
+            requests: { cpu: 20m, memory: 64Mi }
+            limits: { memory: 128Mi }
+          volumeMounts:
+            - name: config
+              mountPath: /etc/alertmanager/alertmanager.yml
+              subPath: alertmanager.yml
+            - name: secrets
+              mountPath: /etc/alertmanager/secrets
+              readOnly: true
+            # Silences and notification log; lost on restart, which is fine
+            # for a single homelab instance.
+            - name: storage
+              mountPath: /alertmanager
+      volumes:
+        - name: config
+          configMap:
+            name: alertmanager-config
+        - name: secrets
+          secret:
+            secretName: alertmanager-secrets
+        - name: storage
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager
+  namespace: monitoring
+  labels:
+    app: alertmanager
+spec:
+  selector:
+    app: alertmanager
+  ports:
+    - name: http
+      port: 9093
+      targetPort: http
