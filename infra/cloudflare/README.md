@@ -6,6 +6,8 @@ Terraform for Cloudflare resources in the `emc2.build` account. Manages:
   Postgres, the DNS record, and the Access application + policy.
 - The **WordPress page cache** (`wordpress-cache.tf`): a cache rule on each
   zone in `wordpress_cache_zones` that caches anonymous HTML at the edge.
+- The **LAN service records** (`lab-dns.tf`): one A record per
+  `*.lab.emc2.build` host, pointing at the homelab Traefik LoadBalancer.
 
 The UDM's tunnel and the existing DNS records are still managed by hand.
 `terraform import` can bring them in later if wanted.
@@ -141,3 +143,11 @@ terraform import 'cloudflare_ruleset.wordpress_cache["echoandflow.ca"]' zones/<z
 Check that it works with `curl -sI https://<site>/ | grep cf-cache-status`.
 The second request should say `HIT`. Logged-in requests should say `DYNAMIC`
 or `BYPASS`.
+
+### LAN service records
+
+There is deliberately no `*.lab.emc2.build` wildcard. With pod search domains
+and ndots:5, a wildcard made lookups like `github.com.lab.emc2.build`
+resolve to Traefik instead of failing over to the real name. When a new LAN
+service gets an Ingress, add its hostname to `lab_hosts` in `lab-dns.tf` and
+apply. `lab`, `jellyfin`, `plex` and `pve1`-`pve3` are still hand-managed.
