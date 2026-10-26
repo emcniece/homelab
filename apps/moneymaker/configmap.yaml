@@ -37,7 +37,7 @@ data:
   # pod's interface (not just loopback).
   MOOMOO_HOST: "opend"
   MOOMOO_PORT: "11111"
-  MOOMOO_TRADE_ENV: "SIMULATE"   # SIMULATE | REAL
+  MOOMOO_TRADE_ENV: "REAL"   # SIMULATE | REAL
   MOOMOO_TRADE_MARKET: "US"
   MOOMOO_ACCOUNT_INDEX: "0"
   # RSA key shared with the OpenD pod's <rsa_private_key>. MooMoo blocks
@@ -92,8 +92,13 @@ data:
   # the target real-account size. RISK_EQUITY_OVERRIDE makes the engine
   # size against this value instead, so paper trades run at the actual
   # scale we'll go live at. Set to 0 (or remove) to use the broker's
-  # reported equity. Update this BEFORE flipping MOOMOO_TRADE_ENV=REAL.
-  RISK_EQUITY_OVERRIDE: "1000"
+  # reported equity.
+  # Cleared 2026-10-26 for go-live: with MOOMOO_TRADE_ENV=REAL, a nonzero
+  # override would size against override + ALL-TIME cumulative paper P&L
+  # (engine.py _initial_equity's slippage.load_records() sum) instead of
+  # the real broker balance (~$1,069.95 USD confirmed). 0 forces the
+  # MoomooBroker().account().equity branch.
+  RISK_EQUITY_OVERRIDE: "0"
 
   # Equity tiers — selected once at session open against the starting equity.
   # Each tier overrides the flat RISK_PER_TRADE / MAX_DAILY_LOSS /
@@ -118,9 +123,25 @@ data:
   # (META, AAPL, MSFT, SPY, COIN, etc.). 8/13 audit: 46 of 164 signals
   # (28%) rejected as qty_zero, all high-priced names. Aggressive tiers
   # need looser caps; scale tier keeps the historic 25%.
+  #
+  # cash tier re-sized 2026-10-26 for real money: risk_per_trade 0.50->
+  # 0.20, max_notional_pct 2.25->0.5, max_daily_loss 0.20->0.05. The old
+  # values were deliberately aggressive for a toy ~$350-600 paper
+  # balance ("High risk% per trade to generate meaningful dollar
+  # returns" above) — on the real ~$1,070 USD account this unlocks,
+  # 0.50/2.25 means a single trade could notionally size to >2x equity
+  # and the realized paper-trading loss distribution (GRML -$30.90 on
+  # ~$415 equity = 7.4%; WULF -$18.03 on ~$479 = 3.8%) showed the 2.25x
+  # notional cap — not risk_per_trade — was already the real binding
+  # constraint. These numbers were picked together with the account
+  # owner as a deliberate first-real-money sizing, not derived from a
+  # formula: risk_per_trade 0.20 means ~$214 intended risk on $1,070 of
+  # equity; max_notional_pct 0.5 caps any one position at 50% of equity
+  # (no margin-like oversizing); max_daily_loss 0.05 halts the engine
+  # for the day past a 5% drawdown.
   EQUITY_TIERS_JSON: |
     [
-      {"name":"cash",   "max_equity": 25000,  "risk_per_trade": 0.50,  "max_daily_loss": 0.20, "max_open_positions": 4, "max_price": 100,   "min_avg_volume": 5000000, "max_notional_pct": 2.25},
+      {"name":"cash",   "max_equity": 25000,  "risk_per_trade": 0.20,  "max_daily_loss": 0.05, "max_open_positions": 4, "max_price": 100,   "min_avg_volume": 5000000, "max_notional_pct": 0.5},
       {"name":"margin", "max_equity": 100000, "risk_per_trade": 0.015, "max_daily_loss": 0.04, "max_open_positions": 2, "max_price": 200,  "min_avg_volume": 2000000, "max_notional_pct": 0.5},
       {"name":"scale",  "max_equity": null,   "risk_per_trade": 0.01,  "max_daily_loss": 0.03, "max_open_positions": 4, "max_price": 1000, "min_avg_volume": 1000000, "max_notional_pct": 0.25}
     ]
@@ -181,7 +202,14 @@ data:
   # localize the losing subset. Re-flip false once a positive-edge
   # configuration is validated in backtest AND risk_per_trade lowered
   # from 0.5 to a defensible number.
-  DRY_RUN: "true"
+  # Flipped false 2026-10-26: going live on the real MooMoo/Futu account.
+  # Both go-live preconditions above satisfied (risk_per_trade lowered to
+  # 0.20 for the cash tier; paper track record judged sufficient evidence
+  # of edge). Paired with MOOMOO_TRADE_ENV=REAL and RISK_EQUITY_OVERRIDE=0
+  # in this same edit. TradingEngine only instantiates at the next
+  # scheduled market open (scheduler.py next_market_open()), so this
+  # takes effect at tomorrow's 09:30 ET boot, not immediately.
+  DRY_RUN: "false"
   USE_CLAUDE: "true"
   TICK_SECONDS: "60"
   # 385 = 6h25m → EOD close runs at 15:55 ET, 5 minutes before market
