@@ -6,7 +6,9 @@
 # `github.com.lab.emc2.build` (when a node's search domains include
 # lab.emc2.build). The wildcard answered those with the Traefik IP, so
 # external names silently resolved to the homelab. Explicit records make
-# unknown names NXDOMAIN again.
+# unknown names NXDOMAIN again. The UDM has its own *.lab answer too, so
+# CoreDNS sends lab.emc2.build to Cloudflare (infra/coredns/), which makes
+# this list what pods see: a host missing here doesn't resolve in-cluster.
 #
 # The list is every *.lab.emc2.build host with an Ingress or IngressRoute on
 # the homelab cluster. lab, jellyfin, plex and pve1-3 already have records

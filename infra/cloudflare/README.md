@@ -151,3 +151,7 @@ and ndots:5, a wildcard made lookups like `github.com.lab.emc2.build`
 resolve to Traefik instead of failing over to the real name. When a new LAN
 service gets an Ingress, add its hostname to `lab_hosts` in `lab-dns.tf` and
 apply. `lab`, `jellyfin`, `plex` and `pve1`-`pve3` are still hand-managed.
+
+Pods resolve `lab.emc2.build` through Cloudflare (see `infra/coredns/`)
+because the UDM answers every `*.lab.emc2.build` name itself. So a host
+missing from `lab_hosts` works on the LAN but not from inside the cluster.
