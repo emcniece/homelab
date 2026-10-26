@@ -65,3 +65,12 @@ data:
         allowUiUpdates: true
         options:
           path: /var/lib/grafana/dashboards/glyphdex
+      - name: 'belay'
+        orgId: 1
+        folder: 'Belay'
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 30
+        allowUiUpdates: true
+        options:
+          path: /var/lib/grafana/dashboards/belay

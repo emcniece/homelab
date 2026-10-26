@@ -43,6 +43,18 @@ data:
               title: Belay backup metrics are missing
               description: Prometheus has no backup metrics from belay-pg, so backup alerts can't fire. Check the belay-postgres scrape job.
 
+          # The brief CronJob (every 5 min) posts to the app, which records
+          # the run. Each pod starts at 0, so a deploy looks stale until the
+          # next run; the `for` covers that.
+          - alert: BelayBriefCronStale
+            expr: time() - max(belay_cron_last_run_timestamp_seconds{job="belay"}) > 1800
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              title: Belay's morning brief cron has stopped
+              description: No brief run has reached the app in over 30 minutes, so nobody is getting their morning brief. `kubectl -n belay get cronjob,jobs -l app.kubernetes.io/component=brief`
+
           - alert: BelayDown
             expr: absent(up{job="belay"} == 1)
             for: 5m

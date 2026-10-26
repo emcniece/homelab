@@ -59,3 +59,24 @@ tests:
             exp_annotations:
               title: Belay is down
               description: No healthy belay-web pod has answered /api/metrics for 5 minutes. `kubectl -n belay get pods`
+  # The brief cron ran every 5 minutes, then stopped at t=10m.
+  - interval: 1m
+    input_series:
+      - series: 'belay_cron_last_run_timestamp_seconds{job="belay",instance="a"}'
+        values: '0 0 0 0 0 300 300 300 300 300 600x80'
+      - series: 'up{job="belay",instance="a"}'
+        values: '1x90'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: BelayBriefCronStale
+        exp_alerts: []
+      - eval_time: 49m
+        alertname: BelayBriefCronStale
+        exp_alerts: []
+      - eval_time: 52m
+        alertname: BelayBriefCronStale
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              title: Belay's morning brief cron has stopped
+              description: No brief run has reached the app in over 30 minutes, so nobody is getting their morning brief. `kubectl -n belay get cronjob,jobs -l app.kubernetes.io/component=brief`

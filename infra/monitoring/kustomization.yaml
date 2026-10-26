@@ -56,6 +56,10 @@ configMapGenerator:
       - dashboards/glyphdex/performance.json
       - dashboards/glyphdex/app-usage.json
       - dashboards/glyphdex/human-usage.json
+  # Source of truth: deploy/grafana/ in the emcniece/belay repo.
+  - name: grafana-dashboards-belay
+    files:
+      - dashboards/belay/overview.json
 
 generatorOptions:
   # Pin the generated ConfigMap name (no hash suffix) so the Deployment's

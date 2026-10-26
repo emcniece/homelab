@@ -68,6 +68,8 @@ spec:
               mountPath: /var/lib/grafana/dashboards/scrutiny
             - name: grafana-dashboards-glyphdex
               mountPath: /var/lib/grafana/dashboards/glyphdex
+            - name: grafana-dashboards-belay
+              mountPath: /var/lib/grafana/dashboards/belay
             - name: grafana-scrutiny-influxdb-token
               mountPath: /etc/secrets/scrutiny-influxdb
               readOnly: true
@@ -82,17 +84,25 @@ spec:
               # ~5 min once Grafana 11's resource-manager-identity check
               # got into a retry loop on provisioned dashboards.
               memory: 1Gi
+          # grafana:latest (13.x) takes over a minute to start: plugin
+          # loading alone is ~25s. Liveness only starts once this passes,
+          # so a slow start isn't killed mid-way (it crash-looped on
+          # 2026-10-26 with liveness alone).
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            periodSeconds: 10
+            failureThreshold: 30
           livenessProbe:
             httpGet:
               path: /api/health
               port: 3000
-            initialDelaySeconds: 30
             timeoutSeconds: 30
           readinessProbe:
             httpGet:
               path: /api/health
               port: 3000
-            initialDelaySeconds: 30
             timeoutSeconds: 30
       # This DNS config modifies /etc/resolv.conf. Needed so that external domains can resolve outside of the cluster,
       # and not get trapped in the wildcard that leads back to lab.emc2.build.
@@ -129,6 +139,9 @@ spec:
         - name: grafana-dashboards-glyphdex
           configMap:
             name: grafana-dashboards-glyphdex
+        - name: grafana-dashboards-belay
+          configMap:
+            name: grafana-dashboards-belay
         - name: grafana-scrutiny-influxdb-token
           secret:
             # Created out-of-band — see infra/monitoring/README.md.
