@@ -43,25 +43,21 @@ spec:
           imagePullPolicy: Always
           # TEMPORARY bootstrap mode — see login-bootstrap.sh's header.
           # Revert `command` to the default (remove this line entirely, or
-          # set it back to ["/docker-entrypoint.sh"]) and drop the LOGIN_PWD
-          # env var the moment a session is established on opend-state;
-          # switch to the documented headless args instead:
+          # set it back to ["/docker-entrypoint.sh"]) the moment a session
+          # is established on opend-state; switch to the documented
+          # headless args instead:
           #   args: ["-login_account=$(LOGIN_ACCOUNT)", "-login_by_remember=1"]
-          # LOGIN_PWD must never be left wired in longer than this one
-          # bootstrap run — it's the plaintext password, unlike
-          # LOGIN_PWD_MD5 which is safe to keep around.
+          #
+          # Deliberately NO LOGIN_ACCOUNT/LOGIN_PWD env vars here anymore —
+          # the script no longer reads them (see its header for why: it
+          # used to auto-feed them itself, polling for each prompt the same
+          # way a human answering manually from outside would, and the two
+          # racing on the same input pipe is exactly what caused a real
+          # failed login attempt). Every prompt now gets answered by a
+          # human, one `kubectl exec ... printf > fifo` at a time, sourcing
+          # values from wherever *that* person reads them — never from this
+          # container's own environment.
           command: ["/login-bootstrap.sh"]
-          env:
-            - name: LOGIN_ACCOUNT
-              valueFrom:
-                secretKeyRef:
-                  name: opend-config
-                  key: LOGIN_ACCOUNT
-            - name: LOGIN_PWD
-              valueFrom:
-                secretKeyRef:
-                  name: opend-config
-                  key: LOGIN_PWD
           ports:
             - name: api
               containerPort: 11111
