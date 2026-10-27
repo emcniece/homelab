@@ -1,0 +1,115 @@
+# Same pattern as infra/monitoring/grafana-backup-cronjob.yaml. The source
+# here is `moneymaker-output` — specifically output/trades.jsonl, the
+# ledger tax reporting (ACB, realized gains) depends on. Unlike Grafana's
+# dashboards, this isn't recreatable from anywhere else if lost, so
+# retention is much longer than Grafana's 7 days (see cleanup step below)
+# and the job is kept deliberately dumb — plain tar.gz, no external
+# service dependency.
+#
+# NOT a substitute for an offsite copy: this backs up to another PVC on
+# the SAME cluster (moneymaker-backup-storage), which protects against
+# accidental deletion / pod misconfig / file corruption, but not against
+# losing the cluster itself. Worth periodically copying the backup PVC's
+# contents (or just the CSV export from GET /trades?format=csv) somewhere
+# off-cluster — not automated here.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: moneymaker-backup
+  namespace: moneymaker
+  labels:
+    app.kubernetes.io/name: moneymaker-backup
+    app.kubernetes.io/component: backup
+spec:
+  schedule: "30 2 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: moneymaker-backup
+            app.kubernetes.io/component: backup
+        spec:
+          restartPolicy: OnFailure
+          # moneymaker-output is RWO Ceph RBD, held by the engine pod — the
+          # backup pod must land on the same node to mount it alongside
+          # (same reasoning as grafana-backup-cronjob.yaml).
+          affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels:
+                      app.kubernetes.io/name: moneymaker
+                      app.kubernetes.io/component: engine
+                  topologyKey: kubernetes.io/hostname
+          containers:
+            - name: backup
+              image: alpine:latest
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+
+                  echo "Starting moneymaker output backup at $(date)"
+
+                  BACKUP_DATE=$(date +%Y%m%d-%H%M%S)
+                  NAME="moneymaker-output-${BACKUP_DATE}"
+                  ARCHIVE="/backups/${NAME}.tar.gz"
+
+                  # Stage on scratch, write under .partial until complete —
+                  # same crash-safety reasoning as grafana-backup-cronjob.yaml
+                  # (a half-written archive must never look like a good one).
+                  trap 'rm -rf "/staging/${NAME}" "${ARCHIVE}.partial"' EXIT
+                  rm -f /backups/*.partial
+
+                  echo "Backing up output/ (trades.jsonl + premarket cache)..."
+                  mkdir -p "/staging/${NAME}"
+                  cp -a /app/output/. "/staging/${NAME}/"
+
+                  tar -czf "${ARCHIVE}.partial" -C /staging "${NAME}"
+                  mv "${ARCHIVE}.partial" "${ARCHIVE}"
+
+                  echo "Backup completed: ${NAME}.tar.gz"
+                  ls -lh "${ARCHIVE}"
+
+                  # Tax records: keep far longer than Grafana's 7-day
+                  # rotation. 400 dailies covers 1y+ with margin; storage
+                  # cost is trivial for a jsonl this size. Not a substitute
+                  # for actually exporting + archiving CSVs each tax year.
+                  echo "Cleaning up old backups (keeping last 400)..."
+                  ls -t /backups/moneymaker-output-*.tar.gz | tail -n +401 | xargs -r rm -f
+
+                  echo "Current backups:"
+                  ls -lh /backups/moneymaker-output-*.tar.gz 2>/dev/null | tail -5
+                  df -h /backups | tail -1
+
+                  echo "Backup process completed successfully at $(date)"
+              volumeMounts:
+                - name: output
+                  mountPath: /app/output
+                  readOnly: true
+                - name: backup-storage
+                  mountPath: /backups
+                - name: staging
+                  mountPath: /staging
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+                limits:
+                  cpu: 200m
+                  memory: 256Mi
+          volumes:
+            - name: output
+              persistentVolumeClaim:
+                claimName: moneymaker-output
+            - name: backup-storage
+              persistentVolumeClaim:
+                claimName: moneymaker-backup-storage
+            - name: staging
+              emptyDir:
+                sizeLimit: 256Mi

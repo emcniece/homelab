@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: moneymaker-backup-storage
+  namespace: moneymaker
+  labels:
+    app.kubernetes.io/name: moneymaker-backup
+    app.kubernetes.io/component: backup
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: csi-rbd-sc
+  resources:
+    requests:
+      # trades.jsonl + the rest of output/ is tiny (KB-MB range even after
+      # years of daily trading) — 1Gi is generous headroom for the full
+      # retention window below.
+      storage: 1Gi

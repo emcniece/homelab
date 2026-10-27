@@ -11,6 +11,8 @@ resources:
   - deployment.yaml
   - service.yaml
   - cronjob-premarket-scan.yaml
+  - backup-pvc.yaml
+  - backup-cronjob.yaml
   # Secrets are created out-of-band — never commit them:
   #   moneymaker-secrets  → see secret.yaml.example
   #   opend-config        → see opend-secret.yaml.example
