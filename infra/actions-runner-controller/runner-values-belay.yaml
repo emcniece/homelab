@@ -13,7 +13,9 @@
 githubConfigUrl: "https://github.com/emcniece/belay"
 githubConfigSecret: belay-arc-github-secret
 runnerScaleSetName: belay-arc-runners
-minRunners: 0
+# One warm runner: every CI stage otherwise waited 30-120s for a cold pod
+# (image pull, dind start), and a push runs three stages back to back.
+minRunners: 1
 maxRunners: 4
 listenerTemplate:
   spec:
@@ -44,6 +46,11 @@ template:
         emptyDir: {}
       - name: dind-externals
         emptyDir: {}
+      # Shared Playwright browsers (belay-caches-pvc.yaml); the e2e job
+      # points PLAYWRIGHT_BROWSERS_PATH here instead of downloading each run.
+      - name: playwright-cache
+        persistentVolumeClaim:
+          claimName: belay-arc-playwright-cache
     initContainers:
       - name: init-dind-externals
         image: ghcr.io/actions/actions-runner:latest
@@ -52,6 +59,13 @@ template:
         volumeMounts:
           - name: dind-externals
             mountPath: /home/runner/tmpDir
+      # A fresh CephFS mount is root-owned and the runner isn't root.
+      - name: fix-cache-perms
+        image: busybox:1.36
+        command: ["sh", "-c", "chmod 0777 /playwright-cache"]
+        volumeMounts:
+          - name: playwright-cache
+            mountPath: /playwright-cache
     containers:
       - name: runner
         image: ghcr.io/actions/actions-runner:latest
@@ -66,6 +80,8 @@ template:
             mountPath: /home/runner/_work
           - name: dind-sock
             mountPath: /var/run
+          - name: playwright-cache
+            mountPath: /mnt/playwright-cache
         resources:
           requests:
             cpu: "1"

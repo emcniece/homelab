@@ -1,0 +1,18 @@
+# Shared Playwright browser cache for the belay-arc-runners scale set, same
+# pattern as trailwave-caches-pvc.yaml: each browser version lands in its own
+# immutable directory, so concurrent runner pods can share it. CephFS
+# (ReadWriteMany) so pods on different nodes can mount it at once.
+#
+# No pnpm store: trailwave measured warm installs from a CephFS store slower
+# than cold ones (no cross-filesystem hardlinks).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: belay-arc-playwright-cache
+  namespace: arc-runners
+spec:
+  accessModes: ["ReadWriteMany"]
+  storageClassName: csi-cephfs-sc
+  resources:
+    requests:
+      storage: 5Gi

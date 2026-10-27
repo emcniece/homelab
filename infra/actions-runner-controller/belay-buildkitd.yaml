@@ -1,0 +1,147 @@
+# Persistent BuildKit daemon for Belay's image builds (emcniece/belay
+# .github/workflows/ci.yml, job `images`). Runner pods are ephemeral, so
+# buildx inside them starts cold every run: the image build took 4-9 min.
+# This daemon keeps its layer cache, the unpacked node_modules layer and
+# Next's build cache between runs.
+#
+# Same shape as trailwave-buildkitd (rootless, TCP on :1234, reachable only
+# from the scale set's runner pods), except the state lives on a Ceph RBD
+# volume rather than a 16Gi in-memory emptyDir: far less memory, and the
+# cache survives a restart. RWO, so Recreate.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: belay-buildkitd
+  namespace: arc-runners
+data:
+  buildkitd.toml: |
+    [worker.oci]
+      enabled = true
+      gc = true
+      # Headroom inside the 30Gi state volume below.
+      maxUsedSpace = "24GB"
+
+    [worker.containerd]
+      enabled = false
+
+    [registry."docker.io"]
+      mirrors = ["glyphdex-arc-registry-mirror.arc-runners.svc.cluster.local:5000"]
+
+    [registry."glyphdex-arc-registry-mirror.arc-runners.svc.cluster.local:5000"]
+      http = true
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: belay-buildkitd-state
+  namespace: arc-runners
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: csi-rbd-sc
+  resources:
+    requests:
+      storage: 30Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: belay-buildkitd
+  namespace: arc-runners
+  labels:
+    app: belay-buildkitd
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: belay-buildkitd
+  template:
+    metadata:
+      labels:
+        app: belay-buildkitd
+      annotations:
+        # Rootless BuildKit mounts inside its own user namespace, which the
+        # nodes' default AppArmor profile blocks ("failed to share mount
+        # point"). The annotation form: this cluster predates the field.
+        container.apparmor.security.beta.kubernetes.io/buildkitd: unconfined
+    spec:
+      securityContext:
+        fsGroup: 1000
+      # Registry and GHCR lookups resolve directly (no lab.emc2.build search).
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
+      containers:
+        - name: buildkitd
+          image: moby/buildkit:v0.32.2-rootless
+          args:
+            - --addr
+            - unix:///run/user/1000/buildkit/buildkitd.sock
+            - --addr
+            - tcp://0.0.0.0:1234
+            - --oci-worker-no-process-sandbox
+          ports:
+            - containerPort: 1234
+          readinessProbe:
+            exec:
+              command: ["buildctl", "debug", "workers"]
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            # Rootless BuildKit needs this for its user namespace too.
+            seccompProfile:
+              type: Unconfined
+          resources:
+            # No CPU limit: `next build` is CPU-bound and bursty.
+            requests:
+              cpu: "1"
+              memory: 1Gi
+            limits:
+              memory: 6Gi
+          volumeMounts:
+            - name: state
+              mountPath: /home/user/.local/share/buildkit
+            - name: config
+              mountPath: /home/user/.config/buildkit
+      volumes:
+        - name: state
+          persistentVolumeClaim:
+            claimName: belay-buildkitd-state
+        - name: config
+          configMap:
+            name: belay-buildkitd
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: belay-buildkitd
+  namespace: arc-runners
+spec:
+  selector:
+    app: belay-buildkitd
+  ports:
+    - port: 1234
+      targetPort: 1234
+---
+# Only Belay's runner pods may use it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: belay-buildkitd
+  namespace: arc-runners
+spec:
+  podSelector:
+    matchLabels:
+      app: belay-buildkitd
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              actions.github.com/scale-set-name: belay-arc-runners
+      ports:
+        - port: 1234
