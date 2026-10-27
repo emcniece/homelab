@@ -136,12 +136,21 @@ data:
   # constraint. These numbers were picked together with the account
   # owner as a deliberate first-real-money sizing, not derived from a
   # formula: risk_per_trade 0.20 means ~$214 intended risk on $1,070 of
-  # equity; max_notional_pct 0.5 caps any one position at 50% of equity
-  # (no margin-like oversizing); max_daily_loss 0.05 halts the engine
-  # for the day past a 5% drawdown.
+  # equity; max_daily_loss 0.05 halts the engine for the day past a 5%
+  # drawdown.
+  #
+  # max_notional_pct raised 0.5->0.75 on 2026-10-27 after day-1 live
+  # audit: risk_manager.position_size's notional cap bound 20 times in
+  # one session (risk.notional_cap.bit events) — with risk_per_trade=0.20
+  # and typical ORB stops ~2% from entry, risk-based sizing alone wants
+  # ~10x equity in notional, so the notional cap is the real-world
+  # binding constraint at this account size, not a backstop. 0.75 is a
+  # moderate loosening (~$800 max position on the ~$1,067 account),
+  # chosen over 1.0 (full account on one trade) to keep some margin
+  # below full concentration risk.
   EQUITY_TIERS_JSON: |
     [
-      {"name":"cash",   "max_equity": 25000,  "risk_per_trade": 0.20,  "max_daily_loss": 0.05, "max_open_positions": 4, "max_price": 100,   "min_avg_volume": 5000000, "max_notional_pct": 0.5},
+      {"name":"cash",   "max_equity": 25000,  "risk_per_trade": 0.20,  "max_daily_loss": 0.05, "max_open_positions": 4, "max_price": 100,   "min_avg_volume": 5000000, "max_notional_pct": 0.75},
       {"name":"margin", "max_equity": 100000, "risk_per_trade": 0.015, "max_daily_loss": 0.04, "max_open_positions": 2, "max_price": 200,  "min_avg_volume": 2000000, "max_notional_pct": 0.5},
       {"name":"scale",  "max_equity": null,   "risk_per_trade": 0.01,  "max_daily_loss": 0.03, "max_open_positions": 4, "max_price": 1000, "min_avg_volume": 1000000, "max_notional_pct": 0.25}
     ]
