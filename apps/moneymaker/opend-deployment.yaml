@@ -60,11 +60,16 @@ spec:
           #
           # Standing approach instead: login-bootstrap.sh, driven
           # manually from outside one prompt at a time (see its header).
-          # Confirmed fast on a repeat login once the device is already
-          # trusted — no SMS step, just account then password, ~10s of
-          # work. Needed again after any pod restart; nothing here
-          # survives automatically. LOGIN_ACCOUNT is still wired below for
-          # if the headless path gets revisited.
+          # Fully automated as of 2026-10-30 (explicit operator request —
+          # "secure and trusted environment"): login-bootstrap.sh's
+          # auto_login() submits account, password, and (if prompted) an
+          # SMS code relayed via Pushbullet, with attempt-limit/alerting
+          # guards — see that script's header for the full design. All
+          # three of LOGIN_ACCOUNT/LOGIN_PWD/PUSHBULLET_ACCESS_TOKEN are
+          # wired below for this; PUSHBULLET_ACCESS_TOKEN is also read by
+          # the engine deployment (its websocket listener does the actual
+          # SMS-reading — this container just polls the engine's relay
+          # endpoint over HTTP, see login-bootstrap.sh).
           command: ["/login-bootstrap.sh"]
           env:
             - name: LOGIN_ACCOUNT
@@ -72,6 +77,17 @@ spec:
                 secretKeyRef:
                   name: opend-config
                   key: LOGIN_ACCOUNT
+            - name: LOGIN_PWD
+              valueFrom:
+                secretKeyRef:
+                  name: opend-config
+                  key: LOGIN_PWD
+            - name: PUSHBULLET_ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: moneymaker-secrets
+                  key: PUSHBULLET_ACCESS_TOKEN
+                  optional: true
           ports:
             - name: api
               containerPort: 11111
