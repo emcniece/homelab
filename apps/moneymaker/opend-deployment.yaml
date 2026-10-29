@@ -124,10 +124,20 @@ spec:
               command:
                 - sh
                 - -c
-                - "curl -sf --max-time 5 http://moneymaker-engine:9100/healthz/opend"
+                # 18s, not a short default: _opend_health can legitimately
+                # take up to ~18s (its own 15s process-level timeout plus
+                # kill/join overhead — see metrics.py). curl's old 5s
+                # --max-time bailed and closed the socket long before that,
+                # which doesn't fail the check cleanly — it just makes the
+                # SERVER's later write to the now-closed connection throw a
+                # noisy (harmless, but alarming-looking) BrokenPipeError,
+                # confirmed live 2026-10-29. timeoutSeconds below must stay
+                # a few seconds above curl's --max-time, or kubelet kills
+                # the exec probe itself first, same mismatch one level up.
+                - "curl -sf --max-time 18 http://moneymaker-engine:9100/healthz/opend"
             initialDelaySeconds: 30
             periodSeconds: 30
-            timeoutSeconds: 10
+            timeoutSeconds: 20
             failureThreshold: 2
           # Cheap, local, no cross-pod dependency — basic crash/hang
           # detection only. Kept as tcpSocket deliberately (see above).
@@ -191,6 +201,20 @@ metadata:
     app.kubernetes.io/component: opend
 spec:
   type: ClusterIP
+  # Confirmed live 2026-10-29: the engine's wait-for-opend init
+  # container does a plain `nc -z opend 11111` against this Service,
+  # and a Service only routes to ready pods by default — so once the
+  # deep readinessProbe above correctly started reporting opend as
+  # not-ready (real moomoo connection down, not just "is the port
+  # open"), the Service had zero endpoints and the engine pod got
+  # stuck in Init forever, unable to even boot to report the problem.
+  # publishNotReadyAddresses restores the old "the pod exists, route to
+  # it" behavior for Service consumers (the init container's crude port
+  # check only ever needed that much), while the pod's own readiness
+  # status — visible via `kubectl get pods`, dashboards, etc. — still
+  # correctly reflects the deep check. Only Service routing stops being
+  # gated by it.
+  publishNotReadyAddresses: true
   selector:
     app.kubernetes.io/name: moneymaker
     app.kubernetes.io/component: opend
