@@ -44,3 +44,9 @@ variable "glyphdex_db_session_duration" {
   type        = string
   default     = "24h"
 }
+
+variable "sms_webhook_subdomain" {
+  description = "Single-level subdomain for moneymaker's SMS OTP relay webhook."
+  type        = string
+  default     = "sms"
+}

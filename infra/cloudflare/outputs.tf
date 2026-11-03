@@ -7,3 +7,13 @@ output "glyphdex_db_tunnel_token" {
   value       = data.cloudflare_zero_trust_tunnel_cloudflared_token.glyphdex_db.token
   sensitive   = true
 }
+
+output "sms_webhook_hostname" {
+  value = local.sms_webhook_hostname
+}
+
+output "sms_webhook_tunnel_token" {
+  description = "TUNNEL_TOKEN for the sms-webhook-tunnel Secret in the moneymaker namespace."
+  value       = data.cloudflare_zero_trust_tunnel_cloudflared_token.sms_webhook.token
+  sensitive   = true
+}
