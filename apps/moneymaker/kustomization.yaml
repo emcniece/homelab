@@ -10,6 +10,7 @@ resources:
   - opend-deployment.yaml
   - deployment.yaml
   - service.yaml
+  - sms-webhook-tunnel.yaml
   - cronjob-premarket-scan.yaml
   - backup-pvc.yaml
   - backup-cronjob.yaml

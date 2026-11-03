@@ -1,0 +1,83 @@
+# Cloudflare Tunnel connector for moneymaker's SMS OTP relay webhook — see
+# infra/cloudflare/sms-webhook.tf for the tunnel/DNS/ingress-path config and
+# moneymaker's docs/opend-operations.md for why this exists. Single replica,
+# unlike glyphdex-db-tunnel's 2: this is a low-volume, single-purpose
+# webhook (one SMS, rarely), not something that needs HA.
+#
+# TUNNEL_TOKEN comes from the `sms_webhook_tunnel_token` Terraform output —
+# created out-of-band (see the Secret below), never committed.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sms-webhook-tunnel
+  namespace: moneymaker
+  labels:
+    app.kubernetes.io/name: moneymaker
+    app.kubernetes.io/component: sms-webhook-tunnel
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: moneymaker
+      app.kubernetes.io/component: sms-webhook-tunnel
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: moneymaker
+        app.kubernetes.io/component: sms-webhook-tunnel
+    spec:
+      automountServiceAccountToken: false
+      # Same ndots fix as glyphdex-db-tunnel and opend — this cluster's
+      # default search domain + ndots:5 can otherwise hijack short dotted
+      # names before they ever reach the real resolver.
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: cloudflared
+          image: cloudflare/cloudflared:2026.10.7
+          args:
+            - tunnel
+            - --no-autoupdate
+            - --metrics
+            - 0.0.0.0:2000
+            - run
+          env:
+            - name: TUNNEL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: sms-webhook-tunnel
+                  key: TUNNEL_TOKEN
+          ports:
+            - name: metrics
+              containerPort: 2000
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: metrics
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: metrics
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
