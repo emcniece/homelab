@@ -1,0 +1,27 @@
+# Home Assistant runs outside the cluster (192.168.10.10). The kubernetescrd
+# provider does not allow ExternalName services, so use a selectorless
+# Service with manual Endpoints instead.
+apiVersion: v1
+kind: Service
+metadata:
+  name: home-assistant
+  namespace: default
+spec:
+  ports:
+  - name: http
+    port: 8123
+    targetPort: 8123
+    protocol: TCP
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: home-assistant
+  namespace: default
+subsets:
+  - addresses:
+      - ip: 192.168.10.10
+    ports:
+      - name: http
+        port: 8123
+        protocol: TCP

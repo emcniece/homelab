@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: ha-lab-letsencrypt-tls
+  namespace: default
+spec:
+  secretName: ha-lab-letsencrypt-tls
+  dnsNames:
+  - ha.lab.emc2.build
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
