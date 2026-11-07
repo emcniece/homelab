@@ -14,7 +14,7 @@ spec:
     matchLabels:
       app: sabnzbd
   strategy:
-    type: RollingUpdate
+    type: Recreate # RWO local-path volume
   template:
     metadata:
       annotations:
@@ -74,7 +74,9 @@ spec:
       - name: media-library
         persistentVolumeClaim:
           claimName: media-library
+      # Incomplete downloads + per-job __ADMIN__ state. Must persist across pod
+      # restarts/evictions or in-flight jobs are dropped from the queue.
+      # local-path PV is pinned to the node it was provisioned on (k3s-06).
       - name: temp-storage
-        emptyDir:
-          #medium: Memory
-          sizeLimit: 120Gi
+        persistentVolumeClaim:
+          claimName: sabnzbd-downloads-incomplete

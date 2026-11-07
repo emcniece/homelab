@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: sabnzbd-downloads
+  name: sabnzbd-downloads-incomplete
   namespace: media
 spec:
   accessModes: ["ReadWriteOnce"]
   resources:
     requests:
-      storage: 200Gi
+      storage: 100Gi # not enforced by local-path
   storageClassName: local-path
