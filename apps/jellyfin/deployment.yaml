@@ -50,15 +50,10 @@ spec:
         volumeMounts:
         - mountPath: /config
           name: jellyfin-config
-        - mountPath: /data/tvshows
+        # Same path as sabnzbd/arrs/tdarr so file paths are interchangeable
+        # (libraries: /downloads/tv, /downloads/movies, /downloads/music).
+        - mountPath: /downloads
           name: media-library
-          subPath: tv
-        - mountPath: /data/movies
-          name: media-library
-          subPath: movies
-        - mountPath: /data/music
-          name: media-library
-          subPath: music
       #hostNetwork: true
       hostname: jellyfin
       restartPolicy: Always

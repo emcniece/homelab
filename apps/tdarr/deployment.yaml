@@ -79,10 +79,8 @@ spec:
           name: tdarr-config
         - mountPath: /app/logs
           name: tdarr-logs
-        - mountPath: /media
+        - mountPath: /downloads # same path as sabnzbd/arrs/jellyfin
           name: media-library
-        - mountPath: /downloads
-          name: downloads-complete
         - mountPath: /temp
           name: transcode-cache
         - mountPath: /staging
@@ -114,9 +112,6 @@ spec:
       - name: media-library
         persistentVolumeClaim:
           claimName: media-library
-      - name: downloads-complete
-        persistentVolumeClaim:
-          claimName: downloads-complete
       - name: transcode-cache
         persistentVolumeClaim:
           claimName: transcode-cache
@@ -202,10 +197,8 @@ spec:
           name: tdarr-config
         - mountPath: /app/logs
           name: tdarr-logs
-        - mountPath: /media
+        - mountPath: /downloads # same path as sabnzbd/arrs/jellyfin
           name: media-library
-        - mountPath: /downloads
-          name: downloads-complete
         - mountPath: /temp
           name: transcode-cache
         - mountPath: /staging
@@ -243,9 +236,6 @@ spec:
       - name: media-library
         persistentVolumeClaim:
           claimName: media-library
-      - name: downloads-complete
-        persistentVolumeClaim:
-          claimName: downloads-complete
       - name: transcode-cache
         persistentVolumeClaim:
           claimName: transcode-cache

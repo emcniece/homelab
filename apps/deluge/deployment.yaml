@@ -47,10 +47,12 @@ spec:
         stdin: true
         tty: true
         volumeMounts:
+        - mountPath: /downloads
+          name: media-library
+        # Completed torrents go to /downloads/completed/deluge (Deluge core.conf)
+        # so the arrs see them at the same path on the shared media-library.
         - mountPath: /downloads/incomplete
           name: deluge-downloads-incomplete
-        - mountPath: /downloads/complete
-          name: downloads-complete
         - mountPath: /config
           name: deluge-config
       restartPolicy: Always
@@ -67,12 +69,12 @@ spec:
           - name: ndots
             value: "2"
       volumes:
+      - name: media-library
+        persistentVolumeClaim:
+          claimName: media-library
       - name: deluge-downloads-incomplete
         persistentVolumeClaim:
           claimName: deluge-downloads-incomplete
-      - name: downloads-complete
-        persistentVolumeClaim:
-          claimName: downloads-complete
       - name: deluge-config
         persistentVolumeClaim:
           claimName: deluge-config
