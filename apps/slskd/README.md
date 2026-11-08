@@ -5,7 +5,8 @@ playlists. Full albums go through Lidarr and Usenet instead.
 
 - Web UI: `https://slskd.lab.emc2.build` (LAN only).
 - API for Aurral: `http://slskd.media.svc.cluster.local:5030`. The API key
-  is ReadWrite and only accepted from pod IPs (10.42.0.0/16).
+  has the Administrator role (Aurral reads `/api/v0/options`) but is only
+  accepted from pod IPs (10.42.0.0/16).
 - Peer port: TCP 50300 on `slskd-peer` (MetalLB 192.168.10.92). Forward TCP
   50300 on the UDM to 192.168.10.92:50300. Nothing else is exposed.
 
