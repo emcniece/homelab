@@ -72,12 +72,14 @@ spec:
           initialDelaySeconds: 60
           periodSeconds: 30
           failureThreshold: 5
+        # Busy downloads plus peer search traffic pinned the old 1-core limit,
+        # and CFS throttling dropped the web UI's SignalR connection.
         resources:
           requests:
-            cpu: 50m
+            cpu: 250m
             memory: 256Mi
           limits:
-            cpu: "1"
+            cpu: "3"
             memory: 1Gi
         volumeMounts:
         - name: config
