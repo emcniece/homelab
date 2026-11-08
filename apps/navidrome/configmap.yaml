@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: navidrome-config
+  namespace: media
+  labels:
+    app: navidrome
+data:
+  navidrome.toml: |
+    MusicFolder = "/music"
+    DataFolder  = "/data"
+    LogLevel    = "info"   # auth failures must reach Loki for the failed-login alert
+
+    # Share links are handed out on the public host, which only routes
+    # /rest and /share (see ingress.yaml).
+    EnableSharing = true
+    ShareURL      = "https://music.emc2.build"
+
+    EnableInsightsCollector = false
+
+    # UI login throttle (/auth/login). Navidrome sees Traefik's pod IP as the
+    # client (ExtAuth.TrustedSources is deliberately unset, see README), so
+    # this is effectively a global limit; per-client limiting happens in
+    # Traefik on CF-Connecting-IP.
+    AuthRequestLimit = 5
+    AuthWindowLength = "20s"
+
+    [Scanner]
+    # The library is CephFS written by Lidarr on other nodes; inotify here
+    # won't see those writes, so scan on a schedule.
+    Schedule      = "@every 1h"
+    ScanOnStartup = true
+
+    [Plugins]
+    Enabled = true   # Folder defaults to /data/plugins

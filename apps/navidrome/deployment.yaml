@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: navidrome
+  namespace: media
+  labels:
+    app: navidrome
+spec:
+  replicas: 1
+  # SQLite on an RWO volume: never run two pods at once.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: navidrome
+  template:
+    metadata:
+      labels:
+        app: navidrome
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        fsGroup: 1000
+        # Both CephFS and RBD CSI drivers have fsGroupPolicy=File, i.e. a
+        # recursive chown on mount. The library is mounted readOnly at the
+        # volume level (which skips it), and OnRootMismatch is the second
+        # guard: media-library's root is already gid 1000.
+        fsGroupChangePolicy: OnRootMismatch
+      containers:
+      - name: navidrome
+        image: deluan/navidrome:0.64.2
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: ND_CONFIGFILE
+          value: /config/navidrome.toml
+        - name: TZ
+          value: America/Vancouver
+        ports:
+        - name: http
+          containerPort: 4533
+        readinessProbe:
+          httpGet: {path: /ping, port: http}
+          periodSeconds: 10
+        livenessProbe:
+          httpGet: {path: /ping, port: http}
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          failureThreshold: 5
+        resources:
+          requests:
+            cpu: 50m
+            memory: 192Mi
+          limits:
+            cpu: "2"
+            memory: 1Gi
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: media-library
+          mountPath: /music
+          subPath: music
+          readOnly: true
+        - name: config
+          mountPath: /config
+          readOnly: true
+      tolerations:
+      - key: "maintenance"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 30
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: navidrome-data
+      - name: media-library
+        persistentVolumeClaim:
+          claimName: media-library
+          readOnly: true
+      - name: config
+        configMap:
+          name: navidrome-config

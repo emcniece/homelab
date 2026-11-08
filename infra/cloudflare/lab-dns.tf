@@ -32,6 +32,7 @@ locals {
     "homer",
     "immich",
     "lidarr",
+    "navidrome",
     "plexpy",
     "prometheus",
     "prowlarr",

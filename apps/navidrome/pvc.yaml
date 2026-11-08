@@ -1,0 +1,16 @@
+# Navidrome's DataFolder: SQLite DB, artwork cache, transcode cache, plugins.
+# RBD (RWO) because it's a single-writer SQLite DB; the deployment uses the
+# Recreate strategy so two pods never share it.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: navidrome-data
+  namespace: media
+  labels:
+    app: navidrome
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: csi-rbd-sc
