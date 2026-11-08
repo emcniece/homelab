@@ -13,8 +13,11 @@ spec:
   selector:
     matchLabels:
       app: lidarr
+  # Recreate, not RollingUpdate: lidarr-config is RWX CephFS, so a rolling
+  # update would briefly run two Lidarrs against the same SQLite DB (and
+  # across a schema migration on version bumps).
   strategy:
-    type: RollingUpdate
+    type: Recreate
   template:
     metadata:
       annotations:
@@ -32,7 +35,11 @@ spec:
           value: '1000'
         - name: TZ
           value: America/Vancouver
-        image: lscr.io/linuxserver/lidarr:latest
+        # TEMPORARY nightly (2026-11-07): Jellyfin 12 dropped the /mediabrowser
+        # route prefix and the Emby/Jellyfin connector fix (Lidarr commits
+        # 77de6526, f03db6a8) is only on develop, not in any release up to
+        # v3.2.0.5144. Switch back to a stable tag once a release includes it.
+        image: lscr.io/linuxserver/lidarr:nightly-3.2.1.5182-ls223
         imagePullPolicy: IfNotPresent
         name: lidarr
         ports:
