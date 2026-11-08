@@ -1,8 +1,15 @@
 # Navidrome
 
-Music server (Subsonic API) for the household. It reads the music Lidarr
-manages, from the shared `media-library` CephFS volume (`/downloads/music` in
-Lidarr is `/music` here), read-only.
+Music server (Subsonic API) for the household. It reads, read-only:
+
+- Library 1, `/downloads/music`: the music Lidarr manages (`media-library`
+  volume, `music/` subPath).
+- Library 2, `/downloads/aurral`: Aurral's Downloads Folder, where Weekly
+  Flow tracks land (`music-discovery` volume). Added in Settings →
+  Libraries.
+
+These are the same container paths Lidarr, Aurral and slskd use. Aurral
+publishes playlists by file path, so don't change them in only one app.
 
 | Host | Routes | Reached via |
 |---|---|---|

@@ -1,0 +1,14 @@
+# slskd's APP_DIR (/app): its DB, logs, and share cache.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: slskd-config
+  namespace: media
+  labels:
+    app: slskd
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 2Gi
+  storageClassName: csi-rbd-sc

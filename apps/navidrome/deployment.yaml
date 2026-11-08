@@ -59,8 +59,23 @@ spec:
         - name: data
           mountPath: /data
         - name: media-library
+          mountPath: /downloads/music
+          subPath: music
+          readOnly: true
+        # TEMPORARY: library 1's path is stored in Navidrome's DB as /music
+        # (MusicFolder only seeds a new install). Keep this until library 1
+        # is switched to /downloads/music in Settings → Libraries, then
+        # remove it.
+        - name: media-library
           mountPath: /music
           subPath: music
+          readOnly: true
+        # Aurral's Downloads Folder (Weekly Flow etc.), second library.
+        # The subPath dir is created by the aurral/slskd init containers;
+        # deploy one of those first.
+        - name: music-discovery
+          mountPath: /downloads/aurral
+          subPath: aurral
           readOnly: true
         - name: config
           mountPath: /config
@@ -77,6 +92,10 @@ spec:
       - name: media-library
         persistentVolumeClaim:
           claimName: media-library
+          readOnly: true
+      - name: music-discovery
+        persistentVolumeClaim:
+          claimName: music-discovery
           readOnly: true
       - name: config
         configMap:

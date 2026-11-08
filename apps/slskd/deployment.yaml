@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: slskd
+  namespace: media
+  labels:
+    app: slskd
+spec:
+  replicas: 1
+  # Single Soulseek login and an RWO config volume: never run two.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: slskd
+  template:
+    metadata:
+      labels:
+        app: slskd
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        fsGroup: 1000
+        # CephFS/RBD CSI drivers chown recursively on mount (fsGroupPolicy:
+        # File). media-library is readOnly at the volume level, which skips
+        # it; OnRootMismatch keeps it cheap on the RW volumes.
+        fsGroupChangePolicy: OnRootMismatch
+      initContainers:
+      # subPath dirs must exist and be owned by 1000 before the main
+      # container mounts them (kubelet would otherwise create them as root).
+      - name: discovery-dirs
+        image: busybox:1.36.1
+        command: ["sh", "-c", "mkdir -p /discovery/slskd/complete /discovery/slskd/incomplete /discovery/aurral"]
+        volumeMounts:
+        - name: music-discovery
+          mountPath: /discovery
+      containers:
+      - name: slskd
+        image: slskd/slskd:0.26.2
+        imagePullPolicy: IfNotPresent
+        envFrom:
+        # SLSKD_SLSK_USERNAME / SLSKD_SLSK_PASSWORD (Soulseek network),
+        # SLSKD_USERNAME / SLSKD_PASSWORD (web UI), SLSKD_API_KEY (Aurral),
+        # SLSKD_JWT_KEY. See secret.example.yaml.
+        - secretRef:
+            name: slskd
+        env:
+        - {name: TZ, value: America/Vancouver}
+        - {name: SLSKD_HTTP_PORT, value: "5030"}
+        - {name: SLSKD_NO_HTTPS, value: "true"}          # TLS terminates at Traefik
+        - {name: SLSKD_REMOTE_CONFIGURATION, value: "false"}
+        - {name: SLSKD_SLSK_LISTEN_PORT, value: "50300"}
+        # Same container paths as Aurral (it moves finished files out of
+        # /downloads/slskd/complete into /downloads/aurral).
+        - {name: SLSKD_DOWNLOADS_DIR, value: /downloads/slskd/complete}
+        - {name: SLSKD_INCOMPLETE_DIR, value: /downloads/slskd/incomplete}
+        # Share the library read-only: many peers won't upload to users who
+        # share nothing. Capped below.
+        - {name: SLSKD_SHARED_DIR, value: /downloads/music}
+        - {name: SLSKD_UPLOAD_SLOTS, value: "5"}
+        - {name: SLSKD_UPLOAD_SPEED_LIMIT, value: "2048"}  # KiB/s, ~16 Mbit/s total
+        ports:
+        - {name: http, containerPort: 5030}
+        - {name: slsk, containerPort: 50300}
+        readinessProbe:
+          tcpSocket: {port: http}
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket: {port: http}
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          failureThreshold: 5
+        resources:
+          requests:
+            cpu: 50m
+            memory: 256Mi
+          limits:
+            cpu: "1"
+            memory: 1Gi
+        volumeMounts:
+        - name: config
+          mountPath: /app
+        - name: music-discovery
+          mountPath: /downloads/slskd
+          subPath: slskd
+        - name: media-library
+          mountPath: /downloads/music
+          subPath: music
+          readOnly: true
+      tolerations:
+      - key: "maintenance"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 30
+      volumes:
+      - name: config
+        persistentVolumeClaim:
+          claimName: slskd-config
+      - name: music-discovery
+        persistentVolumeClaim:
+          claimName: music-discovery
+      - name: media-library
+        persistentVolumeClaim:
+          claimName: media-library
+          readOnly: true

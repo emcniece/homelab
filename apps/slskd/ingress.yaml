@@ -1,0 +1,30 @@
+# LAN only. No public Ingress for slskd, ever.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: slskd
+  namespace: media
+  labels:
+    app: slskd
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: media-http-to-https-redirect-media@kubernetescrd
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - slskd.lab.emc2.build
+    secretName: slskd-letsencrypt-tls
+  rules:
+  - host: slskd.lab.emc2.build
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: slskd
+            port:
+              name: http

@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aurral
+  namespace: media
+  labels:
+    app: aurral
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate   # SQLite on an RWO volume
+  selector:
+    matchLabels:
+      app: aurral
+  template:
+    metadata:
+      labels:
+        app: aurral
+    spec:
+      securityContext:
+        # Started as non-root, the image's entrypoint skips its own
+        # chown + setpriv and runs directly as this user.
+        runAsUser: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        fsGroup: 1000
+        # See apps/navidrome/README.md: Ceph CSI chowns recursively; the
+        # library is readOnly at the volume level, and OnRootMismatch.
+        fsGroupChangePolicy: OnRootMismatch
+      initContainers:
+      - name: discovery-dirs
+        image: busybox:1.36.1
+        command: ["sh", "-c", "mkdir -p /discovery/aurral /discovery/slskd/complete /discovery/slskd/incomplete"]
+        volumeMounts:
+        - name: music-discovery
+          mountPath: /discovery
+      containers:
+      - name: aurral
+        image: ghcr.io/lklynet/aurral:2.12.0
+        imagePullPolicy: IfNotPresent
+        env:
+        - {name: TZ, value: America/Vancouver}
+        # Every app sees shared files at the same container paths
+        # (Aurral requires it): Lidarr's library at /downloads/music,
+        # slskd's completed files at /downloads/slskd/complete, and the
+        # Downloads Folder at /downloads/aurral (also Navidrome's 2nd library).
+        - {name: DOWNLOAD_FOLDER, value: /downloads/aurral}
+        - {name: FILE_BROWSE_ROOTS, value: /downloads}
+        - {name: AURRAL_PUBLIC_URL, value: "https://aurral.lab.emc2.build"}
+        # TRUST_PROXY left at Aurral's default (1 hop = Traefik).
+        # AUTH_PROXY_* deliberately unset: local accounts only.
+        ports:
+        - {name: http, containerPort: 3001}
+        readinessProbe:
+          tcpSocket: {port: http}
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket: {port: http}
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          failureThreshold: 5
+        resources:
+          requests:
+            cpu: 50m
+            memory: 256Mi
+          limits:
+            cpu: "2"
+            memory: 2Gi
+        volumeMounts:
+        - name: config
+          mountPath: /config
+        - name: music-discovery
+          mountPath: /downloads/aurral
+          subPath: aurral
+        - name: music-discovery
+          mountPath: /downloads/slskd
+          subPath: slskd
+        # Read-only: Aurral reuses files Lidarr reports and asks Lidarr (by
+        # API) to fetch albums; it never writes the main library.
+        - name: media-library
+          mountPath: /downloads/music
+          subPath: music
+          readOnly: true
+      tolerations:
+      - key: "maintenance"
+        operator: "Exists"
+        effect: "NoExecute"
+        tolerationSeconds: 30
+      volumes:
+      - name: config
+        persistentVolumeClaim:
+          claimName: aurral-config
+      - name: music-discovery
+        persistentVolumeClaim:
+          claimName: music-discovery
+      - name: media-library
+        persistentVolumeClaim:
+          claimName: media-library
+          readOnly: true

@@ -22,3 +22,23 @@ spec:
     requests:
       storage: 20Ti
   storageClassName: csi-cephfs-sc       # CephFS specific
+
+---
+# Discovery downloads: Soulseek (slskd) and Aurral's Downloads Folder
+# (flows rotate here). Kept off media-library on purpose: slskd is the one
+# app with an internet-facing peer port, so it never gets write access to
+# the main library, and a separate PVC makes discovery growth measurable.
+# Mounted at the same container paths in every app (Aurral requires it):
+#   subPath aurral -> /downloads/aurral  (Aurral RW, Navidrome RO)
+#   subPath slskd  -> /downloads/slskd   (slskd RW, Aurral RW)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: music-discovery
+  namespace: media
+spec:
+  accessModes: ["ReadWriteMany"]
+  resources:
+    requests:
+      storage: 200Gi
+  storageClassName: csi-cephfs-sc

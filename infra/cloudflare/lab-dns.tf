@@ -19,6 +19,7 @@ locals {
   lab_traefik_ip = "192.168.10.91" # traefik-system/traefik LoadBalancer
 
   lab_hosts = toset([
+    "aurral",
     "calibre-downloader",
     "calibre-web",
     "deluge",
@@ -40,6 +41,7 @@ locals {
     "registry",
     "sabnzbd",
     "scrutiny",
+    "slskd",
     "sonarr",
     "subarr",
     "tdarr",

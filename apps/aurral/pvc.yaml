@@ -1,0 +1,15 @@
+# Aurral's /config: SQLite DB, settings, users, jobs, yt-dlp staging.
+# It also holds the Lidarr/Navidrome/slskd credentials entered in the UI.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: aurral-config
+  namespace: media
+  labels:
+    app: aurral
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: csi-rbd-sc
