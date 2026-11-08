@@ -7,11 +7,12 @@ metadata:
     app: navidrome
 data:
   navidrome.toml: |
-    # Same container path as Lidarr and Aurral (/downloads/music). Aurral
-    # publishes playlists by file path, so the paths must match. Aurral's
-    # Downloads Folder (/downloads/aurral) is added as a second library in
-    # the admin UI.
-    MusicFolder = "/downloads/music"
+    # MusicFolder is set via ND_MUSICFOLDER in deployment.yaml: the image
+    # bakes in ND_MUSICFOLDER=/music, which would override a value here.
+    # It's /downloads/music, the same container path as Lidarr and Aurral.
+    # Aurral publishes playlists by file path, so the paths must match.
+    # Aurral's Downloads Folder (/downloads/aurral) is a second library,
+    # added in the admin UI.
     DataFolder  = "/data"
     LogLevel    = "info"   # auth failures must reach Loki for the failed-login alert
 

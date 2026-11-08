@@ -35,6 +35,11 @@ spec:
         env:
         - name: ND_CONFIGFILE
           value: /config/navidrome.toml
+        # The image bakes in ND_MUSICFOLDER=/music, and env beats the TOML,
+        # so MusicFolder must be set here. Navidrome copies it into library
+        # 1's path on every start, which is also why the UI can't edit it.
+        - name: ND_MUSICFOLDER
+          value: /downloads/music
         - name: TZ
           value: America/Vancouver
         ports:
@@ -60,14 +65,6 @@ spec:
           mountPath: /data
         - name: media-library
           mountPath: /downloads/music
-          subPath: music
-          readOnly: true
-        # TEMPORARY: library 1's path is stored in Navidrome's DB as /music
-        # (MusicFolder only seeds a new install). Keep this until library 1
-        # is switched to /downloads/music in Settings → Libraries, then
-        # remove it.
-        - name: media-library
-          mountPath: /music
           subPath: music
           readOnly: true
         # Aurral's Downloads Folder (Weekly Flow etc.), second library.
