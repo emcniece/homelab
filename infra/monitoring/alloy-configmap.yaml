@@ -72,6 +72,35 @@ data:
       // k3s/containerd writes CRI-format lines: "TS STREAM TAG MSG".
       // Strip them down to the original payload + timestamp.
       stage.cri {}
+
+      // ── Credential redaction (Traefik access log) ──────────────
+      // Traefik logs full request URLs, and several clients put
+      // credentials in the query string. Loki keeps 14 days, so blank
+      // the values before they're shipped. stage.replace swaps each
+      // capture group for `replace`, on every match in the line.
+      //
+      // Subsonic (Navidrome, /rest/...): p = password (plaintext or
+      // hex "enc:"), t + s = token/salt, which Navidrome accepts again
+      // later, so they work like a password. Only on /rest/ lines, so
+      // e.g. WordPress ?p=<post id> / ?s=<search> are left alone.
+      stage.match {
+        selector = `{namespace="traefik-system"} |~ "\"[A-Z]+ /rest/"`
+        stage.replace {
+          expression = `[?&](?:p|t|s)=([^&\s"]+)`
+          replace    = "<redacted>"
+        }
+      }
+
+      // API keys / tokens on any route: SABnzbd's UI (apikey),
+      // Jellyfin (api_key), the *arr SignalR streams (access_token),
+      // Plex (X-Plex-Token).
+      stage.match {
+        selector = `{namespace="traefik-system"}`
+        stage.replace {
+          expression = `(?i)[?&](?:api_key|apikey|x-plex-token|x-emby-token|x-mediabrowser-token|access_token|token)=([^&\s"]+)`
+          replace    = "<redacted>"
+        }
+      }
     }
 
     // ── Node systemd journal ───────────────────────────────────────
