@@ -1,0 +1,54 @@
+# Feishin web: the desktop player's web build, a static nginx site. The
+# browser talks to the music server itself (same origin, /rest on
+# music.emc2.build → Aurral), so this pod holds no credentials or state.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: feishin
+  namespace: media
+  labels:
+    app: feishin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: feishin
+  template:
+    metadata:
+      labels:
+        app: feishin
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101   # the image's nginx user
+        runAsGroup: 101
+      containers:
+      - name: feishin
+        image: ghcr.io/jeffvli/feishin:1.17.0
+        imagePullPolicy: IfNotPresent
+        env:
+        # Pin the server so the login page only asks for username/password.
+        - {name: SERVER_NAME, value: "Aurral"}
+        - {name: SERVER_TYPE, value: "subsonic"}
+        - {name: SERVER_URL, value: "https://music.emc2.build"}
+        - {name: SERVER_LOCK, value: "true"}
+        - {name: ANALYTICS_DISABLED, value: "true"}
+        ports:
+        - {name: http, containerPort: 9180}
+        readinessProbe:
+          httpGet: {path: /, port: http}
+          periodSeconds: 10
+        livenessProbe:
+          httpGet: {path: /, port: http}
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 500m
+            memory: 128Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities: {drop: [ALL]}

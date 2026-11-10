@@ -1,0 +1,36 @@
+# Public: Feishin web at music.emc2.build/. Aurral's Subsonic API keeps
+# /rest on the same host (apps/aurral/public.yaml); Traefik matches the
+# longer prefix first, so /rest still goes to Aurral and everything else
+# comes here. Same Cloudflare-only allowlist and rate limit as /rest.
+#
+# No cert-manager annotation: aurral-public owns the music-letsencrypt-tls
+# certificate for this host and this Ingress reuses the secret. Two
+# Certificates writing one secret would fight.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: feishin-public
+  namespace: media
+  labels:
+    app: feishin
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: media-music-cloudflare-only@kubernetescrd,media-music-ratelimit@kubernetescrd
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - music.emc2.build
+    secretName: music-letsencrypt-tls
+  rules:
+  - host: music.emc2.build
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: feishin
+            port:
+              name: http

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: feishin
+  namespace: media
+  labels:
+    app: feishin
+spec:
+  selector:
+    app: feishin
+  ports:
+  - {name: http, port: 9180, targetPort: http, protocol: TCP}
