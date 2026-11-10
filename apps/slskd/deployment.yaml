@@ -72,14 +72,16 @@ spec:
           initialDelaySeconds: 60
           periodSeconds: 30
           failureThreshold: 5
-        # Busy downloads plus peer search traffic pinned the old 1-core limit,
-        # and CFS throttling dropped the web UI's SignalR connection.
+        # Idle use is ~0.2 cores, but bursts of search results (e.g. an
+        # Aurral playlist import) went past 1 and then 3 cores; CFS
+        # throttling stalled the web server and dropped the UI's SignalR
+        # connection.
         resources:
           requests:
             cpu: 250m
             memory: 256Mi
           limits:
-            cpu: "3"
+            cpu: "6"
             memory: 1Gi
         volumeMounts:
         - name: config
