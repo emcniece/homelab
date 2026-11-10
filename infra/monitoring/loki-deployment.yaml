@@ -43,6 +43,12 @@ spec:
               mountPath: /etc/loki
             - name: storage
               mountPath: /loki
+            # Ruler rules for tenant "fake" (see loki-rules.yaml). Mounted
+            # over a directory on the storage PVC; no subPath, so ConfigMap
+            # edits reach the pod without a restart.
+            - name: rules
+              mountPath: /loki/rules/fake
+              readOnly: true
           resources:
             requests:
               cpu: 100m
@@ -72,6 +78,9 @@ spec:
         - name: storage
           persistentVolumeClaim:
             claimName: loki-storage
+        - name: rules
+          configMap:
+            name: loki-rules
 ---
 apiVersion: v1
 kind: Service

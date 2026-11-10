@@ -30,6 +30,7 @@ resources:
   - ceph-mgr-service.yaml
   - ceph-mgr-endpoints.yaml
   - loki-configmap.yaml
+  - loki-rules.yaml
   - loki-pvc.yaml
   - loki-deployment.yaml
   - alloy-rbac.yaml

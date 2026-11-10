@@ -68,11 +68,18 @@ data:
     querier:
       max_concurrent: 4
 
+    # LogQL alerting rules from the loki-rules ConfigMap (loki-rules.yaml),
+    # mounted at /loki/rules/fake ("fake" is the tenant when auth is off).
     ruler:
       storage:
         type: local
         local:
           directory: /loki/rules
+      rule_path: /tmp/loki-ruler
+      alertmanager_url: http://alertmanager.monitoring.svc.cluster.local:9093
+      enable_api: true
+      evaluation_interval: 1m
+      poll_interval: 1m
 
     # Disable upstream phone-home
     analytics:

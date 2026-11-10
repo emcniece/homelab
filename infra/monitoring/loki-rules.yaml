@@ -1,0 +1,88 @@
+# Loki ruler alerting rules (LogQL), sent to Alertmanager like the Prometheus
+# rules. Mounted at /loki/rules/fake: with auth_enabled: false Loki's tenant
+# is "fake", and the local ruler store reads /loki/rules/<tenant>/*.yaml.
+# Edits are picked up without a restart (the ruler re-reads every minute).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loki-rules
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: loki
+    app.kubernetes.io/component: rules
+data:
+  music.yaml: |
+    groups:
+      - name: music-public-auth
+        interval: 1m
+        rules:
+          # Failed Subsonic logins on music.emc2.build/rest (Aurral). Aurral
+          # answers a failed login with HTTP 200 and doesn't log it (only in
+          # verbose debug mode, without the client IP), so this counts
+          # Traefik access-log lines on the public router whose response is
+          # one of Aurral's fixed-size auth errors:
+          #   180 / 259  error 40, wrong username or password (JSON / XML)
+          #   231 / 308  error 41, token auth failed (JSON / XML)
+          # Measured against Aurral 2.12.0; re-measure after upgrades (curl a
+          # bad login with f=json and without f, and compare the sizes).
+          #
+          # The client IP in these lines is a Cloudflare edge, not the real
+          # client. To find the source, use Cloudflare's dashboard
+          # (Security → Events / Analytics for music.emc2.build).
+          - alert: MusicAuthFailuresElevated
+            expr: |
+              sum(count_over_time({namespace="traefik-system", container="traefik"}
+                |= "aurral-public-music-emc2-build"
+                |~ `"(GET|POST) /rest/[^"]*" 200 (180|259|231|308) `
+                [10m])) > 20
+            for: 2m
+            labels:
+              severity: warning
+              service: music
+            annotations:
+              title: Elevated failed logins on music.emc2.build
+              description: >-
+                {{ $value }} failed Subsonic logins on music.emc2.build/rest in
+                the last 10 minutes. A client with a stale password, or someone
+                guessing passwords. Usernames tried, in Grafana Explore (Loki):
+                {namespace="traefik-system"} |= "aurral-public-music-emc2-build" |~ `" 200 (180|259|231|308) ` | regexp `[?&]u=(?P<user>[^&" ]+)`
+
+          - alert: MusicAuthFailuresHigh
+            expr: |
+              sum(count_over_time({namespace="traefik-system", container="traefik"}
+                |= "aurral-public-music-emc2-build"
+                |~ `"(GET|POST) /rest/[^"]*" 200 (180|259|231|308) `
+                [10m])) > 200
+            for: 1m
+            labels:
+              severity: critical
+              service: music
+            annotations:
+              title: Likely password-guessing attack on music.emc2.build
+              description: >-
+                {{ $value }} failed Subsonic logins on music.emc2.build/rest in
+                the last 10 minutes. Aurral has no lockout on /rest. Check
+                Cloudflare Security → Events for the source, and consider a
+                Cloudflare rule blocking it, or temporarily deleting the
+                aurral-public Ingress (kubectl -n media delete ingress
+                aurral-public) to take the public API offline.
+
+          # The per-client Traefik limit (music-ratelimit, 20 req/s burst 100)
+          # returned 429s: something is hammering /rest faster than any
+          # player does.
+          - alert: MusicRateLimited
+            expr: |
+              sum(count_over_time({namespace="traefik-system", container="traefik"}
+                |= "aurral-public-music-emc2-build"
+                |~ `" 429 `
+                [10m])) > 50
+            for: 2m
+            labels:
+              severity: warning
+              service: music
+            annotations:
+              title: Clients rate-limited on music.emc2.build
+              description: >-
+                {{ $value }} requests to music.emc2.build were rejected by the
+                Traefik rate limit in the last 10 minutes. Either a player is
+                misbehaving or something is flooding /rest.
