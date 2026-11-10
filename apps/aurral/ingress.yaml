@@ -1,5 +1,6 @@
-# LAN only. Aurral holds the Lidarr, Navidrome and slskd credentials and can
-# trigger downloads, so it is never published.
+# LAN: the full app. Aurral holds the Lidarr, Navidrome and slskd credentials
+# and can trigger downloads, so the web UI is never published; only the
+# Subsonic API is public, via public.yaml.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

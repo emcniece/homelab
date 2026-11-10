@@ -1,4 +1,5 @@
-# LAN: the full app (web UI, admin) on navidrome.lab.emc2.build.
+# LAN only: the full app (web UI, admin) on navidrome.lab.emc2.build.
+# music.emc2.build now points at Aurral (apps/aurral/public.yaml).
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -22,46 +23,6 @@ spec:
     http:
       paths:
       - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: navidrome
-            port:
-              name: http
----
-# Public: Subsonic API (/rest, all Symfonium needs) and share links (/share)
-# only, through Cloudflare. The web UI and admin stay LAN-only. Anything else
-# on this host 404s at Traefik.
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: navidrome-public
-  namespace: media
-  labels:
-    app: navidrome
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
-    traefik.ingress.kubernetes.io/router.middlewares: media-navidrome-cloudflare-only@kubernetescrd,media-navidrome-ratelimit@kubernetescrd
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-spec:
-  ingressClassName: traefik
-  tls:
-  - hosts:
-    - music.emc2.build
-    secretName: navidrome-public-letsencrypt-tls
-  rules:
-  - host: music.emc2.build
-    http:
-      paths:
-      - path: /rest
-        pathType: Prefix
-        backend:
-          service:
-            name: navidrome
-            port:
-              name: http
-      - path: /share
         pathType: Prefix
         backend:
           service:

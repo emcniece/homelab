@@ -47,7 +47,21 @@ spec:
         - {name: DOWNLOAD_FOLDER, value: /downloads/aurral}
         - {name: FILE_BROWSE_ROOTS, value: /downloads}
         - {name: AURRAL_PUBLIC_URL, value: "https://aurral.lab.emc2.build"}
-        # TRUST_PROXY left at Aurral's default (1 hop = Traefik).
+        # Express "trust proxy" as a subnet list: Traefik (pod CIDR) and
+        # Cloudflare's edge (public.yaml). req.ip then walks X-Forwarded-For
+        # back to the real client, so Aurral's per-IP rate limit applies per
+        # listener instead of per Cloudflare edge. A client can't spoof it:
+        # walking stops at the first untrusted address. Keep the Cloudflare
+        # ranges in sync with public.yaml.
+        - name: TRUST_PROXY
+          value: >-
+            10.42.0.0/16,
+            173.245.48.0/20, 103.21.244.0/22, 103.22.200.0/22, 103.31.4.0/22,
+            141.101.64.0/18, 108.162.192.0/18, 190.93.240.0/20, 188.114.96.0/20,
+            197.234.240.0/22, 198.41.128.0/17, 162.158.0.0/15, 104.16.0.0/13,
+            104.24.0.0/14, 172.64.0.0/13, 131.0.72.0/22,
+            2400:cb00::/32, 2606:4700::/32, 2803:f800::/32, 2405:b500::/32,
+            2405:8100::/32, 2a06:98c0::/29, 2c0f:f248::/32
         # AUTH_PROXY_* deliberately unset: local accounts only.
         ports:
         - {name: http, containerPort: 3001}
