@@ -1,0 +1,76 @@
+# Ollama on k3s-07's passed-through Radeon 8060S (Strix Halo, gfx1151),
+# using the Vulkan (Mesa RADV) backend. See README.md for why not ROCm.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  namespace: ollama
+  labels:
+    app: ollama
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate   # one GPU, one RWO local volume
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      nodeSelector:
+        gpu: "true"
+      tolerations:
+      - {key: gpu, operator: Equal, value: "true", effect: PreferNoSchedule}
+      containers:
+      - name: ollama
+        image: ghcr.io/emcniece/ollama-vulkan:0.40.12
+        imagePullPolicy: IfNotPresent
+        # Runs as root (image default): Ollama's Vulkan backend needs root or
+        # extra capabilities to read the real free-memory budget.
+        env:
+        - {name: OLLAMA_HOST, value: "0.0.0.0:11434"}
+        - {name: OLLAMA_MODELS, value: /models}
+        - {name: OLLAMA_VULKAN, value: "1"}
+        # 0.40.x drops integrated GPUs by default ("dropping integrated GPU").
+        - {name: OLLAMA_IGPU_ENABLE, value: "1"}
+        - {name: GGML_VK_VISIBLE_DEVICES, value: "0"}
+        # Quantised KV cache (needs flash attention): halves KV memory so long
+        # contexts fit alongside large models.
+        - {name: OLLAMA_FLASH_ATTENTION, value: "1"}
+        - {name: OLLAMA_KV_CACHE_TYPE, value: q8_0}
+        - {name: OLLAMA_CONTEXT_LENGTH, value: "32768"}
+        # Token generation is memory-bandwidth bound (~210 GB/s); parallel
+        # slots just split the context. One resident model keeps memory
+        # predictable and avoids the gfx1151 idle-clock pinning (ollama#17958).
+        - {name: OLLAMA_NUM_PARALLEL, value: "1"}
+        - {name: OLLAMA_MAX_LOADED_MODELS, value: "1"}
+        - {name: OLLAMA_KEEP_ALIVE, value: 30m}
+        ports:
+        - {name: http, containerPort: 11434}
+        resources:
+          requests:
+            cpu: "4"
+            # GTT (GPU memory carved from guest RAM, up to 96 GiB) is likely
+            # not charged to this cgroup, so the scheduler can't see it. This
+            # request reserves room for it on the node.
+            memory: 88Gi
+            amd.com/gpu: 1
+          limits:
+            memory: 104Gi
+            amd.com/gpu: 1
+        volumeMounts:
+        - {name: models, mountPath: /models}
+        readinessProbe:
+          httpGet: {path: /api/version, port: http}
+          periodSeconds: 10
+        livenessProbe:
+          httpGet: {path: /api/version, port: http}
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+      volumes:
+      - name: models
+        persistentVolumeClaim:
+          claimName: ollama-models

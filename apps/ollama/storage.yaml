@@ -1,0 +1,39 @@
+# Model store: a dedicated 400G virtual disk on pve4's local-lvm (NVMe),
+# attached to VM 117 as scsi1, ext4 LABEL=ollama-models, mounted by the guest's
+# /etc/fstab at /var/lib/ollama. Static local PV so the pod is pinned to the
+# node that has the disk (k3s-07). Kept off the root disk so large models
+# can't push the node into DiskPressure.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: ollama-models-k3s-07
+  labels:
+    app: ollama
+spec:
+  capacity:
+    storage: 390Gi
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  local:
+    path: /var/lib/ollama/models
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - {key: kubernetes.io/hostname, operator: In, values: [k3s-07]}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-models
+  namespace: ollama
+  labels:
+    app: ollama
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: ""
+  volumeName: ollama-models-k3s-07
+  resources:
+    requests:
+      storage: 390Gi

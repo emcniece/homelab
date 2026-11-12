@@ -1,0 +1,41 @@
+# LAN only. Ollama has no authentication, so it gets no public emc2.build
+# hostname and is additionally restricted to 192.168.0.0/16 by lan-only.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: lan-only
+  namespace: ollama
+spec:
+  ipAllowList:
+    sourceRange:
+    - 192.168.0.0/16
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ollama
+  namespace: ollama
+  labels:
+    app: ollama
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: default-http-to-https-redirect@kubernetescrd,ollama-lan-only@kubernetescrd
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - ollama.lab.emc2.build
+    secretName: ollama-lab-letsencrypt-tls
+  rules:
+  - host: ollama.lab.emc2.build
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ollama
+            port:
+              name: http
