@@ -5,4 +5,5 @@ secrets.yml
 **/sms-webhook-secret.yaml
 apps/outline/01-secret.yaml
 apps/pocket-id/01-secret.yaml
+apps/open-webui/01-secret.yaml
 .DS_Store

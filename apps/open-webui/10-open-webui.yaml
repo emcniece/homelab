@@ -1,0 +1,119 @@
+# Open WebUI: browser chat front end for apps/ollama (GPU Ollama on k3s-07).
+# Talks to Ollama over the in-cluster Service, so Ollama itself stays LAN-only
+# and unauthenticated. State (users, chats, uploads, RAG index) is on Ceph RBD,
+# so this pod can run on any node and doesn't need k3s-07.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: open-webui-data
+  namespace: open-webui
+  labels:
+    app: open-webui
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: csi-rbd-sc
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open-webui
+  namespace: open-webui
+  labels:
+    app: open-webui
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate   # RWO volume + SQLite
+  selector:
+    matchLabels:
+      app: open-webui
+  template:
+    metadata:
+      labels:
+        app: open-webui
+    spec:
+      containers:
+      - name: open-webui
+        image: ghcr.io/open-webui/open-webui:v0.13.3
+        imagePullPolicy: IfNotPresent
+        env:
+        - {name: OLLAMA_BASE_URL, value: "http://ollama.ollama.svc.cluster.local:11434"}
+        - {name: WEBUI_URL, value: "https://chat.lab.emc2.build"}
+        - name: WEBUI_SECRET_KEY
+          valueFrom:
+            secretKeyRef: {name: open-webui-secret, key: WEBUI_SECRET_KEY}
+        # The first account to sign up becomes admin. Later sign-ups land as
+        # "pending" until the admin approves them (Admin Panel > Users).
+        - {name: ENABLE_SIGNUP, value: "true"}
+        - {name: DEFAULT_USER_ROLE, value: pending}
+        # Ollama only; no OpenAI-compatible upstreams configured.
+        - {name: ENABLE_OPENAI_API, value: "false"}
+        # --- Web search + page fetching ---------------------------------
+        # These seed Open WebUI's settings. Once saved in Admin Panel >
+        # Settings > Web Search, the database value wins over these.
+        - {name: ENABLE_WEB_SEARCH, value: "true"}
+        - {name: WEB_SEARCH_ENGINE, value: searxng}
+        - {name: SEARXNG_QUERY_URL, value: "http://searxng.searxng.svc.cluster.local:8080/search?q=<query>"}
+        - {name: WEB_SEARCH_RESULT_COUNT, value: "5"}
+        # User agent for Open WebUI's own page fetches: `#URL` in chat,
+        # pages behind search results, and the built-in fetch_url tool.
+        # The default is python-requests, which many sites block.
+        - name: USER_AGENT
+          value: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
+        - {name: WEB_LOADER_TIMEOUT, value: "15"}
+        # Tool server for fetches with custom headers/cookies (20-fetch-tools.yaml).
+        - name: TOOL_SERVER_CONNECTIONS
+          value: >-
+            [{"type": "openapi", "url": "http://fetch-tools.open-webui.svc.cluster.local:8000",
+              "spec_type": "url", "spec": "", "path": "openapi.json",
+              "auth_type": "none", "key": "",
+              "config": {"enable": true},
+              "info": {"id": "web-fetch", "name": "Web fetch",
+                       "description": "Fetch web pages with custom headers and cookies"}}]
+        # No telemetry.
+        - {name: SCARF_NO_ANALYTICS, value: "true"}
+        - {name: DO_NOT_TRACK, value: "true"}
+        - {name: ANONYMIZED_TELEMETRY, value: "false"}
+        ports:
+        - {name: http, containerPort: 8080}
+        resources:
+          requests:
+            cpu: 250m
+            memory: 1Gi
+          limits:
+            memory: 4Gi   # local RAG embedding model runs in-process
+        volumeMounts:
+        - {name: data, mountPath: /app/backend/data}
+        # First start downloads the RAG embedding model and runs DB migrations
+        # (~3.5 min on first deploy). Allow up to 10 min before liveness kicks in.
+        startupProbe:
+          httpGet: {path: /health, port: http}
+          periodSeconds: 10
+          failureThreshold: 60
+        readinessProbe:
+          httpGet: {path: /health, port: http}
+          periodSeconds: 10
+        livenessProbe:
+          httpGet: {path: /health, port: http}
+          periodSeconds: 30
+          timeoutSeconds: 5
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: open-webui-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: open-webui
+  namespace: open-webui
+  labels:
+    app: open-webui
+spec:
+  selector:
+    app: open-webui
+  ports:
+  - {name: http, port: 8080, targetPort: http, protocol: TCP}

@@ -1,0 +1,78 @@
+# fetch-tools: lets Open WebUI's models fetch web pages directly with
+# per-request headers and cookies.
+#
+#   mcp-fetch-server (zcaceres/fetch-mcp, npm) - MCP server, stdio only.
+#     Tools: fetch_html, fetch_markdown, fetch_txt, fetch_json, fetch_readable,
+#     fetch_youtube_transcript. Every tool takes `headers` (object, so cookies
+#     go in a "Cookie" header and a "User-Agent" overrides the default),
+#     `proxy`, `max_length` and `start_index`.
+#     Default UA: Chrome 120 on Windows. Refuses private/localhost targets
+#     (including DNS that resolves to them), so it can't reach LAN services.
+#   mcpo (open-webui/mcpo) - wraps the stdio server as an OpenAPI tool
+#     server. Registered in Open WebUI via TOOL_SERVER_CONNECTIONS
+#     (10-open-webui.yaml).
+#
+# ClusterIP only: no ingress.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fetch-tools
+  namespace: open-webui
+  labels:
+    app: fetch-tools
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fetch-tools
+  template:
+    metadata:
+      labels:
+        app: fetch-tools
+    spec:
+      containers:
+      - name: mcpo
+        image: ghcr.io/open-webui/mcpo:git-788ff92   # = mcpo v0.0.20
+        imagePullPolicy: IfNotPresent
+        args:
+        - --host=0.0.0.0
+        - --port=8000
+        - --name=Web fetch
+        - --description=Fetch web pages (HTML, Markdown, text, JSON, readable article, YouTube transcript) with optional custom headers and cookies.
+        - --
+        - npx
+        - -y
+        - mcp-fetch-server@1.1.2
+        env:
+        - {name: DEFAULT_LIMIT, value: "20000"}           # chars returned per call (default 5000)
+        - {name: MAX_RESPONSE_BYTES, value: "10485760"}   # 10 MB download cap
+        - {name: npm_config_update_notifier, value: "false"}
+        ports:
+        - {name: http, containerPort: 8000}
+        resources:
+          requests: {cpu: 50m, memory: 192Mi}
+          limits: {memory: 768Mi}
+        # npx downloads the server on first start.
+        startupProbe:
+          httpGet: {path: /openapi.json, port: http}
+          periodSeconds: 5
+          failureThreshold: 36
+        readinessProbe:
+          httpGet: {path: /openapi.json, port: http}
+          periodSeconds: 15
+        livenessProbe:
+          httpGet: {path: /openapi.json, port: http}
+          periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fetch-tools
+  namespace: open-webui
+  labels:
+    app: fetch-tools
+spec:
+  selector:
+    app: fetch-tools
+  ports:
+  - {name: http, port: 8000, targetPort: http, protocol: TCP}
