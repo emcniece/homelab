@@ -81,6 +81,7 @@ code_interpreter 312; Web fetch server (6 tools) 1677.
 | **Sandbox** | Open Terminal (`apps/open-terminal/`): shell, files, builds | `TERMINAL_SERVER_CONNECTIONS` (id `sandbox`) |
 | **Context7** | Remote MCP, current library docs (`resolve-library-id`, `query-docs`) | `TOOL_SERVER_CONNECTIONS` (type `mcp`, id `context7`, tool id `server:mcp:context7`) |
 | **Coder** | Workspace model: `qwen3:30b-a3b` + Sandbox + Context7 + Web fetch, short coding system prompt | `model` table, id `coder` |
+| **Coder (gpt-oss)** | Same tools and prompt on `gpt-oss:120b`: stronger, about half the speed | `model` table, id `coder-oss` |
 
 Keys (`OPEN_TERMINAL_API_KEY`, `CONTEXT7_API_KEY`) are in the gitignored
 `01-secret.yaml` and substituted into the connection JSON with `$(VAR)`.
@@ -99,8 +100,14 @@ Measured with Context7's schemas, 6 trials each (2026-11-11):
 | qwen3-coder:30b | hyphenated (as Context7 ships them) | 1/6 |
 | qwen3-coder:30b | underscores | 4/6 |
 | qwen3:30b-a3b | hyphenated | 6/6 |
+| gpt-oss:120b | hyphenated | 6/6 |
 
-qwen3:30b-a3b uses the JSON tool-call format, which doesn't hit this. Use
+Speed on the 8060S (Vulkan, 32k context, 100% GPU): gpt-oss:120b (64 GB
+resident) reads prompts at ~630 tok/s and generates ~34 tok/s; the 30B
+models ~1000 and ~55-73. Only one model stays loaded, so switching between
+them costs a reload.
+
+qwen3:30b-a3b (JSON tool calls) and gpt-oss:120b (harmony format) don't hit this. Use
 plain `qwen3-coder:30b` for code writing without tools.
 
 ## Possible follow-up: sign in with Pocket ID
