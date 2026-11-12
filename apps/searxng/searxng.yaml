@@ -1,0 +1,106 @@
+# SearXNG: self-hosted metasearch backend for Open WebUI's web search
+# (apps/open-webui). In-cluster only, no ingress:
+#   http://searxng.searxng.svc.cluster.local:8080/search?q=<query>&format=json
+#
+# SearXNG only *searches*. Result pages are fetched by Open WebUI's web
+# loader (USER_AGENT in apps/open-webui/10-open-webui.yaml) or by the
+# fetch-tools server (apps/open-webui/20-fetch-tools.yaml).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: searxng
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: searxng-settings
+  namespace: searxng
+  labels:
+    app: searxng
+data:
+  settings.yml: |
+    use_default_settings: true
+    general:
+      instance_name: "emc2 homelab search"
+      enable_metrics: false
+    server:
+      # secret_key comes from the SEARXNG_SECRET env var (Secret below).
+      limiter: false        # only Open WebUI calls this; no public exposure
+      image_proxy: false
+      public_instance: false
+    search:
+      safe_search: 0
+      formats:
+        - html
+        - json              # required by Open WebUI
+    outgoing:
+      # SearXNG sends realistic browser user agents to search engines itself
+      # and only lets you append a suffix. Leave empty to blend in.
+      useragent_suffix: ""
+      request_timeout: 4.0
+      max_request_timeout: 10.0
+      pool_connections: 100
+      enable_http2: true
+      # proxies:
+      #   all://:
+      #     - http://proxy:8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: searxng
+  namespace: searxng
+  labels:
+    app: searxng
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: searxng
+  template:
+    metadata:
+      labels:
+        app: searxng
+      annotations:
+        # bump to roll pods after editing settings.yml
+        settings-revision: "1"
+    spec:
+      containers:
+      - name: searxng
+        image: searxng/searxng:2026.10.27-b5ed73fcb
+        imagePullPolicy: IfNotPresent
+        env:
+        - {name: SEARXNG_BASE_URL, value: "http://searxng.searxng.svc.cluster.local:8080/"}
+        - name: SEARXNG_SECRET
+          valueFrom:
+            secretKeyRef: {name: searxng-secret, key: SEARXNG_SECRET}
+        ports:
+        - {name: http, containerPort: 8080}
+        resources:
+          requests: {cpu: 100m, memory: 256Mi}
+          limits: {memory: 1Gi}
+        volumeMounts:
+        - {name: settings, mountPath: /etc/searxng/settings.yml, subPath: settings.yml, readOnly: true}
+        readinessProbe:
+          httpGet: {path: /healthz, port: http}
+          periodSeconds: 10
+        livenessProbe:
+          httpGet: {path: /healthz, port: http}
+          initialDelaySeconds: 20
+          periodSeconds: 30
+      volumes:
+      - name: settings
+        configMap: {name: searxng-settings}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: searxng
+  namespace: searxng
+  labels:
+    app: searxng
+spec:
+  selector:
+    app: searxng
+  ports:
+  - {name: http, port: 8080, targetPort: http, protocol: TCP}
