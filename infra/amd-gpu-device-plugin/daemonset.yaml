@@ -1,0 +1,49 @@
+# AMD GPU device plugin — advertises `amd.com/gpu` on nodes labelled gpu=true.
+# Based on upstream ROCm/k8s-device-plugin k8s-ds-amdgpu-dp.yaml.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: amdgpu-device-plugin-daemonset
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      name: amdgpu-dp-ds
+  template:
+    metadata:
+      labels:
+        name: amdgpu-dp-ds
+    spec:
+      restartPolicy: Always
+      nodeSelector:
+        kubernetes.io/arch: amd64
+        gpu: "true"
+      priorityClassName: system-node-critical
+      tolerations:
+        - key: CriticalAddonsOnly
+          operator: Exists
+      containers:
+        - image: rocm/k8s-device-plugin:1.31.0.11
+          name: amdgpu-dp-cntr
+          securityContext:
+            privileged: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          volumeMounts:
+            - name: dp
+              mountPath: /var/lib/kubelet/device-plugins
+            - name: sys
+              mountPath: /sys
+      volumes:
+        - name: dp
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
+        - name: sys
+          hostPath:
+            path: /sys
