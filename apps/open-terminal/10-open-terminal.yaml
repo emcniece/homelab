@@ -1,0 +1,113 @@
+# Open Terminal: a sandboxed Linux machine that Open WebUI's models drive
+# through a REST API (run commands, edit files, git, Node/Python builds,
+# headless Chromium). https://github.com/open-webui/open-terminal
+#
+# It runs arbitrary commands by design. The boundary is this pod:
+# - own namespace and ServiceAccount, no Kubernetes API token mounted
+# - NetworkPolicy (20-networkpolicy.yaml): only Open WebUI can reach it, and
+#   it can reach the internet but not the LAN or other cluster services
+# - API key required (Secret open-terminal-secret)
+# - not privileged; `user` has passwordless sudo inside the container only,
+#   so the model can apt-get install. CAP_NET_ADMIN isn't granted, so the
+#   image's own iptables egress filter is unused; the NetworkPolicy does it.
+#
+# /home/user is persistent (Ceph RBD); the rest of the filesystem resets on
+# restart, including anything installed with apt.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: open-terminal
+  namespace: open-terminal
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: open-terminal-home
+  namespace: open-terminal
+  labels:
+    app: open-terminal
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: csi-rbd-sc
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: open-terminal
+  namespace: open-terminal
+  labels:
+    app: open-terminal
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate   # RWO home volume
+  selector:
+    matchLabels:
+      app: open-terminal
+  template:
+    metadata:
+      labels:
+        app: open-terminal
+    spec:
+      serviceAccountName: open-terminal
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        fsGroup: 1000          # `user` in the image
+        fsGroupChangePolicy: OnRootMismatch
+      containers:
+      - name: open-terminal
+        # Full image: Python, Node 22, build tools, git/gh, Chromium, pandoc,
+        # LibreOffice (~4 GB). `-slim` has only git/curl/jq.
+        image: ghcr.io/open-webui/open-terminal:0.17.7
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: OPEN_TERMINAL_API_KEY
+          valueFrom:
+            secretKeyRef: {name: open-terminal-secret, key: OPEN_TERMINAL_API_KEY}
+        # No VNC desktop; the headless browser stays available.
+        - {name: OPEN_TERMINAL_ENABLE_DESKTOP, value: "false"}
+        - {name: OPEN_TERMINAL_START_DIR, value: "~/work"}
+        ports:
+        - {name: http, containerPort: 8000}
+        resources:
+          requests:
+            cpu: 250m
+            memory: 512Mi
+          limits:
+            cpu: "4"
+            memory: 6Gi
+        volumeMounts:
+        - {name: home, mountPath: /home/user}
+        startupProbe:
+          httpGet: {path: /health, port: http}
+          periodSeconds: 5
+          failureThreshold: 60
+        readinessProbe:
+          httpGet: {path: /health, port: http}
+          periodSeconds: 10
+        livenessProbe:
+          httpGet: {path: /health, port: http}
+          periodSeconds: 30
+          timeoutSeconds: 5
+      volumes:
+      - name: home
+        persistentVolumeClaim:
+          claimName: open-terminal-home
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: open-terminal
+  namespace: open-terminal
+  labels:
+    app: open-terminal
+spec:
+  selector:
+    app: open-terminal
+  ports:
+  - {name: http, port: 8000, targetPort: http, protocol: TCP}

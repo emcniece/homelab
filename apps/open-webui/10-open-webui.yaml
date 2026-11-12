@@ -57,14 +57,23 @@ spec:
         - {name: ENABLE_WEB_SEARCH, value: "true"}
         - {name: WEB_SEARCH_ENGINE, value: searxng}
         - {name: SEARXNG_QUERY_URL, value: "http://searxng.searxng.svc.cluster.local:8080/search?q=<query>"}
-        - {name: WEB_SEARCH_RESULT_COUNT, value: "5"}
+        - {name: WEB_SEARCH_RESULT_COUNT, value: "5"}   # snippets only; cheap
         # User agent for Open WebUI's own page fetches: `#URL` in chat,
         # pages behind search results, and the built-in fetch_url tool.
         # The default is python-requests, which many sites block.
         - name: USER_AGENT
           value: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
         - {name: WEB_LOADER_TIMEOUT, value: "15"}
-        # Tool server for fetches with custom headers/cookies (20-fetch-tools.yaml).
+        # Keys for the connections below, substituted with $(VAR).
+        - name: OPEN_TERMINAL_API_KEY
+          valueFrom:
+            secretKeyRef: {name: open-webui-secret, key: OPEN_TERMINAL_API_KEY}
+        - name: CONTEXT7_API_KEY
+          valueFrom:
+            secretKeyRef: {name: open-webui-secret, key: CONTEXT7_API_KEY}
+        # Tool servers:
+        #   web-fetch: fetches with custom headers/cookies (20-fetch-tools.yaml)
+        #   context7: current library/framework docs (remote MCP, 2 tools)
         - name: TOOL_SERVER_CONNECTIONS
           value: >-
             [{"type": "openapi", "url": "http://fetch-tools.open-webui.svc.cluster.local:8000",
@@ -72,7 +81,54 @@ spec:
               "auth_type": "none", "key": "",
               "config": {"enable": true},
               "info": {"id": "web-fetch", "name": "Web fetch",
-                       "description": "Fetch web pages with custom headers and cookies"}}]
+                       "description": "Fetch web pages with custom headers and cookies"}},
+             {"type": "mcp", "url": "https://mcp.context7.com/mcp",
+              "path": "", "auth_type": "bearer", "key": "$(CONTEXT7_API_KEY)",
+              "config": {"enable": true},
+              "info": {"id": "context7", "name": "Context7",
+                       "description": "Up-to-date library and framework documentation"}}]
+        # Sandbox shell/files for the model (apps/open-terminal/). Shows up as
+        # the terminal picker, file browser and terminal panel in chat.
+        - name: TERMINAL_SERVER_CONNECTIONS
+          value: >-
+            [{"id": "sandbox", "name": "Sandbox", "enabled": true,
+              "url": "http://open-terminal.open-terminal.svc.cluster.local:8000",
+              "path": "/openapi.json", "auth_type": "bearer",
+              "key": "$(OPEN_TERMINAL_API_KEY)", "config": {}}]
+        # Defaults for every model: Web fetch tool pre-selected and Web Search
+        # on in new chats, so the model's tool calls have something to run.
+        # (Native function calling is already the default in 0.13.)
+        # Live value is the `models.default_metadata` row in webui.db.
+        #
+        # builtinTools: every built-in tool's schema is sent with every prompt,
+        # and the GPU reads prompts at ~1000 tok/s. All 18 categories cost
+        # ~12k tokens (~14s before the first token of a new chat). Only the
+        # ones in use are kept: ~3.3k tokens with Web fetch (~2.6s). Re-enable a
+        # category (e.g. knowledge, memory, notes) when you start using it.
+        - name: DEFAULT_MODEL_METADATA
+          value: >-
+            {"toolIds": ["server:web-fetch"], "defaultFeatureIds": ["web_search"],
+             "capabilities": {"web_search": true, "builtin_tools": true},
+             "builtinTools": {"time": true, "user_input": true, "files": true,
+               "web_search": true, "code_interpreter": true,
+               "knowledge": false, "memory": false, "calendar": false, "skills": false,
+               "automations": false, "notes": false, "channels": false, "subagents": false,
+               "image_generation": false, "chats": false, "tasks": false, "tools": false,
+               "notifications": false}}
+        # Background task requests. Ollama has one slot and one resident model,
+        # so each extra request queues behind the chat and overwrites the cached
+        # prompt; the next turn then re-reads the whole conversation. Titles
+        # stay (first message only); tags and follow-ups go. Query generation
+        # only matters for legacy (non-native) function calling.
+        - {name: ENABLE_TAGS_GENERATION, value: "false"}
+        - {name: ENABLE_FOLLOW_UP_GENERATION, value: "false"}
+        - {name: ENABLE_SEARCH_QUERY_GENERATION, value: "false"}
+        - {name: ENABLE_RETRIEVAL_QUERY_GENERATION, value: "false"}
+        # Cap fetch_url output (~6k tokens) so one page can't flood the 32k
+        # context. Skip CPU embedding of search results, so pages go to the
+        # model directly.
+        - {name: WEB_FETCH_MAX_CONTENT_LENGTH, value: "24000"}
+        - {name: BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL, value: "true"}
         # No telemetry.
         - {name: SCARF_NO_ANALYTICS, value: "true"}
         - {name: DO_NOT_TRACK, value: "true"}
