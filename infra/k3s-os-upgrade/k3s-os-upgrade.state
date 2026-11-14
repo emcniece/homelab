@@ -1,0 +1,143 @@
+2026-11-11 21:09:44	k3s-01	precheck	running	
+2026-11-11 21:09:48	k3s-01	precheck	done	
+2026-11-11 21:09:48	k3s-01	drain	running	
+2026-11-11 21:09:51	k3s-01	drain	done	
+2026-11-11 21:09:51	k3s-01	snapshot	running	
+2026-11-11 21:10:07	k3s-01	snapshot	done	
+2026-11-11 21:10:07	k3s-01	apt-upgrade	running	
+2026-11-11 21:11:56	k3s-01	apt-upgrade	done	
+2026-11-11 21:11:56	k3s-01	release-upgrade	running	
+2026-11-11 21:31:28	k3s-01	release-upgrade	done	
+2026-11-11 21:31:28	k3s-01	kernel	running	
+2026-11-11 21:35:30	k3s-01	kernel	done	
+2026-11-11 21:35:30	k3s-01	verify	running	
+2026-11-11 21:35:34	k3s-01	verify	done	
+2026-11-11 21:35:34	k3s-01	uncordon	running	
+2026-11-11 21:36:26	k3s-01	uncordon	done	
+2026-11-11 21:36:26	k3s-01	done	done	
+2026-11-11 22:12:00	k3s-02	precheck	running	
+2026-11-11 22:12:04	k3s-02	precheck	done	
+2026-11-11 22:12:04	k3s-02	drain	running	
+2026-11-11 22:12:36	k3s-02	drain	done	
+2026-11-11 22:12:36	k3s-02	snapshot	running	
+2026-11-11 22:13:13	k3s-02	snapshot	done	
+2026-11-11 22:13:13	k3s-02	apt-upgrade	running	
+2026-11-11 22:16:47	k3s-02	apt-upgrade	done	
+2026-11-11 22:16:47	k3s-02	release-upgrade	running	
+2026-11-11 22:47:25	k3s-02	release-upgrade	done	
+2026-11-11 22:47:25	k3s-02	kernel	running	
+2026-11-11 22:51:48	k3s-02	kernel	done	
+2026-11-11 22:51:48	k3s-02	verify	running	
+2026-11-11 22:51:54	k3s-02	verify	done	
+2026-11-11 22:51:55	k3s-02	uncordon	running	
+2026-11-11 22:52:57	k3s-02	uncordon	done	
+2026-11-11 22:52:57	k3s-02	done	done	
+2026-11-12 09:33:56	k3s-03	precheck	running	
+2026-11-12 09:34:03	k3s-03	precheck	done	
+2026-11-12 09:34:03	k3s-03	drain	running	
+2026-11-12 09:34:06	k3s-03	drain	done	
+2026-11-12 09:34:06	k3s-03	snapshot	running	
+2026-11-12 09:34:42	k3s-03	snapshot	done	
+2026-11-12 09:34:42	k3s-03	apt-upgrade	running	
+2026-11-12 09:38:28	k3s-03	apt-upgrade	done	
+2026-11-12 09:38:28	k3s-03	release-upgrade	running	
+2026-11-12 10:03:29	k3s-03	release-upgrade	done	
+2026-11-12 10:03:29	k3s-03	kernel	running	
+2026-11-12 10:07:53	k3s-03	kernel	done	
+2026-11-12 10:07:53	k3s-03	verify	running	
+2026-11-12 10:07:59	k3s-03	verify	done	
+2026-11-12 10:07:59	k3s-03	uncordon	running	
+2026-11-12 10:08:40	k3s-03	uncordon	done	
+2026-11-12 10:08:40	k3s-03	done	done	
+2026-11-12 10:14:40	k3s-04	precheck	running	
+2026-11-12 10:14:44	k3s-04	precheck	done	
+2026-11-12 10:14:44	k3s-04	drain	running	
+2026-11-12 10:14:44	k3s-04	drain	failed	k3s-04: drain would be blocked by PodDisruptionBudgets:
+    belay/belay-pg-2 (belay-pg-primary)
+  For a CNPG primary, switch it to another instance first, e.g.:
+    kubectl cnpg promote <cluster> <replica-instance> -n <namespace>
+  then re-run this script.
+2026-11-12 10:44:25	k3s-04	drain	running	
+2026-11-12 10:44:25	k3s-04	drain	failed	k3s-04: drain would be blocked by PodDisruptionBudgets:
+    belay/belay-pg-2 (belay-pg-primary)
+  For a CNPG primary, switch it to another instance first, e.g.:
+    kubectl cnpg promote <cluster> <replica-instance> -n <namespace>
+  then re-run this script.
+2026-11-12 11:00:55	k3s-06	precheck	running	
+2026-11-12 11:00:58	k3s-06	precheck	done	
+2026-11-12 11:00:58	k3s-06	drain	running	
+2026-11-12 11:01:13	k3s-06	drain	done	
+2026-11-12 11:01:13	k3s-06	snapshot	running	
+2026-11-12 11:01:38	k3s-06	snapshot	done	
+2026-11-12 11:01:38	k3s-06	apt-upgrade	running	
+2026-11-12 11:27:25	k3s-06	apt-upgrade	done	
+2026-11-12 11:27:25	k3s-06	release-upgrade	running	
+2026-11-12 12:43:24	k3s-06	release-upgrade	done	
+2026-11-12 12:43:24	k3s-06	kernel	running	
+2026-11-12 12:50:22	k3s-06	kernel	done	
+2026-11-12 12:50:22	k3s-06	verify	running	
+2026-11-12 12:50:25	k3s-06	verify	done	
+2026-11-12 12:50:25	k3s-06	uncordon	running	
+2026-11-12 12:51:26	k3s-06	uncordon	done	
+2026-11-12 12:51:26	k3s-06	done	done	
+2026-11-13 03:28:36	k3s-05	precheck	running	
+2026-11-13 03:28:45	k3s-05	precheck	done	
+2026-11-13 03:28:45	k3s-05	drain	running	
+2026-11-13 03:28:46	k3s-05	drain	failed	k3s-05: drain would be blocked by PodDisruptionBudgets:
+    glyphdex/glyphdex-pg-1 (glyphdex-pg-primary)
+  For a CNPG primary, switch it to another instance first, e.g.:
+    kubectl cnpg promote <cluster> <replica-instance> -n <namespace>
+  then re-run this script.
+2026-11-13 03:33:23	k3s-04	drain	running	
+2026-11-13 03:33:24	k3s-04	drain	failed	k3s-04: drain would be blocked by PodDisruptionBudgets:
+    belay/belay-pg-2 (belay-pg-primary)
+  For a CNPG primary, switch it to another instance first, e.g.:
+    kubectl cnpg promote <cluster> <replica-instance> -n <namespace>
+  then re-run this script.
+2026-11-13 03:41:12	k3s-04	drain	running	
+2026-11-13 03:44:21	k3s-04	drain	done	
+2026-11-13 03:44:21	k3s-04	snapshot	running	
+2026-11-13 03:49:39	k3s-04	snapshot	failed	timed out after 300s waiting for: Proxmox snapshot pre-os-upgrade-20261113 to appear on VM 105
+2026-11-13 04:04:58	k3s-04	snapshot	running	
+2026-11-13 04:10:15	k3s-04	snapshot	failed	timed out after 300s waiting for: Proxmox snapshot pre-os-upgrade-20261113 to appear on VM 105
+2026-11-13 13:16:01	k3s-04	snapshot	running	
+2026-11-13 13:17:29	k3s-04	snapshot	done	
+2026-11-13 13:17:29	k3s-04	apt-upgrade	running	
+2026-11-13 13:22:34	k3s-04	apt-upgrade	done	
+2026-11-13 13:22:34	k3s-04	release-upgrade	running	
+2026-11-13 13:44:43	k3s-04	release-upgrade	done	
+2026-11-13 13:44:43	k3s-04	kernel	running	
+2026-11-13 13:49:18	k3s-04	kernel	done	
+2026-11-13 13:49:18	k3s-04	verify	running	
+2026-11-13 13:49:21	k3s-04	verify	done	
+2026-11-13 13:49:21	k3s-04	uncordon	running	
+2026-11-13 13:50:12	k3s-04	uncordon	done	
+2026-11-13 13:50:12	k3s-04	done	done	
+2026-11-13 21:51:29	k3s-05	drain	running	
+2026-11-13 21:51:29	k3s-05	drain	failed	k3s-05: drain would be blocked by PodDisruptionBudgets:
+    belay/belay-pg-1 (belay-pg-primary)
+    glyphdex/glyphdex-pg-1 (glyphdex-pg-primary)
+  Move the protected pod(s) off k3s-05 first, then re-run this script.
+    # CNPG cluster belay/belay-pg: pick a replica on another node, then make it primary
+    kubectl -n belay get pods -l cnpg.io/cluster=belay-pg -L cnpg.io/instanceRole -o wide
+    kubectl -n belay patch cluster belay-pg --type merge --subresource status -p '{"status":{"targetPrimary":"<replica-pod-name>"}}'
+    kubectl -n belay get cluster belay-pg -w   # wait for the new primary and "Cluster in healthy state"
+    # CNPG cluster glyphdex/glyphdex-pg: pick a replica on another node, then make it primary
+    kubectl -n glyphdex get pods -l cnpg.io/cluster=glyphdex-pg -L cnpg.io/instanceRole -o wide
+    kubectl -n glyphdex patch cluster glyphdex-pg --type merge --subresource status -p '{"status":{"targetPrimary":"<replica-pod-name>"}}'
+    kubectl -n glyphdex get cluster glyphdex-pg -w   # wait for the new primary and "Cluster in healthy state"
+2026-11-13 22:03:44	k3s-05	drain	running	
+2026-11-13 22:04:30	k3s-05	drain	done	
+2026-11-13 22:04:30	k3s-05	snapshot	running	
+2026-11-13 22:05:02	k3s-05	snapshot	done	
+2026-11-13 22:05:02	k3s-05	apt-upgrade	running	
+2026-11-13 22:09:37	k3s-05	apt-upgrade	done	
+2026-11-13 22:09:37	k3s-05	release-upgrade	running	
+2026-11-13 22:31:49	k3s-05	release-upgrade	done	
+2026-11-13 22:31:49	k3s-05	kernel	running	
+2026-11-13 22:35:25	k3s-05	kernel	done	
+2026-11-13 22:35:25	k3s-05	verify	running	
+2026-11-13 22:35:28	k3s-05	verify	done	
+2026-11-13 22:35:28	k3s-05	uncordon	running	
+2026-11-13 22:35:58	k3s-05	uncordon	done	
+2026-11-13 22:35:58	k3s-05	done	done	

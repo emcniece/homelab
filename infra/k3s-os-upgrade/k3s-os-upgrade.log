@@ -1,0 +1,255 @@
+2026-11-11 21:09:43 start: target Ubuntu 24.04, kernel >= 7.0; nodes: k3s-01
+2026-11-11 21:09:44 === k3s-01
+2026-11-11 21:09:48 k3s-01: draining (timeout 600s)
+node/k3s-01 already cordoned
+Warning: ignoring DaemonSet-managed Pods: kube-system/kube-vip-ds-p8jxl, metallb-system/speaker-4kvxk, monitoring/alloy-bwljm, monitoring/node-exporter-qkjq4
+node/k3s-01 drained
+2026-11-11 21:09:57 k3s-01: k3s etcd snapshot saved (pre-os-upgrade-k3s-01-20261111-210951, under /var/lib/rancher/k3s/server/db/snapshots)
+2026-11-11 21:10:02 k3s-01: taking Proxmox snapshot pre-os-upgrade-20261111 of VM 102 on pve1
+2026-11-11 21:10:07 k3s-01: Proxmox snapshot pre-os-upgrade-20261111 taken
+2026-11-11 21:10:08 k3s-01: starting job apt (log on node: /var/log/k3s-os-upgrade-apt.log)
+2026-11-11 21:11:56 k3s-01: job apt finished OK
+2026-11-11 21:11:58 k3s-01: upgrading from 22.04 to the next LTS release (this takes a while)
+2026-11-11 21:11:59 k3s-01: starting job release-from-22.04 (log on node: /var/log/k3s-os-upgrade-release-from-22.04.log)
+2026-11-11 21:30:20 k3s-01: job release-from-22.04 finished OK
+2026-11-11 21:30:21 k3s-01: rebooting
+2026-11-11 21:31:04 k3s-01: back up (kernel 6.8.0-149-generic)
+2026-11-11 21:31:28 k3s-01: now on 24.04
+2026-11-11 21:31:28 k3s-01: release is 24.04
+2026-11-11 21:31:31 k3s-01: kernel 6.8.0-149-generic is older than 7.0; installing linux-generic-hwe-24.04
+2026-11-11 21:31:32 k3s-01: starting job kernel (log on node: /var/log/k3s-os-upgrade-kernel.log)
+2026-11-11 21:34:23 k3s-01: job kernel finished OK
+2026-11-11 21:34:24 k3s-01: rebooting
+2026-11-11 21:35:08 k3s-01: back up (kernel 7.0.0-43-generic)
+2026-11-11 21:35:30 k3s-01: running kernel 7.0.0-43-generic
+2026-11-11 21:35:34 k3s-01: verified: Ubuntu 24.04, kernel 7.0.0-43-generic, k3s.service active, node Ready
+2026-11-11 21:36:26 k3s-01: uncordoned, all pods on it Ready
+2026-11-11 21:36:26 k3s-01: DONE
+2026-11-11 21:36:26 all nodes done: k3s-01
+2026-11-11 21:36:26 Remember to delete the Proxmox snapshots (pre-os-upgrade-*) once you're satisfied.
+2026-11-11 22:11:32 start: target Ubuntu 24.04, kernel >= 7.0; nodes: k3s-02
+2026-11-11 22:12:00 === k3s-02
+2026-11-11 22:12:04 k3s-02: draining (timeout 600s)
+node/k3s-02 already cordoned
+Warning: ignoring DaemonSet-managed Pods: kube-system/kube-vip-ds-fd27c, metallb-system/speaker-6pqhv, monitoring/alloy-hch5p, monitoring/node-exporter-p459b
+node/k3s-02 drained
+2026-11-11 22:12:52 k3s-02: k3s etcd snapshot saved (pre-os-upgrade-k3s-02-20261111-221236, under /var/lib/rancher/k3s/server/db/snapshots)
+2026-11-11 22:13:00 k3s-02: taking Proxmox snapshot pre-os-upgrade-20261111 of VM 103 on pve2
+2026-11-11 22:13:13 k3s-02: Proxmox snapshot pre-os-upgrade-20261111 taken
+2026-11-11 22:13:13 k3s-02: starting job apt (log on node: /var/log/k3s-os-upgrade-apt.log)
+2026-11-11 22:16:47 k3s-02: job apt finished OK
+2026-11-11 22:16:49 k3s-02: upgrading from 22.04 to the next LTS release (this takes a while)
+2026-11-11 22:16:49 k3s-02: starting job release-from-22.04 (log on node: /var/log/k3s-os-upgrade-release-from-22.04.log)
+2026-11-11 22:46:02 k3s-02: job release-from-22.04 finished OK
+2026-11-11 22:46:03 k3s-02: rebooting
+2026-11-11 22:46:46 k3s-02: back up (kernel 6.8.0-149-generic)
+2026-11-11 22:47:25 k3s-02: now on 24.04
+2026-11-11 22:47:25 k3s-02: release is 24.04
+2026-11-11 22:47:31 k3s-02: kernel 6.8.0-149-generic is older than 7.0; installing linux-generic-hwe-24.04
+2026-11-11 22:47:32 k3s-02: starting job kernel (log on node: /var/log/k3s-os-upgrade-kernel.log)
+2026-11-11 22:50:28 k3s-02: job kernel finished OK
+2026-11-11 22:50:29 k3s-02: rebooting
+2026-11-11 22:51:13 k3s-02: back up (kernel 7.0.0-43-generic)
+2026-11-11 22:51:48 k3s-02: running kernel 7.0.0-43-generic
+2026-11-11 22:51:54 k3s-02: verified: Ubuntu 24.04, kernel 7.0.0-43-generic, k3s.service active, node Ready
+2026-11-11 22:52:57 k3s-02: uncordoned, all pods on it Ready
+2026-11-11 22:52:57 k3s-02: DONE
+2026-11-11 22:52:57 all nodes done: k3s-02
+2026-11-11 22:52:57 Remember to delete the Proxmox snapshots (pre-os-upgrade-*) once you're satisfied.
+2026-11-12 09:33:40 start: target Ubuntu 24.04, kernel >= 7.0; nodes: k3s-03
+2026-11-12 09:33:56 === k3s-03
+2026-11-12 09:34:03 k3s-03: draining (timeout 600s)
+node/k3s-03 already cordoned
+Warning: ignoring DaemonSet-managed Pods: kube-system/kube-vip-ds-52frd, metallb-system/speaker-p4mc7, monitoring/alloy-swtd8, monitoring/node-exporter-mmsb6
+node/k3s-03 drained
+2026-11-12 09:34:17 k3s-03: k3s etcd snapshot saved (pre-os-upgrade-k3s-03-20261112-093406, under /var/lib/rancher/k3s/server/db/snapshots)
+2026-11-12 09:34:26 k3s-03: taking Proxmox snapshot pre-os-upgrade-20261112 of VM 104 on pve3
+2026-11-12 09:34:42 k3s-03: Proxmox snapshot pre-os-upgrade-20261112 taken
+2026-11-12 09:34:44 k3s-03: starting job apt (log on node: /var/log/k3s-os-upgrade-apt.log)
+2026-11-12 09:38:27 k3s-03: job apt finished OK
+2026-11-12 09:38:43 k3s-03: upgrading from 22.04 to the next LTS release (this takes a while)
+2026-11-12 09:38:58 k3s-03: starting job release-from-22.04 (log on node: /var/log/k3s-os-upgrade-release-from-22.04.log)
+2026-11-12 10:02:04 k3s-03: job release-from-22.04 finished OK
+2026-11-12 10:02:05 k3s-03: rebooting
+2026-11-12 10:02:53 k3s-03: back up (kernel 6.8.0-149-generic)
+2026-11-12 10:03:28 k3s-03: now on 24.04
+2026-11-12 10:03:29 k3s-03: release is 24.04
+2026-11-12 10:03:35 k3s-03: kernel 6.8.0-149-generic is older than 7.0; installing linux-generic-hwe-24.04
+2026-11-12 10:03:36 k3s-03: starting job kernel (log on node: /var/log/k3s-os-upgrade-kernel.log)
+2026-11-12 10:06:32 k3s-03: job kernel finished OK
+2026-11-12 10:06:33 k3s-03: rebooting
+2026-11-12 10:07:18 k3s-03: back up (kernel 7.0.0-43-generic)
+2026-11-12 10:07:53 k3s-03: running kernel 7.0.0-43-generic
+2026-11-12 10:07:59 k3s-03: verified: Ubuntu 24.04, kernel 7.0.0-43-generic, k3s.service active, node Ready
+2026-11-12 10:08:40 k3s-03: uncordoned, all pods on it Ready
+2026-11-12 10:08:40 k3s-03: DONE
+2026-11-12 10:08:40 all nodes done: k3s-03
+2026-11-12 10:08:40 Remember to delete the Proxmox snapshots (pre-os-upgrade-*) once you're satisfied.
+2026-11-12 10:14:27 start: target Ubuntu 24.04, kernel >= 7.0; nodes: k3s-04
+2026-11-12 10:14:40 === k3s-04
+2026-11-12 10:14:44 ERROR: k3s-04: drain would be blocked by PodDisruptionBudgets:
+    belay/belay-pg-2 (belay-pg-primary)
+  For a CNPG primary, switch it to another instance first, e.g.:
+    kubectl cnpg promote <cluster> <replica-instance> -n <namespace>
+  then re-run this script.
+2026-11-12 10:14:44 Stopped. Fix the problem and re-run the same command to resume (state: ./k3s-os-upgrade.state).
+2026-11-12 10:32:54 start: target Ubuntu 24.04, kernel >= 7.0; nodes: k3s-04
+2026-11-12 10:44:25 === k3s-04
+2026-11-12 10:44:25 k3s-04: resuming phase drain (was: failed)
+2026-11-12 10:44:25 ERROR: k3s-04: drain would be blocked by PodDisruptionBudgets:
+    belay/belay-pg-2 (belay-pg-primary)
+  For a CNPG primary, switch it to another instance first, e.g.:
+    kubectl cnpg promote <cluster> <replica-instance> -n <namespace>
+  then re-run this script.
+2026-11-12 10:44:25 Stopped. Fix the problem and re-run the same command to resume (state: ./k3s-os-upgrade.state).
+2026-11-12 10:44:38 start: target Ubuntu 24.04, kernel >= 7.0; nodes: k3s-05
+2026-11-12 10:45:00 interrupted
+2026-11-12 11:00:43 start: target Ubuntu 24.04, kernel >= 7.0; nodes: k3s-06
+2026-11-12 11:00:55 === k3s-06
+2026-11-12 11:00:58 k3s-06: draining (timeout 600s)
+node/k3s-06 already cordoned
+Warning: ignoring DaemonSet-managed Pods: ceph-csi-cephfs/ceph-csi-cephfs-nodeplugin-kx9tx, ceph-csi-rbd/ceph-csi-rbd-nodeplugin-bkplz, csi-proxmox/proxmox-csi-plugin-node-qd6lc, metallb-system/speaker-tjg7j, monitoring/alloy-wdrrd, monitoring/node-exporter-c6gf5
+I1112 11:00:59.747311    8913 request.go:752] "Waited before sending request" delay="1.000820667s" reason="client-side throttling, not priority and fairness" verb="POST" URL="https://192.168.10.30:6443/api/v1/namespaces/searxng/pods/searxng-74444b6d9d-5xzvq/eviction"
+I1112 11:01:09.814642    8913 request.go:752] "Waited before sending request" delay="2.384200875s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://192.168.10.30:6443/api/v1/namespaces/open-webui/pods/open-webui-768fb6555-b8mgc"
+node/k3s-06 drained
+2026-11-12 11:01:22 k3s-06: taking Proxmox snapshot pre-os-upgrade-20261112 of VM 109 on pve3
+2026-11-12 11:01:38 k3s-06: Proxmox snapshot pre-os-upgrade-20261112 taken
+2026-11-12 11:01:39 k3s-06: starting job apt (log on node: /var/log/k3s-os-upgrade-apt.log)
+2026-11-12 11:27:24 k3s-06: job apt finished OK
+2026-11-12 11:27:26 k3s-06: upgrading from 22.04 to the next LTS release (this takes a while)
+2026-11-12 11:27:27 k3s-06: starting job release-from-22.04 (log on node: /var/log/k3s-os-upgrade-release-from-22.04.log)
+2026-11-12 12:41:09 k3s-06: job release-from-22.04 finished OK
+2026-11-12 12:41:10 k3s-06: rebooting
+2026-11-12 12:42:49 k3s-06: back up (kernel 6.8.0-149-generic)
+2026-11-12 12:43:23 k3s-06: now on 24.04
+2026-11-12 12:43:24 k3s-06: release is 24.04
+2026-11-12 12:43:37 k3s-06: kernel 6.8.0-149-generic is older than 7.0; installing linux-generic-hwe-24.04
+2026-11-12 12:43:38 k3s-06: starting job kernel (log on node: /var/log/k3s-os-upgrade-kernel.log)
+2026-11-12 12:48:42 k3s-06: job kernel finished OK
+2026-11-12 12:48:43 k3s-06: rebooting
+2026-11-12 12:49:59 k3s-06: back up (kernel 7.0.0-43-generic)
+2026-11-12 12:50:22 k3s-06: running kernel 7.0.0-43-generic
+2026-11-12 12:50:25 k3s-06: verified: Ubuntu 24.04, kernel 7.0.0-43-generic, k3s-node.service active, node Ready
+2026-11-12 12:51:26 k3s-06: uncordoned, all pods on it Ready
+2026-11-12 12:51:26 k3s-06: DONE
+2026-11-12 12:51:26 all nodes done: k3s-06
+2026-11-12 12:51:26 Remember to delete the Proxmox snapshots (pre-os-upgrade-*) once you're satisfied.
+2026-11-13 03:27:18 start: target Ubuntu 24.04, kernel >= 7.0; nodes: k3s-05
+2026-11-13 03:28:36 === k3s-05
+2026-11-13 03:28:46 ERROR: k3s-05: drain would be blocked by PodDisruptionBudgets:
+    glyphdex/glyphdex-pg-1 (glyphdex-pg-primary)
+  For a CNPG primary, switch it to another instance first, e.g.:
+    kubectl cnpg promote <cluster> <replica-instance> -n <namespace>
+  then re-run this script.
+2026-11-13 03:28:46 Stopped. Fix the problem and re-run the same command to resume (state: ./k3s-os-upgrade.state).
+2026-11-13 03:33:05 start: target Ubuntu 24.04, kernel >= 7.0; nodes: k3s-04
+2026-11-13 03:33:15 k3s-04: skipped by user; stopping
+2026-11-13 03:33:17 start: target Ubuntu 24.04, kernel >= 7.0; nodes: k3s-04
+2026-11-13 03:33:23 === k3s-04
+2026-11-13 03:33:23 k3s-04: resuming phase drain (was: failed)
+2026-11-13 03:33:24 ERROR: k3s-04: drain would be blocked by PodDisruptionBudgets:
+    belay/belay-pg-2 (belay-pg-primary)
+  For a CNPG primary, switch it to another instance first, e.g.:
+    kubectl cnpg promote <cluster> <replica-instance> -n <namespace>
+  then re-run this script.
+2026-11-13 03:33:24 Stopped. Fix the problem and re-run the same command to resume (state: ./k3s-os-upgrade.state).
+2026-11-13 03:41:02 start: target Ubuntu 24.04, kernel >= 7.0; nodes: k3s-04
+2026-11-13 03:41:12 === k3s-04
+2026-11-13 03:41:12 k3s-04: resuming phase drain (was: failed)
+2026-11-13 03:41:13 k3s-04: draining (timeout 600s)
+node/k3s-04 already cordoned
+Warning: ignoring DaemonSet-managed Pods: ceph-csi-cephfs/ceph-csi-cephfs-nodeplugin-hcjl6, ceph-csi-rbd/ceph-csi-rbd-nodeplugin-mthkh, csi-proxmox/proxmox-csi-plugin-node-46n8p, metallb-system/speaker-g8qxt, monitoring/alloy-5zzgz, monitoring/node-exporter-wgng6
+I1113 03:41:15.130850   68583 request.go:752] "Waited before sending request" delay="1.000838042s" reason="client-side throttling, not priority and fairness" verb="POST" URL="https://192.168.10.30:6443/api/v1/namespaces/pocket-id/pods/pocket-id-7975889f89-slkw9/eviction"
+I1113 03:41:25.190490   68583 request.go:752] "Waited before sending request" delay="5.433177833s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://192.168.10.30:6443/api/v1/namespaces/glyphdex/pods/glyphdex-pg-2"
+I1113 03:41:35.191393   68583 request.go:752] "Waited before sending request" delay="10.27297675s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://192.168.10.30:6443/api/v1/namespaces/planka/pods/planka-67b7d7db88-swf8d"
+I1113 03:41:45.391399   68583 request.go:752] "Waited before sending request" delay="7.844011167s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://192.168.10.30:6443/api/v1/namespaces/trailwave-prod/pods/trailwave-postgres-0"
+I1113 03:41:55.591047   68583 request.go:752] "Waited before sending request" delay="4.370286875s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://192.168.10.30:6443/api/v1/namespaces/outline/pods/outline-7869ccb7b7-p9dqc"
+node/k3s-04 drained
+2026-11-13 03:44:26 k3s-04: taking Proxmox snapshot pre-os-upgrade-20261113 of VM 105 on pve1
+2026-11-13 03:49:39 ERROR: timed out after 300s waiting for: Proxmox snapshot pre-os-upgrade-20261113 to appear on VM 105
+2026-11-13 03:49:39 Stopped. Fix the problem and re-run the same command to resume (state: ./k3s-os-upgrade.state).
+2026-11-13 04:04:58 start: target Ubuntu 24.04, kernel >= 7.0; nodes: k3s-04
+2026-11-13 04:04:58 === k3s-04
+2026-11-13 04:04:58 k3s-04: resuming phase snapshot (was: failed)
+2026-11-13 04:05:02 k3s-04: taking Proxmox snapshot pre-os-upgrade-20261113 of VM 105 on pve1
+2026-11-13 04:10:15 ERROR: timed out after 300s waiting for: Proxmox snapshot pre-os-upgrade-20261113 to appear on VM 105
+2026-11-13 04:10:15 Stopped. Fix the problem and re-run the same command to resume (state: ./k3s-os-upgrade.state).
+2026-11-13 13:16:01 start: target Ubuntu 24.04, kernel >= 7.0; nodes: k3s-04
+2026-11-13 13:16:01 === k3s-04
+2026-11-13 13:16:01 k3s-04: resuming phase snapshot (was: failed)
+2026-11-13 13:16:10 k3s-04: VM 105's storage doesn't support snapshots; backing it up to 'pbs' instead
+2026-11-13 13:17:29 k3s-04: backup of VM 105 to pbs done (restore with qmrestore / the PBS UI if needed)
+2026-11-13 13:17:31 k3s-04: starting job apt (log on node: /var/log/k3s-os-upgrade-apt.log)
+2026-11-13 13:20:21 k3s-04: job apt finished OK
+2026-11-13 13:20:22 k3s-04: rebooting
+2026-11-13 13:21:50 k3s-04: back up (kernel 5.15.0-203-generic)
+2026-11-13 13:22:36 k3s-04: upgrading from 22.04 to the next LTS release (this takes a while)
+2026-11-13 13:22:37 k3s-04: starting job release-from-22.04 (log on node: /var/log/k3s-os-upgrade-release-from-22.04.log)
+2026-11-13 13:43:27 k3s-04: job release-from-22.04 finished OK
+2026-11-13 13:43:27 k3s-04: rebooting
+2026-11-13 13:44:19 k3s-04: back up (kernel 6.8.0-149-generic)
+2026-11-13 13:44:43 k3s-04: now on 24.04
+2026-11-13 13:44:43 k3s-04: release is 24.04
+2026-11-13 13:45:00 k3s-04: kernel 6.8.0-149-generic is older than 7.0; installing linux-generic-hwe-24.04
+2026-11-13 13:45:00 k3s-04: starting job kernel (log on node: /var/log/k3s-os-upgrade-kernel.log)
+2026-11-13 13:48:15 k3s-04: job kernel finished OK
+2026-11-13 13:48:16 k3s-04: rebooting
+2026-11-13 13:49:03 k3s-04: back up (kernel 7.0.0-43-generic)
+2026-11-13 13:49:18 k3s-04: running kernel 7.0.0-43-generic
+2026-11-13 13:49:21 k3s-04: verified: Ubuntu 24.04, kernel 7.0.0-43-generic, k3s-node.service active, node Ready
+2026-11-13 13:50:12 k3s-04: uncordoned, all pods on it Ready
+2026-11-13 13:50:12 k3s-04: DONE
+2026-11-13 13:50:12 all nodes done: k3s-04
+2026-11-13 13:50:12 Remember to delete the Proxmox snapshots (pre-os-upgrade-*) once you're satisfied.
+2026-11-13 21:51:16 start: target Ubuntu 24.04, kernel >= 7.0; nodes: k3s-05
+2026-11-13 21:51:29 === k3s-05
+2026-11-13 21:51:29 k3s-05: resuming phase drain (was: failed)
+2026-11-13 21:51:29 ERROR: k3s-05: drain would be blocked by PodDisruptionBudgets:
+    belay/belay-pg-1 (belay-pg-primary)
+    glyphdex/glyphdex-pg-1 (glyphdex-pg-primary)
+  Move the protected pod(s) off k3s-05 first, then re-run this script.
+    # CNPG cluster belay/belay-pg: pick a replica on another node, then make it primary
+    kubectl -n belay get pods -l cnpg.io/cluster=belay-pg -L cnpg.io/instanceRole -o wide
+    kubectl -n belay patch cluster belay-pg --type merge --subresource status -p '{"status":{"targetPrimary":"<replica-pod-name>"}}'
+    kubectl -n belay get cluster belay-pg -w   # wait for the new primary and "Cluster in healthy state"
+    # CNPG cluster glyphdex/glyphdex-pg: pick a replica on another node, then make it primary
+    kubectl -n glyphdex get pods -l cnpg.io/cluster=glyphdex-pg -L cnpg.io/instanceRole -o wide
+    kubectl -n glyphdex patch cluster glyphdex-pg --type merge --subresource status -p '{"status":{"targetPrimary":"<replica-pod-name>"}}'
+    kubectl -n glyphdex get cluster glyphdex-pg -w   # wait for the new primary and "Cluster in healthy state"
+2026-11-13 21:51:29 Stopped. Fix the problem and re-run the same command to resume (state: ./k3s-os-upgrade.state).
+2026-11-13 21:58:43 start: target Ubuntu 24.04, kernel >= 7.0; nodes: k3s-05
+2026-11-13 22:03:44 === k3s-05
+2026-11-13 22:03:44 k3s-05: resuming phase drain (was: failed)
+2026-11-13 22:03:45 k3s-05: draining (timeout 600s)
+node/k3s-05 already cordoned
+Warning: ignoring DaemonSet-managed Pods: ceph-csi-cephfs/ceph-csi-cephfs-nodeplugin-6mc9c, ceph-csi-rbd/ceph-csi-rbd-nodeplugin-sc8gb, csi-proxmox/proxmox-csi-plugin-node-lvvjk, metallb-system/speaker-wrwfz, monitoring/alloy-9qh4l, monitoring/node-exporter-hlktg
+I1113 22:03:47.252100   87551 request.go:752] "Waited before sending request" delay="1.199313166s" reason="client-side throttling, not priority and fairness" verb="POST" URL="https://192.168.10.30:6443/api/v1/namespaces/monitoring/pods/loki-fbb546dc9-z5grs/eviction"
+I1113 22:03:57.313555   87551 request.go:752] "Waited before sending request" delay="5.499957125s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://192.168.10.30:6443/api/v1/namespaces/moneymaker/pods/sms-webhook-tunnel-6896c8bd85-dzq6h"
+I1113 22:04:07.513698   87551 request.go:752] "Waited before sending request" delay="9.376567s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://192.168.10.30:6443/api/v1/namespaces/media/pods/prowlarr-56f6bf7bf9-qpczn"
+I1113 22:04:17.513915   87551 request.go:752] "Waited before sending request" delay="8.388834417s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://192.168.10.30:6443/api/v1/namespaces/media/pods/tdarr-node-d86bd5495-jj4v8"
+I1113 22:04:27.713485   87551 request.go:752] "Waited before sending request" delay="1.645870375s" reason="client-side throttling, not priority and fairness" verb="GET" URL="https://192.168.10.30:6443/api/v1/namespaces/echoandflow/pods/mysql-0"
+node/k3s-05 drained
+2026-11-13 22:04:44 k3s-05: taking Proxmox snapshot pre-os-upgrade-20261113 of VM 106 on pve2
+2026-11-13 22:05:02 k3s-05: Proxmox snapshot pre-os-upgrade-20261113 taken
+2026-11-13 22:05:04 k3s-05: starting job apt (log on node: /var/log/k3s-os-upgrade-apt.log)
+2026-11-13 22:08:19 k3s-05: job apt finished OK
+2026-11-13 22:08:20 k3s-05: rebooting
+2026-11-13 22:09:13 k3s-05: back up (kernel 5.15.0-203-generic)
+2026-11-13 22:09:38 k3s-05: upgrading from 22.04 to the next LTS release (this takes a while)
+2026-11-13 22:09:39 k3s-05: starting job release-from-22.04 (log on node: /var/log/k3s-os-upgrade-release-from-22.04.log)
+2026-11-13 22:30:52 k3s-05: job release-from-22.04 finished OK
+2026-11-13 22:30:52 k3s-05: rebooting
+2026-11-13 22:31:37 k3s-05: back up (kernel 6.8.0-149-generic)
+2026-11-13 22:31:49 k3s-05: now on 24.04
+2026-11-13 22:31:49 k3s-05: release is 24.04
+2026-11-13 22:31:55 k3s-05: kernel 6.8.0-149-generic is older than 7.0; installing linux-generic-hwe-24.04
+2026-11-13 22:31:55 k3s-05: starting job kernel (log on node: /var/log/k3s-os-upgrade-kernel.log)
+2026-11-13 22:34:28 k3s-05: job kernel finished OK
+2026-11-13 22:34:28 k3s-05: rebooting
+2026-11-13 22:35:13 k3s-05: back up (kernel 7.0.0-43-generic)
+2026-11-13 22:35:25 k3s-05: running kernel 7.0.0-43-generic
+2026-11-13 22:35:28 k3s-05: verified: Ubuntu 24.04, kernel 7.0.0-43-generic, k3s-node.service active, node Ready
+2026-11-13 22:35:58 k3s-05: uncordoned, all pods on it Ready
+2026-11-13 22:35:58 k3s-05: DONE
+2026-11-13 22:35:58 all nodes done: k3s-05
+2026-11-13 22:35:58 Remember to delete the Proxmox snapshots (pre-os-upgrade-*) once you're satisfied.
