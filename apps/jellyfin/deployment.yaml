@@ -13,8 +13,10 @@ spec:
   selector:
     matchLabels:
       app: jellyfin
+  # Recreate, not RollingUpdate: /config holds Jellyfin's SQLite databases on a
+  # shared CephFS volume, and two pods must never have them open at once.
   strategy:
-    type: RollingUpdate
+    type: Recreate
   template:
     metadata:
       annotations:
@@ -47,6 +49,9 @@ spec:
           limits:
             cpu: "4"
             memory: 2Gi
+            # Shared slot on k3s-07's Radeon 8060S render node (/dev/dri/renderD128)
+            # for VAAPI transcoding; see infra/generic-device-plugin.
+            devic.es/dri-render: 1
         volumeMounts:
         - mountPath: /config
           name: jellyfin-config
@@ -57,7 +62,14 @@ spec:
       #hostNetwork: true
       hostname: jellyfin
       restartPolicy: Always
+      # The GPU node (k3s-07). The render node is only advertised there.
+      nodeSelector:
+        gpu: "true"
       tolerations:
+      - key: gpu
+        operator: Equal
+        value: "true"
+        effect: PreferNoSchedule
       - key: "maintenance"
         operator: "Exists"
         effect: "NoExecute"
