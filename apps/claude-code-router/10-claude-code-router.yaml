@@ -1,0 +1,100 @@
+# Claude Code Router (CCR): an Anthropic/OpenAI-compatible gateway that
+# Claude Code points ANTHROPIC_BASE_URL at. It routes the main session to
+# one provider and sub-agents to others (e.g. the GPU Ollama) by injecting
+# a <CCR-SUBAGENT-MODEL> tag. https://github.com/musistudio/claude-code-router
+#
+# One container: Nginx :8080 in front of the management UI/RPC (:3459) and
+# the model gateway (:3456). Only 8080 is exposed. Providers, models,
+# routing and client keys are configured in the UI and stored in SQLite
+# under /data; nothing here holds provider credentials.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ccr-data
+  namespace: claude-code-router
+  labels:
+    app: claude-code-router
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: csi-rbd-sc
+  resources:
+    requests:
+      storage: 5Gi   # config + request logs (request-logs.sqlite grows)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: claude-code-router
+  namespace: claude-code-router
+  labels:
+    app: claude-code-router
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate   # RWO volume + SQLite; two instances must not share /data
+  selector:
+    matchLabels:
+      app: claude-code-router
+  template:
+    metadata:
+      labels:
+        app: claude-code-router
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      containers:
+      - name: ccr
+        image: musistudio/claude-code-router:3.1.3
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: CCR_WEB_AUTH_TOKEN
+          valueFrom:
+            secretKeyRef: {name: ccr-secret, key: CCR_WEB_AUTH_TOKEN}
+        # Address clients use; synced into CCR's routerEndpoint on start.
+        - {name: CCR_PUBLIC_BASE_URL, value: "https://ccr.lab.emc2.build"}
+        ports:
+        - {name: http, containerPort: 8080}
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            memory: 1Gi
+        volumeMounts:
+        - {name: data, mountPath: /data}
+        # Token-leak fix, see 05-entrypoint-fix.yaml.
+        - {name: entrypoint-fix, mountPath: /usr/local/bin/ccr-docker-entrypoint, subPath: ccr-docker-entrypoint}
+        # /health checks the model gateway, which returns 502 until a
+        # provider and model are configured, so probe the UI page instead.
+        startupProbe:
+          httpGet: {path: /pages/home/index.html, port: http}
+          periodSeconds: 5
+          failureThreshold: 60
+        readinessProbe:
+          httpGet: {path: /pages/home/index.html, port: http}
+          periodSeconds: 10
+        livenessProbe:
+          httpGet: {path: /pages/home/index.html, port: http}
+          periodSeconds: 30
+          timeoutSeconds: 5
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: ccr-data
+      - name: entrypoint-fix
+        configMap:
+          name: ccr-entrypoint-fix
+          defaultMode: 0755
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: claude-code-router
+  namespace: claude-code-router
+  labels:
+    app: claude-code-router
+spec:
+  selector:
+    app: claude-code-router
+  ports:
+  - {name: http, port: 8080, targetPort: http, protocol: TCP}

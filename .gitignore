@@ -7,4 +7,5 @@ apps/outline/01-secret.yaml
 apps/pocket-id/01-secret.yaml
 apps/open-webui/01-secret.yaml
 apps/open-terminal/01-secret.yaml
+apps/claude-code-router/01-secret.yaml
 .DS_Store

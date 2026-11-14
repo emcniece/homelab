@@ -1,0 +1,42 @@
+# LAN only (192.168.0.0/16), HTTPS on ccr.lab.emc2.build. Serves both the
+# management UI (needs CCR_WEB_AUTH_TOKEN) and the model gateway (needs a
+# CCR client key). Traefik doesn't buffer responses, so streaming works.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: lan-only
+  namespace: claude-code-router
+spec:
+  ipAllowList:
+    sourceRange:
+    - 192.168.0.0/16
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: claude-code-router
+  namespace: claude-code-router
+  labels:
+    app: claude-code-router
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: default-http-to-https-redirect@kubernetescrd,claude-code-router-lan-only@kubernetescrd
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - ccr.lab.emc2.build
+    secretName: ccr-lab-letsencrypt-tls
+  rules:
+  - host: ccr.lab.emc2.build
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: claude-code-router
+            port:
+              name: http
