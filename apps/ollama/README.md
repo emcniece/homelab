@@ -142,3 +142,30 @@ of it.
 Measured on the 8060S (32k context, `ollama ps` says 100% GPU): ~490 tok/s prompt and
 ~25 tok/s generation. Context7 tool calls were 6/6 (see
 `apps/open-webui/README.md`). Thinking defaults to `medium`.
+
+`ollama ps` says 100% GPU, but llama-server reports a 27 GiB **CPU** model
+buffer next to 57.5 GiB on Vulkan0. That buffer is one tensor,
+`per_layer_token_embd.weight` (26.8 GiB IQ4_NL). It's an n-gram hash
+embedding: 16 tables of 20M rows x 160 values. Each token reads a few rows
+from it, so llama.cpp keeps it in host RAM, like `token_embd`.
+
+During generation (2026-11-14) the GPU was 94-95% busy
+(`gpu_busy_percent`) and llama-server's CPU was idle, so the buffer costs
+nothing. ~25 tok/s is the GPU's limit with this architecture and quant:
+- 10 of 512 experts per token, mostly IQ3_XXS/IQ4_NL
+- hyper-connection and SSM layers
+- "fused top-k mask not supported" on Vulkan, so the fused routing op is
+  off
+Upgrading to 0.40.16 (newer llama.cpp) didn't help; the fused op is still
+unsupported. Same benchmark before and after (2026-11-14): 400-token
+generation and a fresh ~3k-token prompt, `think: false`, temperature 0.
+
+| Model | 0.40.12 gen / prompt | 0.40.16 gen / prompt |
+|---|---|---|
+| qwen3:30b-a3b | 69.4 / 1358 tok/s | 63.8-71.6 / 1385-1478 tok/s |
+| gpt-oss:120b | 34.2 / 695 | 31.0-33.9 / 662-723 |
+| qwen3.8-flash-next UD-Q3_K_XL | 25.9 / 501 | 23.7-23.8 / 468 |
+
+qwen3 and gpt-oss are within run-to-run noise. flash-next was ~8% slower in
+two runs. Context7 tool calls stayed 6/6 on all three. The script is a
+plain `/api/generate` loop (any client in the cluster can run it).

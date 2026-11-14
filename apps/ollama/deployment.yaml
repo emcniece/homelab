@@ -25,7 +25,7 @@ spec:
       - {key: gpu, operator: Equal, value: "true", effect: PreferNoSchedule}
       containers:
       - name: ollama
-        image: ghcr.io/emcniece/ollama-vulkan:0.40.12
+        image: ghcr.io/emcniece/ollama-vulkan:0.40.16
         imagePullPolicy: IfNotPresent
         # Runs as root (image default): Ollama's Vulkan backend needs root or
         # extra capabilities to read the real free-memory budget.

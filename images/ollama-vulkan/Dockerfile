@@ -7,8 +7,8 @@
 #
 # Build + push (amd64 only):
 #   docker buildx build --platform linux/amd64 \
-#     -t ghcr.io/emcniece/ollama-vulkan:0.40.12 --push images/ollama-vulkan
-ARG OLLAMA_VERSION=0.40.12
+#     -t ghcr.io/emcniece/ollama-vulkan:0.40.16 --push images/ollama-vulkan
+ARG OLLAMA_VERSION=0.40.16
 FROM ollama/ollama:${OLLAMA_VERSION}
 
 RUN apt-get update \

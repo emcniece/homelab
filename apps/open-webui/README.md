@@ -89,7 +89,7 @@ Context7 isn't in `models.default_metadata`, so other chats don't pay for its
 tool schemas.
 
 **Why Coder isn't qwen3-coder.** With prose before a tool call, qwen3-coder
-often leaves out the `<tool_call>` opener. Ollama 0.40.12's qwen3coder
+often leaves out the `<tool_call>` opener. Ollama's qwen3coder (0.40.12-0.40.16)
 parser (unchanged upstream as of 0.40.17-rc0) then returns the call as text,
 and the chat ends on `...</function></tool_call>`.
 
