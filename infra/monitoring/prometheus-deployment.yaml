@@ -50,10 +50,12 @@ spec:
           resources:
             requests:
               cpu: 100m
-              memory: 512Mi
+              memory: 1Gi
             limits:
               cpu: 1000m
-              memory: 2Gi
+              # 2Gi was OOMKilled replaying a ~900M WAL on startup (2026-11-12:
+              # 108 restarts, never became ready). Head + WAL replay needs headroom.
+              memory: 4Gi
           livenessProbe:
             httpGet:
               path: /-/healthy
