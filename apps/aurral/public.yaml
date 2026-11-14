@@ -1,6 +1,14 @@
 # Public: Aurral's Subsonic API (/rest) on music.emc2.build, through
-# Cloudflare, for Symfonium and Feishin away from home. Only /rest goes to
-# Aurral; its web UI and settings stay LAN-only (ingress.yaml). Every other
+# Cloudflare, for Symfonium and Feishin away from home. Only /rest and
+# /api/image-proxy go to Aurral; its web UI and settings stay LAN-only
+# (ingress.yaml).
+#
+# /api/image-proxy: getCoverArt answers many albums with a 302 to a
+# *relative* /api/image-proxy/<sha256>.webp URL, which browsers resolve
+# against this host. Without the route those land on Feishin and covers
+# break. The GET handler only serves Aurral's own image cache by 64-hex key
+# (no arbitrary URL fetch); the POST that adds images requires an Aurral
+# login. Every other
 # path on this host is Feishin web (apps/feishin/ingress.yaml), a static
 # player with no credentials of its own. Ingress pathType Prefix matches
 # whole path segments, so /rest doesn't also match e.g. /restore.
@@ -36,6 +44,13 @@ spec:
     http:
       paths:
       - path: /rest
+        pathType: Prefix
+        backend:
+          service:
+            name: aurral
+            port:
+              name: http
+      - path: /api/image-proxy
         pathType: Prefix
         backend:
           service:

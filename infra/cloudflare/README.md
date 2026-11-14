@@ -76,6 +76,9 @@ Create the token under My Profile → API Tokens → Create Custom Token, with:
 - Zone → Zone: Read (same zone, for the zone-ID lookup)
 - Zone → Cache Rules: Edit and Zone → Zone: Read (Zone Resources: each zone
   in `wordpress_cache_zones`: emc2.build, createsleeprepeat.ca, echoandflow.ca)
+- Zone → Cache Purge: Purge (emc2.build). Not used by Terraform; lets
+  `POST /zones/<id>/purge_cache` clear stale edge copies, e.g. after a
+  routing change on music.emc2.build.
 
 To rotate it: roll it in the dashboard and replace the value in
 `secrets.auto.tfvars`.

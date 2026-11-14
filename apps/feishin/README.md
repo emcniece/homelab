@@ -5,7 +5,8 @@ with an Aurral account; the server is fixed to Aurral (`SERVER_LOCK`), so the
 login page only asks for username and password.
 
 - Static nginx site, no state or credentials. The browser talks to Aurral's
-  Subsonic API directly at `music.emc2.build/rest` (same origin, no CORS).
+  Subsonic API directly at `music.emc2.build/rest` (same origin, no CORS);
+  cover art also comes from Aurral via `/api/image-proxy`.
 - Same Cloudflare-only allowlist and per-client rate limit as `/rest`
   (middlewares in `apps/aurral/public.yaml`), and the same certificate
   (`music-letsencrypt-tls`, issued for the `aurral-public` Ingress).

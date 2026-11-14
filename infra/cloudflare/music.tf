@@ -3,7 +3,8 @@
 # the home IP isn't published for this name. It's a CNAME to the apex like
 # the other public sites, so it follows the apex's origin record.
 #
-# Traefik routes /rest to Aurral and everything else to Feishin on this host, and only from
+# Traefik routes /rest and /api/image-proxy to Aurral and everything else to
+# Feishin on this host, and only from
 # Cloudflare's IP ranges: the hand-managed DNS-only `*.emc2.build` wildcard
 # still resolves any name to the home IP, so the origin is reachable directly.
 # This explicit record takes precedence over the wildcard for `music`.

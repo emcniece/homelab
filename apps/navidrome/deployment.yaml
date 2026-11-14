@@ -6,7 +6,10 @@ metadata:
   labels:
     app: navidrome
 spec:
-  replicas: 1
+  # Retired 2026-11-10: Aurral serves music now. Scaled to zero with the
+  # navidrome-data volume kept, so it can come back with replicas: 1 if
+  # needed. Delete apps/navidrome/ and the volume once nothing misses it.
+  replicas: 0
   # SQLite on an RWO volume: never run two pods at once.
   strategy:
     type: Recreate

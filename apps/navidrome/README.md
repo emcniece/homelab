@@ -1,8 +1,10 @@
 # Navidrome
 
-**Being retired (2026-11-10).** Aurral's built-in Subsonic server replaces
-it; `music.emc2.build` now points at Aurral (`apps/aurral/public.yaml`).
-Navidrome is LAN-only until it's scaled to zero and removed.
+**Retired (2026-11-10), scaled to zero.** Aurral's built-in Subsonic server
+replaces it; `music.emc2.build` points at Aurral (`apps/aurral/public.yaml`),
+and Aurral's Navidrome integration is switched off. The `navidrome-data`
+volume is kept: set `replicas: 1` to bring it back. Delete this directory and
+the volume once nothing misses it.
 
 Music server (Subsonic API) for the household. It reads, read-only:
 
