@@ -75,9 +75,53 @@ service:
   # distinguish one visitor from another. Safe here specifically because
   # there's only a single Traefik replica (no cross-node load-balancing to
   # lose by pinning traffic to whichever node it physically arrives on).
-  # Re-evaluate if Traefik is ever scaled to multiple replicas across nodes.
+  # Re-evaluated 2026-11-13 when scaling to 2 replicas: still fine. MetalLB is
+  # in layer-2 mode, so 192.168.10.91 is announced from one node with a ready
+  # local Traefik pod, and all traffic enters there. The second replica is a
+  # warm standby: if that node's pod goes away, MetalLB re-announces the IP
+  # from the other replica's node.
   # NOTE: this chart (traefik-37.1.2) only reads externalTrafficPolicy from
   # under service.spec, not as a top-level service.* key -- see
   # templates/_service.tpl's "traefik.service-spec" helper.
   spec:
     externalTrafficPolicy: Local
+
+# --- High availability (2026-11-13) ---------------------------------------
+# A single replica meant every k3s node drain (OS upgrades) took all ingress
+# down until a new pod was scheduled and its image pulled: 22 minutes on
+# 2026-11-13 when k3s-04 was drained. Traefik is stateless here (certs come
+# from cert-manager, volumes are emptyDir), so it can simply run more copies.
+deployment:
+  replicas: 2
+  # Let the endpoint (and MetalLB's announcement) move away before Traefik
+  # stops accepting connections.
+  lifecycle:
+    preStop:
+      exec:
+        command: ["/bin/sh", "-c", "sleep 10"]
+  terminationGracePeriodSeconds: 60
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1   # drains take one replica at a time
+
+# One replica per node. Worker nodes map 1:1 to pve1-4, so this also spreads
+# them across physical hosts.
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - topologyKey: kubernetes.io/hostname
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: traefik
+            app.kubernetes.io/instance: traefik-traefik-system
+
+# Scheduled ahead of ordinary pods when a drain floods a node with evictions.
+priorityClassName: system-cluster-critical
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 96Mi
+  limits:
+    memory: 512Mi

@@ -1,0 +1,13 @@
+# Keep cluster DNS up through node drains (k3s OS upgrades): with CoreDNS at
+# 3 replicas, a drain may only evict one at a time. k3s's bundled
+# coredns.yaml has no PDB, and it doesn't manage this object, so it lives here.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: coredns
+  namespace: kube-system
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      k8s-app: kube-dns
