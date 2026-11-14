@@ -101,10 +101,11 @@ Measured with Context7's schemas, 6 trials each (2026-11-11):
 | qwen3-coder:30b | underscores | 4/6 |
 | qwen3:30b-a3b | hyphenated | 6/6 |
 | gpt-oss:120b | hyphenated | 6/6 |
+| qwen3.8-flash-next (UD-Q3_K_XL) | hyphenated | 6/6 |
 
 Speed on the 8060S (Vulkan, 32k context, 100% GPU): gpt-oss:120b (64 GB
 resident) reads prompts at ~630 tok/s and generates ~34 tok/s; the 30B
-models ~1000 and ~55-73. Only one model stays loaded, so switching between
+models ~1000 and ~55-73; qwen3.8-flash-next ~490 and ~25. Only one model stays loaded, so switching between
 them costs a reload.
 
 qwen3:30b-a3b (JSON tool calls) and gpt-oss:120b (harmony format) don't hit this. Use

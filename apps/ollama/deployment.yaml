@@ -40,7 +40,11 @@ spec:
         # contexts fit alongside large models.
         - {name: OLLAMA_FLASH_ATTENTION, value: "1"}
         - {name: OLLAMA_KV_CACHE_TYPE, value: q8_0}
-        - {name: OLLAMA_CONTEXT_LENGTH, value: "32768"}
+        # 128k: research turns with several page fetches overflowed 32k
+        # (Ollama then drops the oldest messages, including the question).
+        # q8_0 KV at 128k: ~6 GiB for qwen3:30b-a3b, ~2 GiB for
+        # qwen3.8-flash-next (only 12 of its 48 layers keep a KV cache).
+        - {name: OLLAMA_CONTEXT_LENGTH, value: "131072"}
         # Token generation is memory-bandwidth bound (~210 GB/s); parallel
         # slots just split the context. One resident model keeps memory
         # predictable and avoids the gfx1151 idle-clock pinning (ollama#17958).

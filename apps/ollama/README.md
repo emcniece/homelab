@@ -70,8 +70,13 @@ cause DiskPressure.
 
 - `OLLAMA_FLASH_ATTENTION=1` + `OLLAMA_KV_CACHE_TYPE=q8_0`: the KV cache is
   about half size, so long contexts fit.
-- `OLLAMA_CONTEXT_LENGTH=32768`: the default. Raise per request or model if
-  needed.
+- `OLLAMA_CONTEXT_LENGTH=131072` (was 32768). One Open WebUI research turn
+  with ~10 searches and page fetches reached 32k tokens (2026-11-14). Ollama
+  then dropped messages from the front, including the user's question
+  (`no user query found in messages`), and the next turn had ~700 tokens
+  left for thinking plus the answer. The KV cost is small here (see the
+  comment in deployment.yaml), but reading a long prompt still runs at
+  500-1000 tok/s.
 - `OLLAMA_NUM_PARALLEL=1`, `OLLAMA_MAX_LOADED_MODELS=1`: generation is
   memory-bandwidth bound (~210 GB/s), so parallel slots only split context. One
   resident model keeps memory use predictable.
@@ -88,3 +93,52 @@ docker buildx build --platform linux/amd64 \
   -t ghcr.io/emcniece/ollama-vulkan:<ver> --push images/ollama-vulkan
 # update the tag in deployment.yaml and apply
 ```
+
+## Models that don't fit as published: qwen3.8-flash-next
+
+Installed models (2026-11-12): `qwen3:30b-a3b`, `qwen3-coder:30b`,
+`gpt-oss:120b`, `qwen3.8-flash-next:125b-a6b-ud-q3_k_xl`.
+
+Ollama's own `qwen3.8-flash-next` builds can't run here. `q4_K_M` is
+111.8 GiB, more than the 96 GiB GTT pool. `nvfp4` is safetensors for
+Ollama's MLX engine, not the Vulkan/llama.cpp runner, and needs 0.40.16+.
+
+Instead it's unsloth's `UD-Q3_K_XL` GGUF (83.3 GiB) from Hugging Face,
+imported by hand:
+
+1. **Download.** `ollama pull hf.co/...` refuses sharded GGUFs. A one-off
+   Job on k3s-07 mounts the `ollama-models` PVC (RWO works for a second pod
+   on the same node) and downloads the 4 shards plus `mmproj-F16.gguf` into
+   `/models/staging`. Use `ghcr.io/ggml-org/llama.cpp:full-b11960`.
+   - One curl connection to Hugging Face gets ~13 MB/s. Parallel byte
+     ranges (`curl -r`) get ~110 MB/s.
+   - HTTP/2 streams sometimes reset mid-file, so retry each range until its
+     size is exact.
+   - Check the shards with `sha256sum` against the LFS oids from
+     `https://huggingface.co/api/models/<repo>/tree/main/<dir>`.
+2. **Merge.** Run
+   `LD_LIBRARY_PATH=/app /app/llama-gguf-split --merge <first shard> merged.gguf`.
+   It was OOM-killed at 4 Gi and 18 Gi memory limits and completed at
+   64 Gi, with no model loaded.
+3. **Import.** In the ollama pod, write a Modelfile, run `ollama create`,
+   then delete `/models/staging`. The Modelfile copies the official build's
+   renderer, parser and sampling settings (from its registry config and
+   params blobs):
+
+       FROM /models/staging/qwen3.8-flash-next/merged.gguf
+       FROM /models/staging/qwen3.8-flash-next/mmproj-F16.gguf
+       RENDERER qwen3.8
+       PARSER qwen3.5
+       PARAMETER temperature 1
+       PARAMETER top_k 20
+       PARAMETER top_p 0.95
+       PARAMETER min_p 0
+       PARAMETER presence_penalty 0
+       PARAMETER repeat_penalty 1
+
+Peak disk use was ~250 GiB: the shards, the merged file, and Ollama's copy
+of it.
+
+Measured on the 8060S (32k context, `ollama ps` says 100% GPU): ~490 tok/s prompt and
+~25 tok/s generation. Context7 tool calls were 6/6 (see
+`apps/open-webui/README.md`). Thinking defaults to `medium`.
