@@ -96,6 +96,42 @@ the tag and routes that request. If Claude leaves the tag out, the
 sub-agent stays on the default model. Request logs show
 `builtin:claude-code-subagent` when routing happened.
 
+### Auto-mode classifier fix (`custom-router.js`)
+
+Claude Code's auto-mode safety classifier sends the session transcript to
+the main model. The transcript quotes `Agent` calls, tag included, and CCR
+looks for the tag anywhere in the system prompt or first two user messages,
+so it routed the classifier to Ollama. qwen3 answered in prose instead of
+`<severity>N</severity>`, and Claude Code retried every check with a
+~31k-token prompt, which made sessions slow.
+
+`custom-router.js` pins requests whose system prompt contains the
+classifier's opening line to `Claude Code API`, keeping the model the
+classifier requested (`claude-sonnet-5`, which must be in the provider's
+model list). Don't rewrite it to `claude-sonnet-5-5`: the classifier sends
+`thinking: {type: "disabled"}`, and claude-sonnet-5-5 returns 400 for it. Normal
+rules can't do this: CCR evaluates the custom router, then the sub-agent
+tag, then rules. Install:
+
+```sh
+kubectl -n claude-code-router exec -i deploy/claude-code-router -- \
+  sh -c 'cat > /data/.claude-code-router/custom-router.js' \
+  < apps/claude-code-router/custom-router.js
+# then set CUSTOM_ROUTER_PATH=/data/.claude-code-router/custom-router.js
+```
+
+CCR re-reads the file on each request. Request logs show
+`x-ccr-route-reason: custom-router` for classifier calls.
+
+The same script makes `/model` work. CCR's built-in Claude Code route sends
+every main-session request to the profile's default model and ignores the
+requested one. The profile's `opusModel`/`sonnetModel`/`haikuModel` fields
+only write a local `settings.json`, so they don't help a remote client. The
+router keeps the requested model when `Claude Code API` lists it. Requests
+whose first user message starts with `<CCR-SUBAGENT-MODEL>` are left to
+CCR's sub-agent route. Unlisted models also fall through to CCR, which
+uses the default.
+
 Caveats:
 - Anthropic doesn't support routing Claude Code to non-Claude models.
 - Remote Control is off while `ANTHROPIC_BASE_URL` isn't Anthropic's.
