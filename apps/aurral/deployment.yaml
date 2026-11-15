@@ -24,8 +24,10 @@ spec:
         runAsGroup: 1000
         runAsNonRoot: true
         fsGroup: 1000
-        # See apps/navidrome/README.md: Ceph CSI chowns recursively; the
-        # library is readOnly at the volume level, and OnRootMismatch.
+        # See apps/navidrome/README.md: Ceph CSI chowns recursively.
+        # OnRootMismatch skips that because the library root is already
+        # 1000:1000 (setgid 2775). The library volume is writable (only
+        # /downloads/completed needs it), so keep that root owned by 1000.
         fsGroupChangePolicy: OnRootMismatch
       initContainers:
       - name: discovery-dirs
@@ -42,7 +44,8 @@ spec:
         - {name: TZ, value: America/Vancouver}
         # Every app sees shared files at the same container paths
         # (Aurral requires it): Lidarr's library at /downloads/music,
-        # slskd's completed files at /downloads/slskd/complete, and the
+        # slskd's completed files at /downloads/slskd/complete, SABnzbd's
+        # completed downloads at /downloads/completed, and the
         # Downloads Folder at /downloads/aurral (also Navidrome's 2nd library).
         - {name: DOWNLOAD_FOLDER, value: /downloads/aurral}
         - {name: FILE_BROWSE_ROOTS, value: /downloads}
@@ -95,6 +98,14 @@ spec:
           mountPath: /downloads/music
           subPath: music
           readOnly: true
+        # SABnzbd's complete_dir. SABnzbd mounts media-library at /downloads,
+        # so this is the same container path in both pods (Aurral's storage
+        # check requires it). Writable: Aurral moves finished downloads from
+        # here to /downloads/aurral, and its transfer check creates and
+        # removes temp files in this folder.
+        - name: media-library
+          mountPath: /downloads/completed
+          subPath: completed
       tolerations:
       - key: "maintenance"
         operator: "Exists"
@@ -107,7 +118,9 @@ spec:
       - name: music-discovery
         persistentVolumeClaim:
           claimName: music-discovery
+      # Not readOnly here: a volume-level readOnly forces every mount of
+      # media-library read-only. Read-only is set per mount instead
+      # (/downloads/music ro, /downloads/completed rw).
       - name: media-library
         persistentVolumeClaim:
           claimName: media-library
-          readOnly: true
