@@ -31,7 +31,14 @@ locals {
     "wp_woocommerce_session_",
   ]
 
+  # Non-WordPress apps on a cached zone. Their session cookies aren't in the
+  # bypass list above, so keep the rule off them entirely.
+  wordpress_cache_bypass_hosts = [
+    "utensil.emc2.build",
+  ]
+
   wordpress_cache_expression = join(" and ", concat(
+    [for h in local.wordpress_cache_bypass_hosts : "http.host ne \"${h}\""],
     [for p in local.wordpress_cache_bypass_paths : "not starts_with(http.request.uri.path, \"${p}\")"],
     [for c in local.wordpress_cache_bypass_cookies : "not http.cookie contains \"${c}\""],
     ["http.request.uri.query eq \"\""],
