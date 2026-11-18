@@ -144,13 +144,32 @@ data:
   # one session (risk.notional_cap.bit events) — with risk_per_trade=0.20
   # and typical ORB stops ~2% from entry, risk-based sizing alone wants
   # ~10x equity in notional, so the notional cap is the real-world
-  # binding constraint at this account size, not a backstop. 0.75 is a
-  # moderate loosening (~$800 max position on the ~$1,067 account),
-  # chosen over 1.0 (full account on one trade) to keep some margin
-  # below full concentration risk.
+  # binding constraint at this account size, not a backstop. 0.75 was a
+  # moderate loosening (~$800 max position on the ~$1,067 account at the
+  # time), chosen over 1.0 (full account on one trade) to keep some
+  # margin below full concentration risk.
+  #
+  # max_notional_pct cut 0.75->0.35 on 2026-11-18. Equity has since
+  # roughly halved (~$465 live). Live accinfo_query confirmed buying
+  # power is ~2x equity (standard Reg T, not a PDT 4x account — nowhere
+  # near the $25k threshold), but 4 max_open_positions × 0.75 notional
+  # each is a structural ~3x worst case, and Reg T margins a SHORT at
+  # ~150% of proceeds (tighter than a long), so 4 concurrent shorts at
+  # the old cap could demand ~4.5x equity against ~2x available. This is
+  # exactly what happened 2026-11-16: four signals fired the same
+  # morning, all shorts, buying power ran out mid-session, blocking not
+  # just new entries but EXIT orders too (covering a short also needs
+  # buying power) — which is how several phantom positions got created
+  # (see engine.py's order.rejected.entry_failed /
+  # claude_partial_stop_already_filled fixes, and the new live
+  # buying-power check in _process_signal, same date). 0.35 keeps the
+  # worst case (4 × 0.35 × 1.5 margin factor ≈ 2.1x) inside real buying
+  # power even if every slot fills with a short; the live check is the
+  # actual backstop now, this just keeps the sizer's own math from being
+  # the thing that's wrong by 50%+ before that check even runs.
   EQUITY_TIERS_JSON: |
     [
-      {"name":"cash",   "max_equity": 25000,  "risk_per_trade": 0.20,  "max_daily_loss": 0.05, "max_open_positions": 4, "max_price": 100,   "min_avg_volume": 5000000, "max_notional_pct": 0.75},
+      {"name":"cash",   "max_equity": 25000,  "risk_per_trade": 0.20,  "max_daily_loss": 0.05, "max_open_positions": 4, "max_price": 100,   "min_avg_volume": 5000000, "max_notional_pct": 0.35},
       {"name":"margin", "max_equity": 100000, "risk_per_trade": 0.015, "max_daily_loss": 0.04, "max_open_positions": 2, "max_price": 200,  "min_avg_volume": 2000000, "max_notional_pct": 0.5},
       {"name":"scale",  "max_equity": null,   "risk_per_trade": 0.01,  "max_daily_loss": 0.03, "max_open_positions": 4, "max_price": 1000, "min_avg_volume": 1000000, "max_notional_pct": 0.25}
     ]
