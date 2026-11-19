@@ -167,9 +167,25 @@ data:
   # power even if every slot fills with a short; the live check is the
   # actual backstop now, this just keeps the sizer's own math from being
   # the thing that's wrong by 50%+ before that check even runs.
+  #
+  # cash tier reshaped 2026-11-19: max_notional_pct 0.35->0.60,
+  # max_open_positions 4->2. Confirmed from real Moomoo Financial Canada
+  # trade confirmations that commission is a flat $1.99 USD per filled
+  # order (not the $0 engine.py's cost model previously assumed, see
+  # commit c37fd22) — at the old 0.35 cap, cash-tier positions sized to
+  # 1-13 shares, so a ~$4 round-trip commission was eating 10-40% of the
+  # position's notional move before the trade could ever be net
+  # profitable. Trading fewer, bigger positions amortizes that flat fee
+  # instead of eating it on every tiny slot. Halving max_open_positions
+  # to 2 is what makes raising the cap back up safe: worst case is now
+  # 2 × 0.60 × 1.5 margin factor = 1.8x equity, still inside the ~2x
+  # real buying power with headroom, rather than reopening the 2026-11-16
+  # 4-short-at-once margin exhaustion this tier was cut to 0.35 to fix.
+  # The live per-order buying-power check in _process_signal (added
+  # 2026-11-18) remains the actual backstop regardless of this math.
   EQUITY_TIERS_JSON: |
     [
-      {"name":"cash",   "max_equity": 25000,  "risk_per_trade": 0.20,  "max_daily_loss": 0.05, "max_open_positions": 4, "max_price": 100,   "min_avg_volume": 5000000, "max_notional_pct": 0.35},
+      {"name":"cash",   "max_equity": 25000,  "risk_per_trade": 0.20,  "max_daily_loss": 0.05, "max_open_positions": 2, "max_price": 100,   "min_avg_volume": 5000000, "max_notional_pct": 0.60},
       {"name":"margin", "max_equity": 100000, "risk_per_trade": 0.015, "max_daily_loss": 0.04, "max_open_positions": 2, "max_price": 200,  "min_avg_volume": 2000000, "max_notional_pct": 0.5},
       {"name":"scale",  "max_equity": null,   "risk_per_trade": 0.01,  "max_daily_loss": 0.03, "max_open_positions": 4, "max_price": 1000, "min_avg_volume": 1000000, "max_notional_pct": 0.25}
     ]
