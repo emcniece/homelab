@@ -1,0 +1,6 @@
+---
+- name: reload udev
+  shell: udevadm control --reload-rules && udevadm trigger
+
+- name: load wolf-steam profile
+  command: apparmor_parser -r /etc/apparmor.d/wolf-steam

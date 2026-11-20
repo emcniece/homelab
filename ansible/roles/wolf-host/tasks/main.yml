@@ -1,0 +1,30 @@
+---
+# Host prep for Wolf (apps/wolf/). See apps/wolf/README.md.
+
+# Vendored from games-on-whales/wolf@stable 85-wolf.rules.
+- name: Install Wolf udev rules (virtual gamepads)
+  copy:
+    src: 85-wolf.rules
+    dest: /etc/udev/rules.d/85-wolf.rules
+    mode: '0644'
+  notify: reload udev
+
+# Steam's bwrap needs user namespaces, which Ubuntu 24.04 blocks for
+# unconfined processes. Only Wolf's dind container (pod annotation
+# localhost/wolf-steam) gets this profile; the node-wide sysctl stays on.
+# The Wolf pod fails to start if it isn't loaded.
+- name: Install the wolf-steam AppArmor profile
+  copy:
+    src: wolf-steam
+    dest: /etc/apparmor.d/wolf-steam
+    mode: '0644'
+  notify: load wolf-steam profile
+
+- name: Ensure Wolf state directories exist
+  file:
+    path: '{{ item.path }}'
+    state: directory
+    mode: '{{ item.mode }}'
+  loop:
+    - {path: /var/lib/wolf/etc, mode: '0755'}
+    - {path: /var/lib/wolf/docker, mode: '0710'}   # dind's data-root; dockerd sets 0710

@@ -1,0 +1,74 @@
+---
+- name: Install the HWE kernel (gfx1151 needs it; 22.04 / 5.15 has no support)
+  apt:
+    name: linux-generic-hwe-24.04
+    state: present
+  notify: guest reboot required
+
+# Firmware from pve4's pve-firmware overrides Ubuntu's linux-firmware.
+- name: List GPU firmware on {{ k3s_gpu_firmware_source_host }}
+  find:
+    paths: /lib/firmware/amdgpu
+    patterns: '{{ k3s_gpu_firmware_globs }}'
+  delegate_to: '{{ k3s_gpu_firmware_source_host }}'
+  register: gpu_firmware
+
+- name: Fail if no firmware was found on {{ k3s_gpu_firmware_source_host }}
+  fail:
+    msg: No gfx1151 firmware matched under /lib/firmware/amdgpu on {{ k3s_gpu_firmware_source_host }}.
+  when: gpu_firmware.files | length == 0
+
+- name: Fetch GPU firmware from {{ k3s_gpu_firmware_source_host }}
+  fetch:
+    src: '{{ item.path }}'
+    dest: '{{ playbook_dir }}/.firmware/'
+    flat: true
+  loop: '{{ gpu_firmware.files }}'
+  loop_control: {label: '{{ item.path | basename }}'}
+  delegate_to: '{{ k3s_gpu_firmware_source_host }}'
+  check_mode: false   # only writes the local cache (gitignored); lets --check diff the copy
+
+- name: Ensure /lib/firmware/updates/amdgpu exists
+  file:
+    path: /lib/firmware/updates/amdgpu
+    state: directory
+    mode: '0755'
+
+- name: Install GPU firmware overrides
+  copy:
+    src: '{{ playbook_dir }}/.firmware/{{ item.path | basename }}'
+    dest: /lib/firmware/updates/amdgpu/
+    mode: '0644'
+  loop: '{{ gpu_firmware.files }}'
+  loop_control: {label: '{{ item.path | basename }}'}
+  notify:
+    - update initramfs
+    - guest reboot required
+
+- name: Set the GTT size on the kernel cmdline
+  copy:
+    dest: /etc/default/grub.d/90-gpu-gtt.cfg
+    mode: '0644'
+    content: |
+      # Let the passed-through Strix Halo iGPU (gfx1151) use up to 96 GiB of guest
+      # RAM as GTT (VM has 112 GiB). 96 GiB / 4 KiB pages = 25165824.
+      # See homelab repo apps/ollama/README.md.
+      GRUB_CMDLINE_LINUX_DEFAULT="$GRUB_CMDLINE_LINUX_DEFAULT ttm.pages_limit={{ k3s_gpu_gtt_pages }} ttm.page_pool_size={{ k3s_gpu_gtt_pages }}"
+  notify:
+    - update grub
+    - guest reboot required
+
+- name: Mount the Ollama model disk
+  ansible.posix.mount:
+    path: '{{ k3s_gpu_ollama_mount }}'
+    src: LABEL={{ k3s_gpu_ollama_disk_label }}
+    fstype: ext4
+    opts: defaults,noatime,discard,nofail
+    passno: '2'
+    state: mounted
+
+- name: Ensure the Ollama local PV directory exists
+  file:
+    path: '{{ k3s_gpu_ollama_mount }}/models'
+    state: directory
+    mode: '0755'

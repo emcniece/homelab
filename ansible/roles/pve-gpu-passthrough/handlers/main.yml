@@ -1,0 +1,21 @@
+---
+# No automatic reboots: pve4 runs k3s-07 (Ollama, Wolf) and a Ceph mon.
+- name: update initramfs
+  command: update-initramfs -u -k all
+  notify: host reboot required
+
+- name: update grub
+  command: update-grub
+  notify: host reboot required
+
+- name: host reboot required
+  debug:
+    msg: >-
+      pve4 boot config changed. Drain k3s-07, shut down VM {{ pve_gpu_vmid }},
+      then reboot pve4 for it to take effect.
+
+- name: vm restart required
+  debug:
+    msg: >-
+      VM {{ pve_gpu_vmid }} config changed. Stop and start it (not just a
+      guest reboot) for it to take effect.

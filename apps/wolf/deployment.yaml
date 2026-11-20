@@ -105,7 +105,13 @@ spec:
         - {name: dev, mountPath: /dev}
         - {name: udev, mountPath: /run/udev}
         - {name: docker-data, mountPath: /var/lib/docker}
+        # Apps run with IpcMode=host, i.e. this container's /dev/shm. The
+        # kubelet default is 64M; Steam's CEF UI (steamwebhelper) fills it
+        # and renders a black screen. Counts toward the memory limit.
+        - {name: shm, mountPath: /dev/shm}
       volumes:
+      - name: shm
+        emptyDir: {medium: Memory, sizeLimit: 4Gi}
       # Wolf config (config.toml, paired clients) and per-app state, including
       # the Steam library. On k3s-07's root disk.
       - name: state

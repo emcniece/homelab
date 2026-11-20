@@ -1,0 +1,22 @@
+---
+# Guest side of the Strix Halo passthrough (k3s-07). See
+# infra/amd-gpu-device-plugin/README.md and apps/ollama/README.md.
+
+# Host whose pve-firmware supplies the gfx1151 firmware. Ubuntu 24.04's
+# linux-firmware is too old for it.
+k3s_gpu_firmware_source_host: pve4
+k3s_gpu_firmware_globs:
+  - gc_11_5_1_*
+  - psp_14_0_1_*
+  - sdma_6_1_1*
+  - vcn_4_0_6*
+  - dcn_3_5_1_*
+  - vpe_6_1_1*
+  - isp_4_1_1*
+
+# GTT: GPU memory carved from guest RAM. 96 GiB / 4 KiB pages.
+k3s_gpu_gtt_pages: 25165824
+
+# Ollama model store: VM 117 scsi1, ext4 LABEL=ollama-models.
+k3s_gpu_ollama_disk_label: ollama-models
+k3s_gpu_ollama_mount: /var/lib/ollama

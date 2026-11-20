@@ -39,6 +39,9 @@ paths in both containers.
   then exits immediately (Steam: sway `Could not connect to remote display`,
   Wolf UI: exit 139), because Docker bind-mounts empty directories in place of
   the Wayland/Pulse sockets.
+- The sidecar has a 4 GiB memory-backed `/dev/shm`. Apps use `IpcMode: host`,
+  which means the sidecar's `/dev/shm`, and the kubelet default is 64M.
+  Steam's CEF UI fills that and shows a black screen.
 - dockerd runs with `--bridge=none --iptables=false`, so it never touches the
   host's iptables. If Docker created docker0, it would set FORWARD to DROP and
   break pod networking. As a result, an app container gets only loopback

@@ -1,0 +1,28 @@
+# pve4 GPU passthrough + k3s-07 guest setup (Ollama, Wolf).
+#
+#   ansible-playbook playbooks/k3s/provision-gpu-node.yml --check --diff
+#   ansible-playbook playbooks/k3s/provision-gpu-node.yml --tags wolf
+#
+# Nothing here reboots. Handlers print what needs a restart.
+- name: pve4 GPU passthrough to VM 117
+  hosts: pve_gpu
+  remote_user: root
+  gather_facts: no
+
+  tasks:
+    - import_role:
+        name: pve-gpu-passthrough
+      tags: [passthrough]
+
+- name: k3s-07 GPU node
+  hosts: k3s_gpu
+  remote_user: root
+  gather_facts: no
+
+  tasks:
+    - import_role:
+        name: k3s-gpu-node
+      tags: [gpu]
+    - import_role:
+        name: wolf-host
+      tags: [wolf]
