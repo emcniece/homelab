@@ -71,7 +71,21 @@ patched as follows (the original is kept at `config.toml.orig`):
    found in mountinfo") because it isn't running under Docker.
 3. Copied the Steam app into the `moonlight-profile` profile.
 
-Any new app also needs (1). Restart after editing:
+Any new app also needs (1).
+
+### Games tiled in the right half (streams above 1080p)
+
+Some Proton/Unity games drop out of fullscreen when their resolution doesn't
+match the stream's. Sway then tiles them next to Big Picture, so the left half
+is black. The image's `for_window [class="steam_app_.*"] fullscreen enabled`
+only fires when the window appears. A watcher puts such windows back to
+fullscreen on window events:
+
+- `<client-id>/Steam/.config/sway/keep-games-fullscreen.py` under
+  `/var/lib/wolf/etc/`, started by `custom-cfg` (`exec python3 ...`) in the
+  same folder.
+- Wolf keeps a home folder per paired client, so each newly paired Moonlight
+  client's Steam folder needs a copy of both files. Restart after editing:
 `kubectl -n wolf rollout restart deploy/wolf`.
 
 ## Host prep (k3s-07, done once)
