@@ -81,11 +81,15 @@ is black. The image's `for_window [class="steam_app_.*"] fullscreen enabled`
 only fires when the window appears. A watcher puts such windows back to
 fullscreen on window events:
 
-- `<client-id>/Steam/.config/sway/keep-games-fullscreen.py` under
-  `/var/lib/wolf/etc/`, started by `custom-cfg` (`exec python3 ...`) in the
-  same folder.
-- Wolf keeps a home folder per paired client, so each newly paired Moonlight
-  client's Steam folder needs a copy of both files. Restart after editing:
+- Source: `ansible/roles/wolf-host/files/sway/` (`keep-games-fullscreen.py`
+  and `custom-cfg`, which the image's Sway config includes and which starts
+  the watcher).
+- Installed by the `wolf-host` role into `.config/sway/` of every Steam home
+  under `/var/lib/wolf/etc/`: `<client-id>/Steam` (one per paired Moonlight
+  client) and `profile-data/<profile>/WolfSteam` (Steam launched from Wolf UI).
+- A home is created the first time its client launches Steam, so after
+  pairing a new device: launch Steam once, then run
+  `ansible-playbook playbooks/k3s/provision-gpu-node.yml --tags wolf`. Restart after editing:
 `kubectl -n wolf rollout restart deploy/wolf`.
 
 ## Host prep (k3s-07, done once)

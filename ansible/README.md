@@ -83,7 +83,9 @@ ansible-playbook playbooks/udmp/provision.yml -e "@secrets.yml"
 
 pve4's Strix Halo iGPU passed through to k3s-07 (VM 117), the guest's
 gfx1151 kernel/firmware/GTT setup and Ollama model disk, and Wolf's host prep
-(udev rules, `wolf-steam` AppArmor profile). Never reboots; handlers print
+(udev rules, `wolf-steam` AppArmor profile, and the Sway fullscreen watcher
+in each Steam home; re-run `--tags wolf` after pairing a new Moonlight client
+and launching Steam once). Never reboots; handlers print
 what needs restarting. See `roles/pve-gpu-passthrough/README.md`,
 `infra/amd-gpu-device-plugin/README.md` and `apps/wolf/README.md`.
 

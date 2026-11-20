@@ -28,3 +28,38 @@
   loop:
     - {path: /var/lib/wolf/etc, mode: '0755'}
     - {path: /var/lib/wolf/docker, mode: '0710'}   # dind's data-root; dockerd sets 0710
+
+# Keep Steam games fullscreen in Sway (streams above 1080p otherwise tile the
+# game next to Big Picture). Wolf keeps a Steam home per paired Moonlight
+# client (<client-id>/Steam), plus one for Steam launched from Wolf UI
+# (profile-data/<profile>/WolfSteam). Each is created on its first launch, so
+# re-run this after pairing a new client and launching Steam once.
+# See apps/wolf/README.md.
+- name: Find Steam home folders (one per paired client)
+  find:
+    paths: /var/lib/wolf/etc
+    patterns: [Steam, WolfSteam]
+    file_type: directory
+    recurse: true
+    depth: 3
+  register: wolf_steam_homes
+
+- name: Ensure Sway config dir exists in each Steam home
+  file:
+    path: '{{ item.path }}/.config/sway'
+    state: directory
+    owner: '1000'
+    group: '1000'
+    # no mode: the container creates it 0777; leave whatever is there
+  loop: '{{ wolf_steam_homes.files }}'
+  loop_control: {label: '{{ item.path }}'}
+
+- name: Install the Sway fullscreen watcher in each Steam home
+  copy:
+    src: sway/{{ item.1.name }}
+    dest: '{{ item.0.path }}/.config/sway/{{ item.1.name }}'
+    owner: '1000'
+    group: '1000'
+    mode: '{{ item.1.mode }}'
+  loop: "{{ wolf_steam_homes.files | product([{'name': 'custom-cfg', 'mode': '0644'}, {'name': 'keep-games-fullscreen.py', 'mode': '0755'}]) | list }}"
+  loop_control: {label: '{{ item.0.path }}/.config/sway/{{ item.1.name }}'}
