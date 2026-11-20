@@ -78,3 +78,17 @@ for the full story.
 ```sh
 ansible-playbook playbooks/udmp/provision.yml -e "@secrets.yml"
 ```
+
+### GPU node: pve4 passthrough + k3s-07 (Ollama, Wolf)
+
+pve4's Strix Halo iGPU passed through to k3s-07 (VM 117), the guest's
+gfx1151 kernel/firmware/GTT setup and Ollama model disk, and Wolf's host prep
+(udev rules, `wolf-steam` AppArmor profile). Never reboots; handlers print
+what needs restarting. See `roles/pve-gpu-passthrough/README.md`,
+`infra/amd-gpu-device-plugin/README.md` and `apps/wolf/README.md`.
+
+```sh
+ansible-playbook playbooks/k3s/provision-gpu-node.yml --check --diff
+ansible-playbook playbooks/k3s/provision-gpu-node.yml --tags passthrough   # pve4
+ansible-playbook playbooks/k3s/provision-gpu-node.yml --tags gpu,wolf      # k3s-07
+```

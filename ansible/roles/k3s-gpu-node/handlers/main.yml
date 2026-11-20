@@ -1,0 +1,14 @@
+---
+- name: update initramfs
+  command: update-initramfs -u
+
+- name: update grub
+  command: update-grub
+
+# No automatic reboot. A guest-only reboot risks the iGPU failing to reset,
+# so restart through pve4 (see apps/ollama/README.md).
+- name: guest reboot required
+  debug:
+    msg: >-
+      k3s-07 kernel/firmware/cmdline changed. Drain it, stop VM 117, reboot
+      pve4 (or at least stop/start the VM from pve4), then uncordon.

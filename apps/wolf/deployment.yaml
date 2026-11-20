@@ -1,0 +1,130 @@
+# Wolf (Games on Whales): Moonlight game streaming from k3s-07's Radeon 8060S.
+# See README.md.
+#
+# Wolf launches each app (Steam, Firefox, ...) as a Docker container through a
+# Docker API socket. k3s only has containerd, so a Docker-in-Docker sidecar
+# provides that socket. Wolf passes paths on "the host" to dockerd for bind
+# mounts, and dockerd resolves them in its own filesystem, so every path Wolf
+# hands over (/etc/wolf, /tmp/sockets, /dev, /run/udev) is mounted at the same
+# place in both containers.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wolf
+  namespace: wolf
+  labels:
+    app: wolf
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate   # host network ports, host paths
+  selector:
+    matchLabels:
+      app: wolf
+  template:
+    metadata:
+      labels:
+        app: wolf
+      annotations:
+        # Steam's runtime (bwrap) needs unprivileged user namespaces, which
+        # Ubuntu 24.04 blocks for unconfined processes
+        # (kernel.apparmor_restrict_unprivileged_userns=1). The nested dockerd
+        # doesn't apply AppArmor profiles to app containers; they inherit
+        # this container's profile instead. wolf-steam (unconfined + userns)
+        # is loaded on k3s-07 from /etc/apparmor.d/wolf-steam; see README.
+        container.apparmor.security.beta.kubernetes.io/dind: localhost/wolf-steam
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: k3s-07
+      tolerations:
+      - {key: gpu, operator: Equal, value: "true", effect: PreferNoSchedule}
+      # Moonlight's UDP streams and udev netlink events (virtual gamepad
+      # hotplug) both need the host network namespace. Clients connect to
+      # k3s-07's IP (192.168.10.44).
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+      - name: wolf
+        image: ghcr.io/games-on-whales/wolf:stable@sha256:47ce7a0b67ee6645d2c6fefd8fdda7fee49a00e327c39597a04e84a0cd052910
+        imagePullPolicy: IfNotPresent
+        # Privileged: Wolf mknods virtual input devices (/dev/input, uinput,
+        # uhid, char major 13) at runtime, which a device cgroup allow-list
+        # can't express as a pod field.
+        securityContext:
+          privileged: true
+        env:
+        - {name: XDG_RUNTIME_DIR, value: /tmp/sockets}
+        - {name: HOST_APPS_STATE_FOLDER, value: /etc/wolf}
+        - {name: WOLF_DOCKER_SOCKET, value: /docker-sock/docker.sock}
+        - {name: WOLF_RENDER_NODE, value: /dev/dri/renderD128}
+        - {name: WOLF_LOG_LEVEL, value: INFO}
+        resources:
+          requests: {cpu: "1", memory: 1Gi}
+          limits: {memory: 4Gi}
+        volumeMounts:
+        - {name: state, mountPath: /etc/wolf}
+        - {name: sockets, mountPath: /tmp/sockets}
+        - {name: docker-sock, mountPath: /docker-sock}
+        - {name: dev, mountPath: /dev}
+        - {name: udev, mountPath: /run/udev}
+      - name: dind
+        image: docker:29.9.2-dind
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          privileged: true
+        # hostNetwork means this dockerd shares k3s-07's network namespace, so
+        # it must not touch the host's iptables or create docker0 (Docker sets
+        # FORWARD to DROP, which would break pod networking). Apps run with
+        # NetworkMode=host instead (set per app in config.toml).
+        #
+        # command bypasses dockerd-entrypoint.sh: with TLS off it adds
+        # --host=tcp://0.0.0.0:2375, an unauthenticated root API on the LAN.
+        # `dind` is the image's cgroup/mount setup wrapper.
+        command: [dind, dockerd]
+        args:
+        - --host=unix:///docker-sock/docker.sock
+        - --bridge=none
+        - --iptables=false
+        - --ip6tables=false
+        - --data-root=/var/lib/docker
+        env:
+        - {name: DOCKER_TLS_CERTDIR, value: ""}
+        resources:
+          # Steam and the games run inside this container's cgroup.
+          requests: {cpu: "2", memory: 8Gi}
+          limits: {memory: 16Gi}
+        volumeMounts:
+        - {name: state, mountPath: /etc/wolf}
+        # The `dind` wrapper mounts a tmpfs over /tmp unless /tmp is already a
+        # mountpoint, which would hide /tmp/sockets (Wolf's Wayland, Pulse
+        # and API sockets) from dockerd. Apps then fail to start because
+        # Docker bind-mounts empty directories in place of the sockets.
+        - {name: dind-tmp, mountPath: /tmp}
+        - {name: sockets, mountPath: /tmp/sockets}
+        - {name: docker-sock, mountPath: /docker-sock}
+        - {name: dev, mountPath: /dev}
+        - {name: udev, mountPath: /run/udev}
+        - {name: docker-data, mountPath: /var/lib/docker}
+        # Apps run with IpcMode=host, i.e. this container's /dev/shm. The
+        # kubelet default is 64M; Steam's CEF UI (steamwebhelper) fills it
+        # and renders a black screen. Counts toward the memory limit.
+        - {name: shm, mountPath: /dev/shm}
+      volumes:
+      - name: shm
+        emptyDir: {medium: Memory, sizeLimit: 4Gi}
+      # Wolf config (config.toml, paired clients) and per-app state, including
+      # the Steam library. On k3s-07's root disk.
+      - name: state
+        hostPath: {path: /var/lib/wolf/etc, type: DirectoryOrCreate}
+      - name: docker-data
+        hostPath: {path: /var/lib/wolf/docker, type: DirectoryOrCreate}
+      - name: sockets
+        emptyDir: {}
+      - name: dind-tmp
+        emptyDir: {}
+      - name: docker-sock
+        emptyDir: {}
+      - name: dev
+        hostPath: {path: /dev}
+      - name: udev
+        hostPath: {path: /run/udev}

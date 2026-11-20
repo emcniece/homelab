@@ -1,0 +1,52 @@
+---
+- name: Bind the iGPU and its HDMI audio to vfio-pci before amdgpu
+  copy:
+    src: vfio.conf
+    dest: /etc/modprobe.d/vfio.conf
+    mode: '0644'
+  notify: update initramfs
+
+- name: Load the vfio modules at boot
+  lineinfile:
+    path: /etc/modules
+    line: '{{ item }}'
+  loop: [vfio, vfio_iommu_type1, vfio_pci]
+  notify: update initramfs
+
+- name: Set the kernel cmdline for passthrough
+  lineinfile:
+    path: /etc/default/grub
+    regexp: '^GRUB_CMDLINE_LINUX_DEFAULT='
+    line: 'GRUB_CMDLINE_LINUX_DEFAULT="{{ pve_gpu_grub_cmdline }}"'
+  notify: update grub
+
+- name: Check the VBIOS romfile
+  stat:
+    path: /usr/share/kvm/{{ pve_gpu_romfile }}
+    checksum_algorithm: sha256
+  register: romfile
+
+- name: Fail if the VBIOS romfile is missing or different
+  fail:
+    msg: >-
+      /usr/share/kvm/{{ pve_gpu_romfile }} is missing or its sha256 doesn't
+      match. It has to be dumped by hand; see
+      roles/pve-gpu-passthrough/README.md.
+  when: not romfile.stat.exists or romfile.stat.checksum != pve_gpu_romfile_sha256
+
+- name: Read VM {{ pve_gpu_vmid }} config
+  command: qm config {{ pve_gpu_vmid }}
+  register: qm_config
+  changed_when: false
+  check_mode: false   # read-only; needed for --check runs
+
+- name: Fail if VM {{ pve_gpu_vmid }} has no EFI disk (OVMF needs one)
+  fail:
+    msg: "VM {{ pve_gpu_vmid }} needs an efidisk0 for OVMF; SeaBIOS hangs on the iGPU option ROM."
+  when: "qm_config.stdout_lines | select('match', '^efidisk0: ') | list | length == 0"
+
+- name: Apply VM {{ pve_gpu_vmid }} passthrough settings
+  command: qm set {{ pve_gpu_vmid }} --{{ item.key }} {{ item.value }}
+  loop: '{{ pve_gpu_vm_config | dict2items }}'
+  when: "(item.key ~ ': ' ~ item.value) not in qm_config.stdout_lines"
+  notify: vm restart required

@@ -1,0 +1,10 @@
+# Wolf (apps/wolf): lets the Steam container create user namespaces for
+# Steam runtime / pressure-vessel (bwrap). Applied per container via
+# SecurityOpt apparmor=wolf-steam; the node-wide
+# kernel.apparmor_restrict_unprivileged_userns=1 stays on.
+abi <abi/4.0>,
+include <tunables/global>
+
+profile wolf-steam flags=(unconfined) {
+  userns,
+}
