@@ -1,0 +1,16 @@
+# Organizr forward-auth: Traefik asks Organizr whether the request's
+# organizr_token_* cookie (set on .emc2.build at login on lab.emc2.build)
+# belongs to a user in group <= 1 (admin / co-admin). 200 = allow, 401 = deny.
+#
+# Attach to an ingress with:
+#   traefik.ingress.kubernetes.io/router.middlewares: default-organizr-fwauth@kubernetescrd
+# and set the app's own auth to External (e.g. *arr config.xml
+# <AuthenticationMethod>External</AuthenticationMethod>) so it trusts the gate.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: organizr-fwauth
+  namespace: default
+spec:
+  forwardAuth:
+    address: http://organizr.media.svc.cluster.local/api/v2/auth/1
