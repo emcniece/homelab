@@ -1,0 +1,108 @@
+# gha-runner-scale-set Helm values for LangfordOGSociety/minutes: its own
+# runner scale set on the homelab ARC controller, repo-scoped like the others
+# (an org repo, but still scoped to the one repo, not the org).
+#
+# Based on runner-values-moneymaker.yaml (the trimmed variant: dind for image
+# builds, no pnpm-store / Playwright-cache PVCs). Bigger dind than moneymaker:
+# the transcriber image pip-installs CPU torch + whisperx, which needs a few
+# GiB while unpacking. Layer cache is in GHCR (`buildcache` tags), so no
+# buildkitd daemon; add one like belay-buildkitd.yaml if builds get slow.
+#
+# The repo is PUBLIC: only push-to-main jobs may use these runners. The repo's
+# ci.yml keeps pull_request jobs on ubuntu-latest (see README "Security note").
+githubConfigUrl: "https://github.com/LangfordOGSociety/minutes"
+githubConfigSecret: minutes-arc-github-secret
+runnerScaleSetName: minutes-arc-runners
+# A push runs `check` and `images` side by side, then `release` (promote,
+# deploy). The deploy job can sit in its guard for hours waiting for a
+# meeting to end, so allow one more than that.
+minRunners: 0
+maxRunners: 3
+listenerTemplate:
+  spec:
+    dnsConfig:
+      options:
+        - name: ndots
+          value: "1"
+    containers:
+      - name: listener
+template:
+  spec:
+    dnsConfig:
+      options:
+        - name: ndots
+          value: "1"
+    restartPolicy: Never
+    # No explicit serviceAccountName: the chart then creates the
+    # no-permission SA itself (see runner-values-moneymaker.yaml).
+    topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            actions.github.com/scale-set-name: minutes-arc-runners
+    volumes:
+      - name: work
+        emptyDir: {}
+      - name: dind-sock
+        emptyDir: {}
+      - name: dind-externals
+        emptyDir: {}
+    initContainers:
+      - name: init-dind-externals
+        image: ghcr.io/actions/actions-runner:latest
+        command: ["cp"]
+        args: ["-r", "/home/runner/externals/.", "/home/runner/tmpDir/"]
+        volumeMounts:
+          - name: dind-externals
+            mountPath: /home/runner/tmpDir
+    containers:
+      - name: runner
+        image: ghcr.io/actions/actions-runner:latest
+        command: ["/home/runner/run.sh"]
+        env:
+          - name: DOCKER_HOST
+            value: unix:///var/run/docker.sock
+          - name: RUNNER_WAIT_FOR_DOCKER_IN_SECONDS
+            value: "120"
+        volumeMounts:
+          - name: work
+            mountPath: /home/runner/_work
+          - name: dind-sock
+            mountPath: /var/run
+        resources:
+          # npm ci + tsc for `check`; everything else is CLI calls.
+          requests:
+            cpu: "500m"
+            memory: 1Gi
+          limits:
+            memory: 3Gi
+      - name: dind
+        image: docker:dind
+        args:
+          [
+            "dockerd",
+            "--host=unix:///var/run/docker.sock",
+            "--group=$(DOCKER_GROUP_GID)",
+            "--registry-mirror=http://glyphdex-arc-registry-mirror.arc-runners.svc.cluster.local:5000",
+            "--insecure-registry=glyphdex-arc-registry-mirror.arc-runners.svc.cluster.local:5000",
+          ]
+        env:
+          - name: DOCKER_GROUP_GID
+            value: "123"
+        securityContext:
+          privileged: true
+        volumeMounts:
+          - name: work
+            mountPath: /home/runner/_work
+          - name: dind-sock
+            mountPath: /var/run
+          - name: dind-externals
+            mountPath: /home/runner/externals
+        resources:
+          requests:
+            cpu: "1"
+            memory: 2Gi
+          limits:
+            memory: 8Gi
