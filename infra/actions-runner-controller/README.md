@@ -416,6 +416,36 @@ helm upgrade --install belay-runners \
 
 Installed 2026-10-25 (revision 2 raised the resource limits).
 
+## Add another repo's runner scale set (minutes)
+
+`LangfordOGSociety/minutes` (**public**, org-owned): records council
+meetings; CI builds two images to GHCR and its release workflow deploys to
+the `minutes` namespace. Same rule as Glyphdex since it's public: only
+push-to-main jobs use `runs-on: minutes-arc-runners`; pull requests stay on
+`ubuntu-latest`. The release's deploy job waits (up to 4h) while a meeting
+is being captured, which is why `maxRunners` is 3.
+
+The PAT is a fine-grained token with **Resource owner: LangfordOGSociety**
+(the org must allow fine-grained tokens), "Only select repositories" ->
+`minutes`, Administration: read and write.
+
+```sh
+export KUBECONFIG=~/.kube/config-homelab
+CHART_VERSION=0.14.2
+
+read -rsp 'GitHub PAT (minutes): ' GH_PAT && echo
+kubectl create secret generic minutes-arc-github-secret \
+  --namespace arc-runners \
+  --from-literal=github_token="$GH_PAT"
+unset GH_PAT
+
+helm upgrade --install minutes-runners \
+  --namespace arc-runners \
+  -f infra/actions-runner-controller/runner-values-minutes.yaml \
+  oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set \
+  --version "$CHART_VERSION" --wait
+```
+
 ## Verify
 
 ```sh
