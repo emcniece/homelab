@@ -16,7 +16,13 @@ slskd), imports Spotify playlists, and hands albums to Lidarr.
   so every account needs a long, unique password.
 - `TRUST_PROXY` lists Traefik's pod CIDR and Cloudflare's ranges so Aurral
   sees real client IPs. Keep its Cloudflare list in sync with `public.yaml`.
-- Image pinned to `2.12.0` (the GHCR tags have no `v` prefix).
+- Image pinned to `3.1.0` (the GHCR tags have no `v` prefix). Upgraded from
+  2.12.0 on 2026-11-24. Aurral 3 only opens a database that 2.13.0 finished
+  upgrading (it exits with "Missing: ..." otherwise), so the upgrade ran
+  `2.13.0` once on the same `/config`, then `3.1.0`. The 2.12 database is kept as
+  `/config/aurral.backup-2.12.0-2026-11-24.db`, and 3.x saved its own
+  pre-migration copies (`aurral.pre-*.db`) next to it. To roll back, see
+  https://docs.aurral.org/admin/troubleshooting/#roll-back-to-aurral-2.
 
 ## Paths
 
@@ -35,7 +41,8 @@ Aurral needs every app to see shared files at the same container paths:
   whole discography.
 - **slskd:** URL `http://slskd.media.svc.cluster.local:5030`, plus the key
   part (after the last `;`) of `SLSKD_API_KEY` in `apps/slskd/secret.yaml`.
-- **Navidrome:** URL `http://navidrome.media.svc.cluster.local:4533`, and a
-  Navidrome user for publishing playlists.
-- **Downloads Folder:** `/downloads/aurral`.
+- **Navidrome:** 3.x no longer publishes playlists through Navidrome's API;
+  it writes an M3U file per flow and playlist to `_playlists` in the Library
+  folder instead (Navidrome is scaled to 0 anyway).
+- **Library folder:** `/downloads/aurral` (`LIBRARY_FOLDER`).
 - **Flows:** set retention so old weekly flows rotate out.

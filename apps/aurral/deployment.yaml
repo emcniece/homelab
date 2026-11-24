@@ -38,7 +38,7 @@ spec:
           mountPath: /discovery
       containers:
       - name: aurral
-        image: ghcr.io/lklynet/aurral:2.12.0
+        image: ghcr.io/lklynet/aurral:3.1.0
         imagePullPolicy: IfNotPresent
         env:
         - {name: TZ, value: America/Vancouver}
@@ -46,11 +46,11 @@ spec:
         # (Aurral requires it): Lidarr's library at /downloads/music,
         # slskd's completed files at /downloads/slskd/complete, SABnzbd's
         # completed downloads at /downloads/completed, and the
-        # Downloads Folder at /downloads/aurral (also Navidrome's 2nd library).
-        - {name: DOWNLOAD_FOLDER, value: /downloads/aurral}
+        # Library folder at /downloads/aurral (also Navidrome's 2nd library).
+        # 3.x renamed DOWNLOAD_FOLDER to LIBRARY_FOLDER.
+        - {name: LIBRARY_FOLDER, value: /downloads/aurral}
         - {name: FILE_BROWSE_ROOTS, value: /downloads}
-        - {name: AURRAL_PUBLIC_URL, value: "https://aurral.lab.emc2.build"}
-        # Express "trust proxy" as a subnet list: Traefik (pod CIDR) and
+        # proxy-addr trust list (comma-separated subnets): Traefik (pod CIDR) and
         # Cloudflare's edge (public.yaml). req.ip then walks X-Forwarded-For
         # back to the real client, so Aurral's per-IP rate limit applies per
         # listener instead of per Cloudflare edge. A client can't spoof it:
