@@ -143,6 +143,7 @@ template:
             "dockerd",
             "--host=unix:///var/run/docker.sock",
             "--group=$(DOCKER_GROUP_GID)",
+            "--mtu=1450",
             "--registry-mirror=http://glyphdex-arc-registry-mirror.arc-runners.svc.cluster.local:5000",
             "--insecure-registry=glyphdex-arc-registry-mirror.arc-runners.svc.cluster.local:5000",
           ]

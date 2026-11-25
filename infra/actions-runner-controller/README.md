@@ -160,6 +160,21 @@ nothing this scale set does:
   `template.spec.dnsConfig`), so these survive a normal `helm upgrade` of
   `glyphdex-runners`.
 
+## MTU: dind's docker0 vs the pod network
+
+Every scale set's `dind` runs `dockerd --mtu=1450` (added 2026-11-24). Pod
+interfaces are 1450 (flannel VXLAN), but dind's `docker0` defaults to 1500,
+so containers started inside dind (buildx's docker-container builder,
+`services:`, `docker run`) send packets too big for the pod network. Some
+hosts cope (Cloudflare-fronted ones: npm, nodejs.org), others never finish
+a transfer: found when minutes' image build hung on Playwright's Chromium
+download from Azure's CDN. Measured from a nested container: MTU 1500, no
+transfer in 20s; MTU 1400, 173 MB in 2.1s. DNS was not involved.
+
+Symptom to recognise: a download inside a Docker build or a `services:`
+container stalls with zero bytes, while the same URL works from the runner
+container itself. Keep `--mtu=1450` in any new scale set's dind args.
+
 ## Caching
 
 The registry-based Docker layer cache (`cache-from`/`cache-to:
