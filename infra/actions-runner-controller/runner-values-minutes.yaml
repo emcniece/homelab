@@ -80,11 +80,19 @@ template:
             memory: 3Gi
       - name: dind
         image: docker:dind
+        # --mtu: pod interfaces here are 1450 (flannel VXLAN) but docker0
+        # defaults to 1500, so build containers send packets too big for the
+        # pod network. Cloudflare-fronted hosts cope; Azure's CDN (Playwright's
+        # Chromium download) never completes. Measured 2026-11-24 from a
+        # nested container: 1500 -> no transfer in 20s, 1400 -> 173 MB in 2.1s.
+        # buildx's docker-container builder runs on docker0, so this covers
+        # image builds too. Other scale sets' dind has the same latent issue.
         args:
           [
             "dockerd",
             "--host=unix:///var/run/docker.sock",
             "--group=$(DOCKER_GROUP_GID)",
+            "--mtu=1450",
             "--registry-mirror=http://glyphdex-arc-registry-mirror.arc-runners.svc.cluster.local:5000",
             "--insecure-registry=glyphdex-arc-registry-mirror.arc-runners.svc.cluster.local:5000",
           ]
