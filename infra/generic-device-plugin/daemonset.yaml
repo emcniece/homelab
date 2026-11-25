@@ -1,14 +1,21 @@
-# Shares the GPU render node on gpu=true nodes (k3s-07) between pods.
+# Shares the GPU on gpu=true nodes (k3s-07) between pods.
 #
 # The AMD device plugin (infra/amd-gpu-device-plugin) hands out the whole GPU as
-# a single exclusive amd.com/gpu, which Ollama holds. Video transcoding only
-# needs /dev/dri/renderD128 (the VCN encode/decode engines), which is safe to
-# share, so this advertises it as devic.es/dri-render with 4 slots.
+# a single exclusive amd.com/gpu, which Ollama holds. Two shared resources here:
 #
-# Request it from a workload (no privileged mode needed in the workload):
+#   devic.es/dri-render  /dev/dri/renderD128 only: video encode/decode (VCN),
+#                        e.g. Jellyfin. 4 slots.
+#   devic.es/amd-gpu     /dev/kfd + /dev/dri/renderD128: ROCm compute (HIP),
+#                        e.g. the minutes transcriber (WhisperX on gfx1151).
+#                        2 slots. The GPU's memory is the shared GTT pool, so
+#                        reserve RAM for it in the workload's memory request.
+#
+# Request one from a workload (no privileged mode needed in the workload; the
+# device files are group render, gid 110 on k3s-07, so add that group):
 #   nodeSelector: {gpu: "true"}
+#   securityContext: {supplementalGroups: [110]}
 #   resources:
-#     limits: {devic.es/dri-render: 1}
+#     limits: {devic.es/amd-gpu: 1}
 #
 # https://github.com/squat/generic-device-plugin  (image tag = commit f7c3291, 2026-10-26)
 apiVersion: apps/v1
@@ -50,6 +57,14 @@ spec:
               groups:
                 - count: 4
                   paths:
+                    - path: /dev/dri/renderD128
+            - --device
+            - |
+              name: amd-gpu
+              groups:
+                - count: 2
+                  paths:
+                    - path: /dev/kfd
                     - path: /dev/dri/renderD128
           ports:
             - name: http

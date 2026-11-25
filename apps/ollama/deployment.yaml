@@ -58,8 +58,10 @@ spec:
             cpu: "4"
             # GTT (GPU memory carved from guest RAM, up to 96 GiB) is likely
             # not charged to this cgroup, so the scheduler can't see it. This
-            # request reserves room for it on the node.
-            memory: 88Gi
+            # request reserves room for it on the node. 80 (was 88) leaves
+            # room for the minutes transcriber, which shares the GPU through
+            # devic.es/amd-gpu and reserves 8Gi (2026-11-25).
+            memory: 80Gi
             amd.com/gpu: 1
           limits:
             memory: 104Gi
